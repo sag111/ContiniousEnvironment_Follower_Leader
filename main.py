@@ -4,6 +4,10 @@ import numpy as np
 from classes import AbstractRobot, GameObject
 from scipy.spatial import distance
 
+class Trajectory():
+    pass
+    #TODO: класс, который хранит траекторию, умеет её отрисовать и вообще молодец
+
 class Game():
     def __init__(self, game_width=1024, 
                  game_height=768,
@@ -163,7 +167,7 @@ class Game():
             
             
             
-            prev_leader_position = leader.position
+            prev_leader_position = leader.position.copy()
             
             if distance.euclidean(leader.position, cur_target_point) < self.leader_pos_epsilon:
                 cur_target_id+=1
@@ -179,14 +183,15 @@ class Game():
                 leader.command_turn(0,0)
             follower.move()
                 
-            self.leader_factual_trajectory.append(leader.position)
+#             if np.array_equal(prev_leader_position,leader.position):
+            self.leader_factual_trajectory.append(leader.position.copy())
             
             if self.show_leader_path:
                 pygame.draw.aalines(self.gameDisplay,self.colours["red"],False,self.trajectory)
             
             if self.show_leader_trajectory:
-                for cur_point in self.leader_factual_trajectory[:-1]:
-                    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 5)
+                for cur_point in self.leader_factual_trajectory[::10]:
+                    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 2)
             
             for cur_object in self.game_object_list:
                 self.show_object(cur_object)
@@ -195,11 +200,7 @@ class Game():
             self.clock.tick(60)
             pygame.time.wait(200)
 
-            
-            
-            
 
-            
         
 if __name__=="__main__":
 
