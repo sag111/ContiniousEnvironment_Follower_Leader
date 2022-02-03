@@ -27,7 +27,9 @@ class Game(gym.Env):
                  max_distance = 4, # в метрах
                  max_dev = 1, # в метрах
                  warm_start = 3, # в секундах
-                 manual_control = False
+                 manual_control = False,
+                 max_steps=10000
+                 
                 ):
         
         self.colours = {
@@ -62,7 +64,7 @@ class Game(gym.Env):
         if reward_config:
             self.reward_config = Reward.from_json(reward_config)
         else:
-            self.reward_config = Reward()
+            self.reward_config = Reward(leader_movement_reward=0)
         
         self.overall_reward = 0
         
@@ -84,20 +86,46 @@ class Game(gym.Env):
         self.action_space = Box(np.array((self.follower.min_speed,-self.follower.max_rotation_speed)),
                                 np.array((self.follower.max_speed,self.follower.max_rotation_speed)))
         
-        self.observation_space = Dict({
-               "leader_location": Box(np.array((0,0)),
-                                      np.array((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))),
-               "leader_speed": Box(self.leader.min_speed,self.leader.max_speed, shape=[1]),
-               "leader_direction": Discrete(360),
-               "leader_rotation_speed": Box(-self.leader.max_rotation_speed,self.leader.max_rotation_speed,shape=[1]), 
-               "follower_location": Box(np.array((0,0)),
-                                      np.array((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))),
-               "follower_speed": Box(self.follower.min_speed,self.follower.max_speed,shape=[1]), 
-               "follower_direction": Discrete(360), 
-               "follower_rotation_speed": Box(-self.follower.max_rotation_speed,self.follower.max_rotation_speed, shape=[1]), 
-                                      })
+        self.observation_space = Box(np.array([0,0,
+                                              self.leader.min_speed,
+                                              0,
+                                              -self.leader.max_rotation_speed,
+                                              0,0,
+                                              self.follower.min_speed,
+                                              0,
+                                              -self.follower.max_rotation_speed,
+                                              self.min_distance,
+                                              self.max_distance,
+                                              self.max_dev], dtype=np.float32),
+                                     np.array([self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT,
+                                              self.leader.max_speed,
+                                              360,
+                                              self.leader.max_rotation_speed,
+                                              self.DISPLAY_WIDTH,
+                                              self.DISPLAY_HEIGHT,
+                                              self.follower.max_speed,
+                                              360,
+                                              self.follower.max_rotation_speed,
+                                              self.min_distance,
+                                              self.max_distance,
+                                              self.max_dev], dtype=np.float32
+                                              ))
+        
+#         self.observation_space = Dict({
+#                "leader_location_x": Box(0,self.DISPLAY_WIDTH, shape=[1]),
+#                "leader_location_y": Box(0,self.DISPLAY_HEIGHT, shape=[1]),
+#                "leader_speed": Box(self.leader.min_speed,self.leader.max_speed, shape=[1]),
+#                "leader_direction": Discrete(360),
+#                "leader_rotation_speed": Box(-self.leader.max_rotation_speed,self.leader.max_rotation_speed,shape=[1]), 
+#                "follower_location_x": Box(0,self.DISPLAY_WIDTH, shape=[1]),
+#                "follower_location_y": Box(0,self.DISPLAY_HEIGHT, shape=[1]),
+#                "follower_speed": Box(self.follower.min_speed,self.follower.max_speed,shape=[1]), 
+#                "follower_direction": Discrete(360), 
+#                "follower_rotation_speed": Box(-self.follower.max_rotation_speed,self.follower.max_rotation_speed, shape=[1]), 
+#                                       })
     
-    
+        self.max_steps = max_steps
+        
     def reset(self):
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         
@@ -158,6 +186,10 @@ class Game(gym.Env):
         pygame.display.set_caption(self.caption)
         self.clock = pygame.time.Clock()
         
+        self.step_count = 0
+        self.overall_reward = 0
+        
+        self.simulation_number += 1
         return self._get_obs()
     
     
@@ -365,8 +397,8 @@ class Game(gym.Env):
             
         res_reward = self._reward_computation()
         
-        if (pygame.time.get_ticks()>self.warm_start) and (res_reward < 0):
-            res_reward = 0
+#         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
+#             res_reward = 0
         self.overall_reward += res_reward
         
         self.clock.tick(self.framerate)
@@ -380,27 +412,41 @@ class Game(gym.Env):
         
         self.step_count+=1
         
+        if self.step_count > self.max_steps:
+            done=True
+#         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
+#         print()
         
-#         pygame.time.wait(1000)
-        
-        print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
-        print()
-        
-#         pygame.time.wait(5000)
             
         return obs, res_reward, self.done, {}
     
     
     def _get_obs(self):
-        return {#"trajectory": self.leader_factual_trajectory, 
-               "leader_location": self.leader.position,
-               "leader_speed":self.leader.speed,
-               "leader_direction":int(self.leader.direction),
-               "leader_rotation_speed":self.leader.rotation_speed,
-               "follower_location":self.follower.position,
-               "follower_speed":self.follower.speed,
-               "follower_direction":int(self.follower.direction),
-               "follower_rotation_speed":self.follower.rotation_speed,}
+        return np.array([self.leader.position[0],
+                         self.leader.position[1],
+                         self.leader.speed,
+                         self.leader.direction,
+                         self.leader.rotation_speed,
+                         self.follower.position[0],
+                         self.follower.position[1],
+                         self.follower.speed,
+                         self.follower.direction,
+                         self.follower.rotation_speed,
+                         self.min_distance,
+                         self.max_distance,
+                         self.max_dev],dtype=np.float32)
+    
+#                 {#"trajectory": self.leader_factual_trajectory, 
+#                "leader_location_x": self.leader.position[0],
+#                "leader_location_y": self.leader.position[1],
+#                "leader_speed":self.leader.speed,
+#                "leader_direction":int(self.leader.direction),
+#                "leader_rotation_speed":self.leader.rotation_speed,
+#                "follower_location_x":self.follower.position[0],
+#                "follower_location_y":self.follower.position[1],
+#                "follower_speed":self.follower.speed,
+#                "follower_direction":int(self.follower.direction),
+#                "follower_rotation_speed":self.follower.rotation_speed,}.values()
         
     
     def _trajectory_in_box(self):
@@ -427,40 +473,30 @@ class Game(gym.Env):
         
         if self.stop_signal:
             res_reward += self.reward_config.leader_stop_penalty
-            print("Лидер стоит по просьбе агента", self.reward_config.leader_stop_penalty)
+#             print("Лидер стоит по просьбе агента", self.reward_config.leader_stop_penalty)
         else:
             res_reward += self.reward_config.leader_movement_reward
-            print("Лидер идёт по маршруту", self.reward_config.leader_movement_reward)
+#             print("Лидер идёт по маршруту", self.reward_config.leader_movement_reward)
         
         if self.follower_too_close:
             res_reward += self.reward_config.too_close_penalty 
-            print("Слишком близко!", self.reward_config.too_close_penalty)
+#             print("Слишком близко!", self.reward_config.too_close_penalty)
         else:
             if self.is_in_box and self.is_on_trace:
                 res_reward += self.reward_config.reward_in_box
-                print("В коробке на маршруте.", self.reward_config.reward_in_box)
+#                 print("В коробке на маршруте.", self.reward_config.reward_in_box)
             elif self.is_in_box:
                 # в пределах погрешности
                 res_reward += self.reward_config.reward_in_dev
-                print("В коробке, не на маршруте", self.reward_config.reward_in_dev)
+#                 print("В коробке, не на маршруте", self.reward_config.reward_in_dev)
             elif self.is_on_trace:
                 res_reward += self.reward_config.reward_on_track
-                print("на маршруте, не в коробке", self.reward_config.reward_on_track)
+#                 print("на маршруте, не в коробке", self.reward_config.reward_on_track)
             else:
                 if self.step_count > self.warm_start:
                     res_reward += self.reward_config.not_on_track_penalty
-                print("не на маршруте, не в коробке", self.reward_config.not_on_track_penalty)
-        
-        
-#             print("Слишком близко!", self.reward_config.too_close_penalty)
-        
-#         leader_agent_diff_vec = abs(self.agent_pos-self.leader.cur_pos)
-    
-#         # Определяем близость так, а не по расстоянию Миньковского, чтобы ученсть близость по диагонали
-#         if (leader_agent_diff_vec[0]<=self.min_distance) and (leader_agent_diff_vec[1] <= self.min_distance):
-# #         if sum(abs(self.agent_pos - self.leader.cur_pos)) <= self.min_distance:
-#             res_reward += self.reward_config.too_close_penalty 
-#             print("Слишком близко!", self.reward_config.too_close_penalty)
+#                 print("не на маршруте, не в коробке", self.reward_config.not_on_track_penalty)
+
         
         if self.crash:
             res_reward += self.reward_config.crash_penalty
@@ -479,12 +515,24 @@ class Game(gym.Env):
             return np.argmin(dist_2)
 
     
-class TestGame(Game):
+class TestGameAuto(Game):
     def __init__(self):
         super().__init__()
         
+class TestGameManual(Game):
+    def __init__(self):
+        super().__init__(manual_control=True)
+
+        
 gym_register(
-    id="Test-Cont-Env-v0",
-    entry_point="follow_the_leader_continuous_env:TestGame",
+    id="Test-Cont-Env-Auto-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameAuto",
     reward_threshold=10000
 )
+
+gym_register(
+    id="Test-Cont-Env-Manual-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameManual",
+    reward_threshold=10000
+)
+
