@@ -6,7 +6,7 @@ from scipy.spatial import distance
 from reward_constructor import Reward
 import gym
 from gym.envs.registration import register as gym_register
-from gym.spaces import Box
+from gym.spaces import Discrete,Box, Dict, Tuple
 
 class Game(gym.Env):
     def __init__(self, game_width=1500, 
@@ -81,7 +81,21 @@ class Game(gym.Env):
         
         self.reset()
         
-        self.action_space = Box(np.array([self.follower.min_speed,self.follower.max_speed]),np.array([-self.follower.max_rotation_speed,self.follower.max_rotation_speed]))
+        self.action_space = Box(np.array((self.follower.min_speed,-self.follower.max_rotation_speed)),
+                                np.array((self.follower.max_speed,self.follower.max_rotation_speed)))
+        
+        self.observation_space = Dict({
+               "leader_location": Box(np.array((0,0)),
+                                      np.array((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))),
+               "leader_speed": Box(self.leader.min_speed,self.leader.max_speed, shape=[1]),
+               "leader_direction": Discrete(360),
+               "leader_rotation_speed": Box(-self.leader.max_rotation_speed,self.leader.max_rotation_speed,shape=[1]), 
+               "follower_location": Box(np.array((0,0)),
+                                      np.array((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))),
+               "follower_speed": Box(self.follower.min_speed,self.follower.max_speed,shape=[1]), 
+               "follower_direction": Discrete(360), 
+               "follower_rotation_speed": Box(-self.follower.max_rotation_speed,self.follower.max_rotation_speed, shape=[1]), 
+                                      })
     
     
     def reset(self):
@@ -143,6 +157,8 @@ class Game(gym.Env):
         self.gameDisplay = pygame.display.set_mode((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))
         pygame.display.set_caption(self.caption)
         self.clock = pygame.time.Clock()
+        
+        return self._get_obs()
     
     
     def rotate_object(self,object_to_rotate):
@@ -360,15 +376,7 @@ class Game(gym.Env):
                 self.done=True
                 print("Время истекло! Прошло {} секунд.".format(self.simulation_time_limit))
         
-        obs = {"trajectory": self.leader_factual_trajectory, 
-               "leader_location": self.leader.position,
-               "leader_speed":self.leader.speed,
-               "leader_direction":self.leader.direction,
-               "leader_rotation_speed":self.leader.rotation_speed,
-               "follower_location":self.follower.position,
-               "follower_speed":self.follower.speed,
-               "follower_direction":self.follower.direction,
-               "follower_rotation_speed":self.follower.rotation_speed,}
+        obs = self._get_obs()
         
         self.step_count+=1
         
@@ -383,6 +391,17 @@ class Game(gym.Env):
         return obs, res_reward, self.done, {}
     
     
+    def _get_obs(self):
+        return {#"trajectory": self.leader_factual_trajectory, 
+               "leader_location": self.leader.position,
+               "leader_speed":self.leader.speed,
+               "leader_direction":int(self.leader.direction),
+               "leader_rotation_speed":self.leader.rotation_speed,
+               "follower_location":self.follower.position,
+               "follower_speed":self.follower.speed,
+               "follower_direction":int(self.follower.direction),
+               "follower_rotation_speed":self.follower.rotation_speed,}
+        
     
     def _trajectory_in_box(self):
         
