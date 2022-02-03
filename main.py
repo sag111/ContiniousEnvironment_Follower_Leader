@@ -15,7 +15,8 @@ class Game():
                  trajectory=None,
                  leader_pos_epsilon=5,
                  show_leader_path=True,
-                 show_leader_trajectory=True):
+                 show_leader_trajectory=True,
+                 show_rectangles=True):
         
         self.colours = {
                             'white':(255,255,255),
@@ -44,19 +45,41 @@ class Game():
         
         self.show_leader_path = show_leader_path
         self.show_leader_trajectory = show_leader_trajectory
+        self.show_rectangles = show_rectangles
+    
+#     def rotate_object(image, rect, angle):
+    def rotate_object(self,object_to_rotate):
+        """Rotate the image while keeping its center."""
+        cur_rect = object_to_rotate.rectangle
+        # Rotate the original image without modifying it.
+        new_image = pygame.transform.rotate(object_to_rotate.image, -object_to_rotate.direction)
+        # Get a new rect with the center of the old rect.
+        object_to_rotate.rectangle = new_image.get_rect(center=cur_rect.center)
         
-        
+        return new_image
+
+    
     
     def show_object(self,object_to_show):
         cur_image = object_to_show.image
         if hasattr(object_to_show, "direction"):
-            cur_image = pygame.transform.rotate(cur_image, -object_to_show.direction)
-            
-        self.gameDisplay.blit(cur_image, object_to_show.position)
+            cur_image = self.rotate_object(object_to_show)
         
+        self.gameDisplay.blit(cur_image, (object_to_show.position[0]-object_to_show.width/2, object_to_show.position[1]-object_to_show.height/2))
+        object_to_show.rectangle = cur_image.get_rect(center=object_to_show.position)
+        
+        if self.show_rectangles:
+#             c = object_to_show.rectangle.center
+#             w = object_to_show.rectangle.width
+#             h = object_to_show.rectangle.height
+            
+#             print(c,w,h)
+            pygame.draw.rect(self.gameDisplay,self.colours["red"],object_to_show.rectangle,width=1)#,(c[0]-w/2,c[1]-h/2,c[0]+w/2,c[1]+h/2), width=1)
     
     def generate_trajectory(self, n=3, min_distance = 50, border = 20):
         """Генерирует точки на карте, по которым должен пройти ведущий"""
+        #TODO: добавить проверку, при которойо точки не на одной прямой
+        #Staticmethod?
         
         trajectory = list()
         
@@ -190,7 +213,7 @@ class Game():
                 pygame.draw.aalines(self.gameDisplay,self.colours["red"],False,self.trajectory)
             
             if self.show_leader_trajectory:
-                for cur_point in self.leader_factual_trajectory[::10]:
+                for cur_point in self.leader_factual_trajectory[::10]: # Каждую 10ю точку показываем.
                     pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 2)
             
             for cur_object in self.game_object_list:

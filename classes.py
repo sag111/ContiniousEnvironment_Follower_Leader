@@ -20,6 +20,7 @@ class GameObject():
         self.start_position = np.array(start_position)
         self.position = self.start_position
         
+        self.rectangle = self.image.get_rect(center=self.position, width=width, height=height)
         
     def put(self,position):
         # TODO: collisions
@@ -46,7 +47,7 @@ class AbstractRobot(GameObject):
                  ):
         # TODO: задание формы робота полигоном или абстрактной фигурой
         
-        super().__init__(name,
+        super(AbstractRobot, self).__init__(name,
                  image=image,
                  start_position=start_position,
                  height=height,
@@ -71,6 +72,8 @@ class AbstractRobot(GameObject):
         self.max_speed_change = max_speed_change
         self.max_rotation_speed_change = max_rotation_speed_change
         
+        self.width = width
+        self.height = height
         
         
     def command_turn(self, desirable_rotation_speed, rotation_direction):
