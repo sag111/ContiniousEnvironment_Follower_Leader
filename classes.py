@@ -2,7 +2,6 @@ import pygame
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
-from pygame.math import Vector2
 
 class GameObject():
     def __init__(self,
@@ -11,6 +10,15 @@ class GameObject():
                  start_position=None,
                  height=None,
                  width=None):
+        """Класс, который отражает любой игровой объект и должен наследоваться конкретизирующими классами.
+        Входные параметры:
+        image (pygame.image):
+            изображение объекта;
+        start_position (tuple(int,int)):
+            стартовые координаты объекта;
+        height, width (int):
+            размеры объекта в пикселях.
+        """
         self.name = name
         self.image = image
         
@@ -23,10 +31,8 @@ class GameObject():
         self.rectangle = self.image.get_rect(center=self.position, width=width, height=height)
         
     def put(self,position):
-        # TODO: collisions
         self.position = np.array(position)
     
-#     def show(self):
         
         
 
@@ -45,6 +51,7 @@ class AbstractRobot(GameObject):
                  start_direction = 0, # в градусах
                  **kwargs
                  ):
+        """Класс, который реализует робота."""
         # TODO: задание формы робота полигоном или абстрактной фигурой
         
         super(AbstractRobot, self).__init__(name,
@@ -150,7 +157,10 @@ class AbstractRobot(GameObject):
         self.position+=movement_vec
         
     
+    
     def move_to_the_point(self, next_point):
+        """Функция автоматического управления звижением к точке"""
+        #TODO: сделать более хороший алгоритм следования маршруту [Слава]
         
         next_point_scaled = next_point - self.position # таким образом мы рассчитываем положение точки относительно робота
         
