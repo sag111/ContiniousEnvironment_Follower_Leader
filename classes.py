@@ -35,12 +35,12 @@ class AbstractRobot(GameObject):
                  name,
                  image=None,
                  start_position=None,
-                 height=None,
-                 width=None,
-                 min_speed=0., 
-                 max_speed=2.,
+                 height=None, # в метрах
+                 width=None, # в метрах
+                 min_speed=0., # в метрах в секунду
+                 max_speed=2., # в метрах в секунду
                  max_rotation_speed=60, # в градусах
-                 max_speed_change=0.5,
+                 max_speed_change=0.5, # в метрах в секунду
                  max_rotation_speed_change=57, # в градусах
                  start_direction = 0, # в градусах
                  **kwargs
@@ -54,7 +54,7 @@ class AbstractRobot(GameObject):
                  width=width)
         
         self.speed = 0.
-        self.rotation_speed = 0. # в радианах
+        self.rotation_speed = 0.
         self.rotation_direction = 0
         # 0 -- прямо, -1 -- влево, +1 -- вправо.
         
