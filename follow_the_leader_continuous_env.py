@@ -320,7 +320,7 @@ class Game(gym.Env):
         
         
         
-    def generate_trajectory(self, n=3, min_distance = 50, border = 20):
+    def generate_trajectory(self, n=3, min_distance = 50, border = 20, iter_limit = 10000):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
         #TODO: добавить проверку, при которойо точки не на одной прямой
         #TODO: добавить отдельную функцию, которая использует эту: 
@@ -334,12 +334,15 @@ class Game(gym.Env):
         
         trajectory = list()
         
-        while len(trajectory) < n:
+        i = 0 # пока отслеживаем зацикливание по числу итераций на генерацию каждой точки. Примитивно, но лучше, чем никак
+        
+        while (len(trajectory) < n) and (i < iter_limit):
             new_point = np.array((np.random.randint(border,high=self.DISPLAY_WIDTH-border),
                                   np.random.randint(border,high=self.DISPLAY_HEIGHT-border)))
             
             if len(trajectory)==0:
                 trajectory.append(new_point)
+                i=0
             else:
                 to_add = True
                 
@@ -350,7 +353,9 @@ class Game(gym.Env):
                         to_add=False
                 
                 if to_add:
-                    trajectory.append(new_point)            
+                    trajectory.append(new_point)  
+                
+                i+=1
             
         return trajectory
     
@@ -361,15 +366,9 @@ class Game(gym.Env):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 if follower.rotation_direction > 0:
-#                     follower.rotation_speed=0
-#                     follower.rotation_direction=0
                     follower.command_turn(0,0)
                 else:
-#                     follower.rotation_direction=-1
-#                     follower.rotation_speed+=2
                     follower.command_turn(follower.rotation_speed+2,-1)
-#                 print("agent rotation speed and rotation direction", follower.rotation_speed, follower.rotation_direction)
-#                 print("current follower direction: ", follower.direction)
 
 
             if (event.key == pygame.K_RIGHT):
