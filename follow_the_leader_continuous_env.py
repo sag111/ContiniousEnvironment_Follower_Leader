@@ -435,36 +435,8 @@ class Game(gym.Env):
         self._trajectory_in_box()
         
         # определяем положение Агента относительно маршрута и коробки
-        # TODO: в отдельную функцию!
-        # если меньше, не построить траекторию
-        if len(self.green_zone_trajectory_points) > 2:
-            closest_point_in_box_id = self.closest_point(self.follower.position,self.green_zone_trajectory_points)
-            closest_point_in_box = self.green_zone_trajectory_points[int(closest_point_in_box_id)]
-
-            closest_green_distance = distance.euclidean(self.follower.position, closest_point_in_box)
-
-#             TODO: перенести в функцию рисования
-#             pygame.draw.line(self.gameDisplay, self.colours["blue"], self.follower.position, closest_point_in_box)
-
-            if closest_green_distance <= self.leader_pos_epsilon:
-                self.is_on_trace = True
-                self.is_in_box = True
-
-            elif closest_green_distance <= self.max_dev:
-                # Агент в пределах дистанции
-                self.is_in_box = True
-                self.is_on_trace = False
-
-            else:
-                closest_point_on_trajectory_id = self.closest_point(self.follower.position,self.leader_factual_trajectory)
-                closest_point_on_trajectory = self.leader_factual_trajectory[int(closest_point_on_trajectory_id)]
-#                 TODO: перенести в функцию рисования
-#                 pygame.draw.line(self.gameDisplay, self.colours["black"], self.follower.position, closest_point_on_trajectory)
-                
-                if distance.euclidean(self.follower.position, closest_point_on_trajectory) <= self.leader_pos_epsilon:
-                    self.is_on_trace = True
-                    self.is_in_box = False
         
+        check_agent_position()
         
         # работа с движением лидера
         prev_leader_position = self.leader.position.copy()
@@ -617,6 +589,36 @@ class Game(gym.Env):
             return np.min(dist_2)
         else:
             return np.argmin(dist_2)
+    
+    def check_agent_position(self):
+        # если меньше, не построить траекторию
+        if len(self.green_zone_trajectory_points) > 2:
+            closest_point_in_box_id = self.closest_point(self.follower.position,self.green_zone_trajectory_points)
+            closest_point_in_box = self.green_zone_trajectory_points[int(closest_point_in_box_id)]
+
+            closest_green_distance = distance.euclidean(self.follower.position, closest_point_in_box)
+
+#             TODO: перенести в функцию рисования
+#             pygame.draw.line(self.gameDisplay, self.colours["blue"], self.follower.position, closest_point_in_box)
+
+            if closest_green_distance <= self.leader_pos_epsilon:
+                self.is_on_trace = True
+                self.is_in_box = True
+
+            elif closest_green_distance <= self.max_dev:
+                # Агент в пределах дистанции
+                self.is_in_box = True
+                self.is_on_trace = False
+
+            else:
+                closest_point_on_trajectory_id = self.closest_point(self.follower.position,self.leader_factual_trajectory)
+                closest_point_on_trajectory = self.leader_factual_trajectory[int(closest_point_on_trajectory_id)]
+#                 TODO: перенести в функцию рисования
+#                 pygame.draw.line(self.gameDisplay, self.colours["black"], self.follower.position, closest_point_on_trajectory)
+                
+                if distance.euclidean(self.follower.position, closest_point_on_trajectory) <= self.leader_pos_epsilon:
+                    self.is_on_trace = True
+                    self.is_in_box = False
 
     
 class TestGameAuto(Game):
