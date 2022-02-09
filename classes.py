@@ -113,6 +113,9 @@ class AbstractRobot(GameObject):
     
     def _turn_processing(self):
         """Обработка изменения скорости поворота в такт для контроллера"""
+        if self.rotation_direction==0:
+            self.rotation_direction = self.desirable_rotation_direction
+
         if self.rotation_direction == self.desirable_rotation_direction:
             needed_change = abs(self.rotation_speed - self.desirable_rotation_speed)
             speed_rotation_change = min((needed_change, self.max_rotation_speed_change))
@@ -122,13 +125,11 @@ class AbstractRobot(GameObject):
         else:
             needed_change = abs(self.desirable_rotation_speed + self.rotation_speed)
             speed_rotation_change = -min((needed_change, self.max_rotation_speed_change))
-            self.rotation_direction = self.desirable_rotation_direction
-        
+
         new_rotation_speed = self.rotation_speed + speed_rotation_change
-        
+
         if new_rotation_speed < 0:
             self.rotation_direction = -1*self.rotation_direction
-        
         self.rotation_speed = abs(new_rotation_speed)
         
             

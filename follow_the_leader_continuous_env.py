@@ -362,23 +362,13 @@ class Game(gym.Env):
         # В теории, можно на основе этого класса сделать управляемого руками Ведущего. Но надо модифицировать.
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-                if follower.rotation_direction > 0:
-#                     follower.rotation_speed=0
-#                     follower.rotation_direction=0
-                    follower.command_turn(0,0)
-                else:
-#                     follower.rotation_direction=-1
-#                     follower.rotation_speed+=2
-                    follower.command_turn(follower.rotation_speed+2,-1)
+               follower.command_turn(follower.rotation_speed+2,-1)
 #                 print("agent rotation speed and rotation direction", follower.rotation_speed, follower.rotation_direction)
 #                 print("current follower direction: ", follower.direction)
 
 
             if (event.key == pygame.K_RIGHT):
-                if follower.rotation_direction < 0:
-                    follower.command_turn(0,0)
-                else:
-                    follower.command_turn(follower.rotation_speed+2,1)
+                follower.command_turn(follower.rotation_speed+2,1)
 
 
             if event.key == pygame.K_UP:
@@ -411,7 +401,7 @@ class Game(gym.Env):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if not self.manual_control:
             self.follower.command_forward(action[0])
-            self.follower.rotation_speed = action[1]
+            #self.follower.rotation_speed = action[1]
             if action[1]<0:
                 self.follower.command_turn(abs(action[1]),-1)
             elif action[1]>0:
