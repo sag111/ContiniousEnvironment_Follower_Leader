@@ -81,6 +81,9 @@ class Game(gym.Env):
                             'green':(0,255,0)
                         }
         
+        # TODO: сделать нормально
+        metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": framerate}
+        
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
@@ -241,7 +244,9 @@ class Game(gym.Env):
         self.cur_target_point = self.trajectory[self.cur_target_id] # координаты текущей целевой точки (возможно избыточны)
         
         # Инициализация сеанса pygame, создание окна и часов
+        # Возможно не нужно пересоздавать окно каждый раз, стоит подумать
         pygame.init()
+#         pygame.font.init()
         self.gameDisplay = pygame.display.set_mode((self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT))
         pygame.display.set_caption(self.caption)
         self.clock = pygame.time.Clock()
@@ -387,6 +392,8 @@ class Game(gym.Env):
         
     def render(self, custom_message=None, **kwargs):
         """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
+        
+        #TODO: перенести в step
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.done = True
@@ -395,6 +402,9 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
+        
+        return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.gameDisplay)), axes=(1, 0, 2))
 
         
     
