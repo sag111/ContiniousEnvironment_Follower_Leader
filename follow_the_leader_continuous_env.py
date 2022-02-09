@@ -393,13 +393,6 @@ class Game(gym.Env):
     def render(self, custom_message=None, **kwargs):
         """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
         
-        #TODO: перенести в step
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.done = True
-            if self.manual_control:
-                self.manual_game_contol(event,self.follower)
-
         self._show_tick()
         pygame.display.update()
         
@@ -414,7 +407,13 @@ class Game(gym.Env):
         self.is_on_trace = False
         
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
-        if not self.manual_control:
+        if self.manual_control:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.done = True
+                if self.manual_control:
+                    self.manual_game_contol(event,self.follower)
+        else:
             self.follower.command_forward(action[0])
             self.follower.rotation_speed = action[1]
             if action[1]<0:
