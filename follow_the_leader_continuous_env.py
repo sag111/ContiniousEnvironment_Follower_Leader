@@ -362,13 +362,23 @@ class Game(gym.Env):
         # В теории, можно на основе этого класса сделать управляемого руками Ведущего. Но надо модифицировать.
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-               follower.command_turn(follower.rotation_speed+2,-1)
+                if follower.rotation_direction > 0:
+                    follower.rotation_speed=0
+                    follower.rotation_direction=0
+                    follower.command_turn(0,0)
+                else:
+                    follower.command_turn(follower.rotation_speed+2,-1)
 #                 print("agent rotation speed and rotation direction", follower.rotation_speed, follower.rotation_direction)
 #                 print("current follower direction: ", follower.direction)
 
 
             if (event.key == pygame.K_RIGHT):
-                follower.command_turn(follower.rotation_speed+2,1)
+                if follower.rotation_direction < 0:
+                    follower.rotation_speed=0
+                    follower.rotation_direction=0
+                    follower.command_turn(0,0)
+                else:
+                    follower.command_turn(follower.rotation_speed+2,1)
 
 
             if event.key == pygame.K_UP:
