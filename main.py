@@ -6,7 +6,6 @@ from gym.envs.registration import register as gym_register
 from gym.wrappers import flatten_observation
 from gym.spaces import Box
 
-from stable_baselines3 import PPO
 from time import sleep
 
 import argparse as ag
@@ -41,6 +40,7 @@ if __name__=="__main__":
     if manual_handling:
         
         env = gym.make("Test-Cont-Env-Manual-v0")
+        env.reset()
         action = (0,0)
         
         for _ in range(args.n_steps):
@@ -51,6 +51,7 @@ if __name__=="__main__":
         env.close()
         
     else:
+        from stable_baselines3 import PPO
         env = gym.make("Test-Cont-Env-Auto-v0")
 
         model = PPO("MlpPolicy", env, verbose=1)

@@ -1,4 +1,5 @@
 import pygame
+import os
 from math import pi, degrees, radians, cos, sin
 import numpy as np
 from classes import AbstractRobot, GameObject
@@ -70,7 +71,8 @@ class Game(gym.Env):
         max_steps (int): 
             максимальное число шагов для одной симуляции.
         """
-        
+        # нужно для сохранения видео
+        self.metadata = {"render.modes": ["rgb_array"]}
         # Здесь можно задать дополнительные цвета в формате RGB
         self.colours = {
                             'white':(255,255,255),
@@ -116,8 +118,8 @@ class Game(gym.Env):
         
         self.warm_start = warm_start*1000
         
-        self.leader_img =  pygame.image.load("imgs/car_yellow.png")
-        self.follower_img = pygame.image.load("imgs/car_poice.png")
+        self.leader_img =  pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
+        self.follower_img = pygame.image.load("{}/imgs/car_poice.png".format(os.path.dirname(os.path.abspath(__file__))))
         
         self.caption = caption
         
@@ -396,6 +398,8 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
+        
+        return pygame.surfarray.array3d(self.gameDisplay)
 
         
     
