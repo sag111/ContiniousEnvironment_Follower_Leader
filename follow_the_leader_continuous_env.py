@@ -286,16 +286,15 @@ class Game(gym.Env):
             
         # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
             
-        # Определение коробки и агента в ней
-        # Вынести в отдельную функцию
         
+        # Определение коробки и агента в ней
         # определение текущих точек маршрута, которые являются подходящими для Агента
         self.green_zone_trajectory_points = list()
         self._trajectory_in_box()
         
         # определяем положение Агента относительно маршрута и коробки
         
-        check_agent_position()
+        self._check_agent_position()
         
         # работа с движением лидера
         prev_leader_position = self.leader.position.copy()
@@ -317,7 +316,7 @@ class Game(gym.Env):
            
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # TODO: сделать параметром;
-        # TODO: 
+        
         if pygame.time.get_ticks()%5==0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
@@ -410,21 +409,18 @@ class Game(gym.Env):
         # отображение всех игровых объектов, которые были добавлены в список игровых объектов
         for cur_object in self.game_object_list:
             self.show_object(cur_object)
-            
+        
         # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов) [Слава]
         
         
         # отображение круга минимального расстояния
-        leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position, self.min_distance, width=1)
+        if self.follower_too_close:
+            close_circle_width = 2
+        else:
+            close_circle_width = 1
+            
+        self.leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position, self.min_distance, width=close_circle_width)
         
-        # расчёт пересечения Ведомого с кругом
-        # TODO: перенести сам расчёт в другое место, в этой функции должна быть ТОЛЬКО отрисовка
-        collide = leader_close_circle.colliderect(self.follower.rectangle)
-        self.follower_too_close=False
-        if collide:
-            leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position, self.min_distance, width=2)
-            self.follower_too_close=True
-        # Это что же, логика в функции рисования? Отвратительно...
         
         
         
@@ -591,7 +587,7 @@ class Game(gym.Env):
         else:
             return np.argmin(dist_2)
     
-    def check_agent_position(self):
+    def _check_agent_position(self):
         # если меньше, не построить траекторию
         if len(self.green_zone_trajectory_points) > 2:
             closest_point_in_box_id = self.closest_point(self.follower.position,self.green_zone_trajectory_points)
@@ -615,7 +611,15 @@ class Game(gym.Env):
                 if distance.euclidean(self.follower.position, closest_point_on_trajectory) <= self.leader_pos_epsilon:
                     self.is_on_trace = True
                     self.is_in_box = False
-
+        
+        # Проверка вхождения в ближний круг лидера
+        # TODO: учитывать лидера и следующего не как точки в идеале
+        if distance.euclidean(self.leader.position, self.follower.position) <= self.min_distance:
+            self.follower_too_close = True
+        else:
+            self.follower_too_close = False
+            
+        
     
 class TestGameAuto(Game):
     def __init__(self):
