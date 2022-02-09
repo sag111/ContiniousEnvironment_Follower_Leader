@@ -122,6 +122,7 @@ class AbstractRobot(GameObject):
         else:
             needed_change = abs(self.desirable_rotation_speed + self.rotation_speed)
             speed_rotation_change = -min((needed_change, self.max_rotation_speed_change))
+            self.rotation_direction = self.desirable_rotation_direction
         
         new_rotation_speed = self.rotation_speed + speed_rotation_change
         

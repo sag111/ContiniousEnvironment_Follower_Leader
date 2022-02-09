@@ -361,35 +361,29 @@ class Game(gym.Env):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 if follower.rotation_direction > 0:
-                    follower.rotation_speed=0
-                    follower.rotation_direction=0
+#                     follower.rotation_speed=0
+#                     follower.rotation_direction=0
+                    follower.command_turn(0,0)
                 else:
-                    follower.rotation_direction=-1
-                    follower.rotation_speed+=2
-                follower.command_turn(follower.rotation_speed,-1)
+#                     follower.rotation_direction=-1
+#                     follower.rotation_speed+=2
+                    follower.command_turn(follower.rotation_speed+2,-1)
 #                 print("agent rotation speed and rotation direction", follower.rotation_speed, follower.rotation_direction)
 #                 print("current follower direction: ", follower.direction)
 
 
             if (event.key == pygame.K_RIGHT):
                 if follower.rotation_direction < 0:
-                    follower.rotation_speed=0
-                    follower.rotation_direction=0
+                    follower.command_turn(0,0)
                 else:
-                    follower.rotation_direction=1
-                    follower.rotation_speed+=2
-                follower.command_turn(follower.rotation_speed,1)
-#                 print("agent rotation speed and rotation direction", follower.rotation_speed, follower.rotation_direction)
-#                 print("current follower direction: ", follower.direction)
+                    follower.command_turn(follower.rotation_speed+2,1)
 
 
             if event.key == pygame.K_UP:
                 follower.command_forward(follower.speed+self.PIXELS_TO_METER)
-#                 print("agent speed", follower.speed)
 
             if event.key == pygame.K_DOWN:
                 follower.command_forward(follower.speed-self.PIXELS_TO_METER)
-#                 print("agent speed", follower.speed)
             
         
     def render(self, custom_message=None, **kwargs):
@@ -413,16 +407,16 @@ class Game(gym.Env):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if not self.manual_control:
             self.follower.command_forward(action[0])
+            self.follower.rotation_speed = action[1]
             if action[1]<0:
                 self.follower.command_turn(abs(action[1]),-1)
             elif action[1]>0:
                 self.follower.command_turn(action[1],1)
             else:
                 self.follower.command_turn(0,0)
-                
             
         self.follower.move()
-        
+            
         # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
             
         # Определение коробки и агента в ней
