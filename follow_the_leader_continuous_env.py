@@ -536,8 +536,7 @@ class Game(gym.Env):
             else:
                 break
         
-        
-        
+     
     def _reward_computation(self):
         """функция для расчёта награды на основе конфигурации награды"""
         # Скорее всего, это можно сделать красивее
@@ -576,16 +575,6 @@ class Game(gym.Env):
         
         return res_reward
     
-    @staticmethod
-    def closest_point(point, points, return_id=True):
-        """Метод определяет ближайшую к точке точку из массива точек"""
-        points = np.asarray(points)
-        dist_2 = np.sum((points - point)**2, axis=1)
-        
-        if not return_id:
-            return np.min(dist_2)
-        else:
-            return np.argmin(dist_2)
     
     def _check_agent_position(self):
         # если меньше, не построить траекторию
@@ -618,7 +607,30 @@ class Game(gym.Env):
             self.follower_too_close = True
         else:
             self.follower_too_close = False
-            
+    
+    def _to_meters(self, pixels):
+        pass
+    
+    def _to_pixels(self, meters):
+        pass
+    
+    def _to_seconds(self, frames):
+        pass
+    
+    def _to_frames(self, seconds):
+        pass
+
+    @staticmethod
+    def closest_point(point, points, return_id=True):
+        """Метод определяет ближайшую к точке точку из массива точек"""
+        points = np.asarray(points)
+        dist_2 = np.sum((points - point)**2, axis=1)
+        
+        if not return_id:
+            return np.min(dist_2)
+        else:
+            return np.argmin(dist_2)            
+
         
     
 class TestGameAuto(Game):
