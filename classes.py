@@ -49,6 +49,7 @@ class AbstractRobot(GameObject):
                  max_speed_change=0.5, # в метрах в секунду
                  max_rotation_speed_change=57, # в градусах
                  start_direction = 0, # в градусах
+                 sensor = None,
                  **kwargs
                  ):
         """Класс, который реализует робота."""
@@ -194,3 +195,33 @@ class AbstractRobot(GameObject):
         self.command_turn(abs(delta_turn), self.rotation_direction)
         
         self.move()
+        
+        
+        
+    class LaserSensor():
+        def __init__(self,
+                     sensor_range=5, # в метрах
+                     distance_variance=0.,
+                     angle_variance=0.,
+                     sensor_speed=0.1): # в секундах? Пока не используется
+            self.range = sensor_range
+            
+            self.distance_variance = distance_variance
+            self.angle_variance = angle_variance
+            
+            self.sensor_speed = sensor_speed
+            
+            self.sensedObstacles = list()
+            
+        
+        def sense_obstacles(self, start_point):
+            pass
+            
+            
+        
+        @staticmethod
+        def _add_noise(val,variance):
+            return max(np.random.normal(val,variance), 0)
+        
+            
+            
