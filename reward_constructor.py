@@ -18,12 +18,12 @@ class Reward:
         with open(filepath, "w") as json_out_file:
             json.dump(self.__dict__, json_out_file)
         
-        
-    def from_json(self, filepath):
+    @classmethod
+    def from_json(cls, filepath):
         with open(filepath, "r") as json_inp_file:
             inp_dict = json.load(json_inp_file)
             
-        self.__init__(**inp_dict)
+        return Reward(**inp_dict)
         
     def from_dict(self, inp_dict):
         self.__init__(**inp_dict)
