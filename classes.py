@@ -9,7 +9,8 @@ class GameObject():
                  image=None,
                  start_position=None,
                  height=None,
-                 width=None):
+                 width=None,
+                 blocks_vision=True):
         """Класс, который отражает любой игровой объект и должен наследоваться конкретизирующими классами.
         Входные параметры:
         image (pygame.image):
@@ -17,7 +18,9 @@ class GameObject():
         start_position (tuple(int,int)):
             стартовые координаты объекта;
         height, width (int):
-            размеры объекта в пикселях.
+            размеры объекта в пикселях;
+        blocks_vision (bool):
+            блокирует ли объект линию видимости (для лидаров и ухода за поворот, пока не используется)
         """
         self.name = name
         self.image = image
@@ -50,6 +53,7 @@ class AbstractRobot(GameObject):
                  max_rotation_speed_change=57, # в градусах
                  start_direction = 0, # в градусах
                  sensor = None,
+                 blocks_vision=True,
                  **kwargs
                  ):
         """Класс, который реализует робота."""
@@ -61,6 +65,7 @@ class AbstractRobot(GameObject):
                  height=height,
                  width=width)
         
+        self.blocks_vision = blocks_vision
         self.speed = 0.
         self.rotation_speed = 0.
         self.rotation_direction = 0
@@ -83,6 +88,14 @@ class AbstractRobot(GameObject):
         self.width = width
         self.height = height
         
+        if sensor is None:
+            self.has_sensor = False
+            self.sensor = None
+        else:
+            self.has_sensor = True
+            self.sensor = sensor(self,direction=self.direction,**kwargs)
+            
+#         self.sensor = sensor
         
     def command_turn(self, desirable_rotation_speed, rotation_direction):
         """Обработка команд, влияющих на скорость угловую w"""
@@ -197,32 +210,136 @@ class AbstractRobot(GameObject):
         
         self.move()
         
+    def use_sensor(self, env):
+        if self.has_sensor:
+            self.sensor.direction = self.direction
+            self.sensor.position = self.position
+            return self.sensor.scan(env)
+            
+        else:
+            return list()
+            print("Нет сенсора, чтобы использовать!")
         
         
-    class LaserSensor():
-        def __init__(self,
-                     sensor_range=5, # в метрах
-                     distance_variance=0.,
-                     angle_variance=0.,
-                     sensor_speed=0.1): # в секундах? Пока не используется
-            self.range = sensor_range
-            
-            self.distance_variance = distance_variance
-            self.angle_variance = angle_variance
-            
-            self.sensor_speed = sensor_speed
-            
-            self.sensedObstacles = list()
-            
         
-        def sense_obstacles(self, start_point):
-            pass
-            
-            
+class LaserSensor():
+    """Реализует один лазерный сенсор лидара"""
+    def __init__(self,
+                 host_object,
+                 direction=None,
+                 available_angle=360, 
+                 angle_step=10, # в градусах
+                 discretization=5, # число пикселей,
+                 sensor_range=5, # в метрах
+                 distance_variance=0,
+                 angle_variance=0, 
+                 sensor_speed=0.1,
+                 add_noise=False
+                ): # в секундах? Пока не используется
+
+        self.host_object = host_object
+        self.position = host_object.position
+
+        self.direction = direction
+        if self.direction is None:
+            self.direction = self.host_object.direction
+
+        self.available_angle = min(360,available_angle)
+        self.angle_step = angle_step
+
+        self.range = sensor_range
+
+        self.distance_variance = distance_variance
+        self.angle_variance = angle_variance
+
+        self.sensor_speed = sensor_speed
+
+        self.sensed_points = list()
+
+
+    def scan(self, env):
+
+        # Если на нужной дистанции нет ни одного объекта - просто рисуем крайние точки, иначе нужно будет идти сложным путём
+        objects_in_range = list()
+
+        env_range = self.range * env.PIXELS_TO_METER
+
+        for cur_object in env.game_object_list:
+            if cur_object is env.follower:
+                continue
+                
+            if cur_object.blocks_vision:
+                if distance.euclidean(cur_object.position, self.position)  <= env_range:
+                    objects_in_range.append(cur_object)
         
-        @staticmethod
-        def _add_noise(val,variance):
-            return max(np.random.normal(val,variance), 0)
+
+        # Далее определить, в какой стороне находится объект из списка, и если он входит в область лидара, ставить точку как надо
+        # иначе -- просто ставим точку на максимуме
+        border_angle = int(self.available_angle/2)
+
+        x1 = self.position[0]
+        y1 = self.position[1]
+
+        sensed_points = list()
+        angles = list()
         
+        cur_angle_diff = 0
+        
+        angles.append(self.direction)
+        
+        while cur_angle_diff < border_angle:
+            
+            cur_angle_diff += self.angle_step
+
+            angles.append(angle_correction(self.direction+cur_angle_diff))
+            angles.append(angle_correction(self.direction-cur_angle_diff))
+        
+        sensed_points = list()
+        
+        for angle in angles: 
+
+            x2,y2 = (x1 + env_range * cos(radians(angle)), y1 - env_range * sin(radians(angle)))
+
+            point_to_add = None
+            object_in_sight = False
+            
+            for i in range(0,20):
+                u = i/20
+                cur_point = ((x2*u + x1 * (1-u)),(y2*u + y1 * (1-u)))
+                
+                for cur_object in objects_in_range:
+                    if cur_object.rectangle.collidepoint(cur_point):
+                        point_to_add = np.array(cur_point)
+                        object_in_sight = True
+                        break
+                
+                if object_in_sight:
+                    break
+
+            if point_to_add is None:
+                point_to_add = np.array((x2,y2))
+
+            sensed_points.append(point_to_add)
+
+
+        return sensed_points
+
+
+#         def show(self, display):
+#             pass
+
+
+    @staticmethod
+    def _add_noise(val,variance):
+        return max(np.random.normal(val,variance), 0)
+
+def angle_correction(angle):
+    if angle>=360:
+        return angle-360
+    
+    if angle<0:
+        return 360+angle
+    
+    return angle
             
             
