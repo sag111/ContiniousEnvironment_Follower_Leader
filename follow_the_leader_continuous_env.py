@@ -119,7 +119,7 @@ class Game(gym.Env):
         self.max_distance = max_distance * self.PIXELS_TO_METER
         self.max_dev = max_dev * self.PIXELS_TO_METER
         
-        self.warm_start = warm_start*1000
+        self.warm_start = warm_start*framerate
         
         self.leader_img =  pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.follower_img = pygame.image.load("{}/imgs/car_poice.png".format(os.path.dirname(os.path.abspath(__file__))))
