@@ -276,7 +276,7 @@ class Game(gym.Env):
                     self.manual_game_contol(event,self.follower)
         else:
             self.follower.command_forward(action[0])
-            self.follower.rotation_speed = action[1]
+            #self.follower.rotation_speed = action[1]  # command_turn ведь плавно изменяет текущую скорость поворота в зависимости от ограничения на изменение, зачем её явно задавать?
             if action[1]<0:
                 self.follower.command_turn(abs(action[1]),-1)
             elif action[1]>0:
@@ -285,7 +285,6 @@ class Game(gym.Env):
                 self.follower.command_turn(0,0)
             
         self.follower.move()
-            
         # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
             
         
@@ -347,7 +346,7 @@ class Game(gym.Env):
         self.step_count+=1
         
         if self.step_count > self.max_steps:
-            done=True
+            self.done=True
 #         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
 #         print()
         
@@ -361,9 +360,8 @@ class Game(gym.Env):
         pygame.display.update()
         
         return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.gameDisplay)), axes=(1, 0, 2))
-    
-    
+                pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
+        
     def rotate_object(self,object_to_rotate):
         """Поворачивает изображение объекта, при этом сохраняя его центр и прямоугольник для взаимодействия.
         """
@@ -472,6 +470,8 @@ class Game(gym.Env):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 if follower.rotation_direction > 0:
+                    follower.rotation_speed=0
+                    follower.rotation_direction=0
                     follower.command_turn(0,0)
                 else:
                     follower.command_turn(follower.rotation_speed+2,-1)
@@ -491,136 +491,6 @@ class Game(gym.Env):
 
             if event.key == pygame.K_DOWN:
                 follower.command_forward(follower.speed-self.PIXELS_TO_METER)
-            
-
-    def render(self, custom_message=None, **kwargs):
-        """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.done = True
-            if self.manual_control:
-                self.manual_game_contol(event,self.follower)
-
-        self._show_tick()
-        pygame.display.update()
-        
-        return pygame.surfarray.array3d(self.gameDisplay)
-
-        
-    
-    def step(self, action):
-        """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
-        self.is_in_box = False
-        self.is_on_trace = False
-        
-        # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
-        if not self.manual_control:
-            self.follower.command_forward(action[0])
-            #self.follower.rotation_speed = action[1]
-            if action[1]<0:
-                self.follower.command_turn(abs(action[1]),-1)
-            elif action[1]>0:
-                self.follower.command_turn(action[1],1)
-            else:
-                self.follower.command_turn(0,0)
-            
-        self.follower.move()
-            
-        # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
-            
-        # Определение коробки и агента в ней
-        # Вынести в отдельную функцию
-        
-        # определение текущих точек маршрута, которые являются подходящими для Агента
-        self.green_zone_trajectory_points = list()
-        self._trajectory_in_box()
-        
-        # определяем положение Агента относительно маршрута и коробки
-        # TODO: в отдельную функцию!
-        # если меньше, не построить траекторию
-        if len(self.green_zone_trajectory_points) > 2:
-            closest_point_in_box_id = self.closest_point(self.follower.position,self.green_zone_trajectory_points)
-            closest_point_in_box = self.green_zone_trajectory_points[int(closest_point_in_box_id)]
-
-            closest_green_distance = distance.euclidean(self.follower.position, closest_point_in_box)
-
-#             TODO: перенести в функцию рисования
-#             pygame.draw.line(self.gameDisplay, self.colours["blue"], self.follower.position, closest_point_in_box)
-
-            if closest_green_distance <= self.leader_pos_epsilon:
-                self.is_on_trace = True
-                self.is_in_box = True
-
-            elif closest_green_distance <= self.max_dev:
-                # Агент в пределах дистанции
-                self.is_in_box = True
-                self.is_on_trace = False
-
-            else:
-                closest_point_on_trajectory_id = self.closest_point(self.follower.position,self.leader_factual_trajectory)
-                closest_point_on_trajectory = self.leader_factual_trajectory[int(closest_point_on_trajectory_id)]
-#                 TODO: перенести в функцию рисования
-#                 pygame.draw.line(self.gameDisplay, self.colours["black"], self.follower.position, closest_point_on_trajectory)
-                
-                if distance.euclidean(self.follower.position, closest_point_on_trajectory) <= self.leader_pos_epsilon:
-                    self.is_on_trace = True
-                    self.is_in_box = False
-        
-        
-        # работа с движением лидера
-        prev_leader_position = self.leader.position.copy()
-
-        if distance.euclidean(self.leader.position, self.cur_target_point) < self.leader_pos_epsilon:
-            self.cur_target_id+=1
-            if self.cur_target_id >= len(self.trajectory):
-                self.leader_finished = True
-            else:
-                self.cur_target_point = self.trajectory[self.cur_target_id]
-
-        if not self.leader_finished:
-            self.leader.move_to_the_point(self.cur_target_point)
-        else:
-            self.leader.command_forward(0)
-            self.leader.command_turn(0,0)
-            
-        # TODO: обработка столкновений лидера [Слава]
-           
-        # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
-        # TODO: сделать параметром;
-        # TODO: 
-        if pygame.time.get_ticks()%5==0:
-            self.leader_factual_trajectory.append(self.leader.position.copy())
-
-        # обработка аварий агента в случае столкновения с лидером или границами карты
-        if self.leader.rectangle.colliderect(self.follower.rectangle) or \
-            any(self.follower.position>=(self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(self.follower.position<=(0, 0)):
-            self.crash=True
-            self.done=True
-            
-        
-        res_reward = self._reward_computation()
-        
-#         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
-#             res_reward = 0
-        self.overall_reward += res_reward
-        
-        self.clock.tick(self.framerate)
-        
-        if self.simulation_time_limit is not None:
-            if pygame.time.get_ticks()*1000 > self.simulation_time_limit:
-                self.done=True
-                print("Время истекло! Прошло {} секунд.".format(self.simulation_time_limit))
-        
-        obs = self._get_obs()
-        
-        self.step_count+=1
-        
-        if self.step_count > self.max_steps:
-            done=True
-#         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
-#         print()
-        
-        return obs, res_reward, self.done, {}
     
     
     def _get_obs(self):
@@ -766,8 +636,8 @@ class Game(gym.Env):
         
     
 class TestGameAuto(Game):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         
 class TestGameManual(Game):
     def __init__(self):
