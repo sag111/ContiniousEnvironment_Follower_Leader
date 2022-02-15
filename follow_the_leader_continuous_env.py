@@ -121,7 +121,7 @@ class Game(gym.Env):
         self.max_distance = max_distance * self.PIXELS_TO_METER
         self.max_dev = max_dev * self.PIXELS_TO_METER
         
-        self.warm_start = warm_start*1000
+        self.warm_start = warm_start*framerate
         
         self.leader_img =  pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.follower_img = pygame.image.load("{}/imgs/car_poice.png".format(os.path.dirname(os.path.abspath(__file__))))
@@ -281,7 +281,7 @@ class Game(gym.Env):
                     self.manual_game_contol(event,self.follower)
         else:
             self.follower.command_forward(action[0])
-            self.follower.rotation_speed = action[1]
+            #self.follower.rotation_speed = action[1]  # command_turn ведь плавно изменяет текущую скорость поворота в зависимости от ограничения на изменение, зачем её явно задавать?
             if action[1]<0:
                 self.follower.command_turn(abs(action[1]),-1)
             elif action[1]>0:
@@ -291,8 +291,7 @@ class Game(gym.Env):
             
         self.follower.move()
         self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
-        
-            
+
         # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
             
         
@@ -354,7 +353,7 @@ class Game(gym.Env):
         self.step_count+=1
         
         if self.step_count > self.max_steps:
-            done=True
+            self.done=True
 #         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
 #         print()
         
@@ -368,9 +367,8 @@ class Game(gym.Env):
         pygame.display.update()
         
         return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.gameDisplay)), axes=(1, 0, 2))
-    
-    
+                pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
+        
     def rotate_object(self,object_to_rotate):
         """Поворачивает изображение объекта, при этом сохраняя его центр и прямоугольник для взаимодействия.
         """
@@ -503,9 +501,6 @@ class Game(gym.Env):
 
             if event.key == pygame.K_DOWN:
                 follower.command_forward(follower.speed-self.PIXELS_TO_METER)
-
-        
-    
 
     
     
@@ -656,8 +651,8 @@ class Game(gym.Env):
         
     
 class TestGameAuto(Game):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         
 class TestGameManual(Game):
     def __init__(self):
