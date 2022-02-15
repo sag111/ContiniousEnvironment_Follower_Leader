@@ -210,11 +210,11 @@ class AbstractRobot(GameObject):
         
         self.move()
         
-    def use_sensor(self, env):
+    def use_sensor(self, env, **kwargs):
         if self.has_sensor:
             self.sensor.direction = self.direction
             self.sensor.position = self.position
-            return self.sensor.scan(env)
+            return self.sensor.scan(env, **kwargs)
             
         else:
             return list()
@@ -257,7 +257,20 @@ class LaserSensor():
         self.sensed_points = list()
 
 
-    def scan(self, env):
+    def scan(self, env, return_all_points=False, discretization_rate = 20):
+        """строит поля точек лидара.
+           Входные параметры:
+           env (Game environment):
+               среда, в которой осуществляется сканирование;
+            return_all_points (bool):
+                если False, возвращает только крайние точки лучей лидара, иначе -- все точки;
+            discretization_rate (int):
+                промежуток (в пикселях), через который рассматриваются точки луча лидара.
+            
+            Возвращает:
+            sensed_points (list):
+                список точек, которые отследил лидар.
+            """
 
         # Если на нужной дистанции нет ни одного объекта - просто рисуем крайние точки, иначе нужно будет идти сложным путём
         objects_in_range = list()
@@ -303,9 +316,12 @@ class LaserSensor():
             point_to_add = None
             object_in_sight = False
             
-            for i in range(0,20):
-                u = i/20
+            for i in range(0,discretization_rate):
+                u = i/discretization_rate
                 cur_point = ((x2*u + x1 * (1-u)),(y2*u + y1 * (1-u)))
+                
+                if return_all_points:
+                    sensed_points.append(cur_point)
                 
                 for cur_object in objects_in_range:
                     if cur_object.rectangle.collidepoint(cur_point):
@@ -318,9 +334,9 @@ class LaserSensor():
 
             if point_to_add is None:
                 point_to_add = np.array((x2,y2))
-
-            sensed_points.append(point_to_add)
-
+            
+            if not return_all_points:
+                sensed_points.append(point_to_add)
 
         return sensed_points
 

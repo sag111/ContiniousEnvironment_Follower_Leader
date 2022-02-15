@@ -24,7 +24,6 @@ class Game(gym.Env):
                  simulation_time_limit=None,
                  reward_config = None,
                  pixels_to_meter = 50,
-                 # 
                  min_distance = 1, # в метрах
                  max_distance = 4, # в метрах
                  max_dev = 1, # в метрах
@@ -291,7 +290,7 @@ class Game(gym.Env):
                 self.follower.command_turn(0,0)
             
         self.follower.move()
-        self.follower_scan_list = self.follower.use_sensor(self)
+        self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
         
             
         # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
