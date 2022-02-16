@@ -41,14 +41,14 @@ class AbstractRobot(GameObject):
                  name,
                  image=None,
                  start_position=None,
-                 height=None, # в метрах
-                 width=None, # в метрах
-                 min_speed=0., # в метрах в секунду
-                 max_speed=2., # в метрах в секунду
-                 max_rotation_speed=60, # в градусах
-                 max_speed_change=0.5, # в метрах в секунду
-                 max_rotation_speed_change=57, # в градусах
-                 start_direction = 0, # в градусах
+                 height=None,  # в метрах
+                 width=None,  # в метрах
+                 min_speed=0.,  # в метрах в секунду
+                 max_speed=2.,  # в метрах в секунду
+                 max_rotation_speed=60,  # в градусах
+                 max_speed_change=0.5,  # в метрах в секунду
+                 max_rotation_speed_change=57,  # в градусах
+                 start_direction=0,  # в градусах
                  **kwargs
                  ):
         """Класс, который реализует робота."""
@@ -65,9 +65,9 @@ class AbstractRobot(GameObject):
         self.rotation_direction = 0
         # 0 -- прямо, -1 -- влево, +1 -- вправо.
         
-        self.direction = start_direction # в градусах!
+        self.direction = start_direction  # в градусах!
         
-        self.desirable_rotation_speed = 0. # в радианах
+        self.desirable_rotation_speed = 0.  # в радианах
         self.desirable_rotation_direction = 0.
         self.desirable_speed = 0.
         
@@ -159,7 +159,7 @@ class AbstractRobot(GameObject):
     
     
     def move_to_the_point(self, next_point):
-        """Функция автоматического управления звижением к точке"""
+        """Функция автоматического управления движением к точке"""
         #TODO: сделать более хороший алгоритм следования маршруту [Слава]
         
         next_point_scaled = next_point - self.position # таким образом мы рассчитываем положение точки относительно робота
@@ -173,19 +173,19 @@ class AbstractRobot(GameObject):
             desirable_angle = 0
             
         if desirable_angle > 360:
-            desirable_angle-=360
+            desirable_angle -= 360
         
-        if desirable_angle<0:
-            desirable_angle=360+desirable_angle
+        if desirable_angle < 0:
+            desirable_angle = 360+desirable_angle
         
         delta_turn = self.direction-desirable_angle
         
         if delta_turn > 0.:
-            self.rotation_direction=-1
+            self.rotation_direction = -1
         elif delta_turn < 0.:
-            self.rotation_direction=1
+            self.rotation_direction = 1
         else:
-            self.rotation_direction=0
+            self.rotation_direction = 0
         
         delta_turn = abs(delta_turn)
 

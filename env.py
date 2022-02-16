@@ -126,7 +126,7 @@ class Game(gym.Env):
         self.game_object_list = list()
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
-        
+
         self.done = False
         
         self.trajectory.insert(0, self.leader.start_position)
