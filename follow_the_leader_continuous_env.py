@@ -29,7 +29,8 @@ class Game(gym.Env):
                  max_dev = 1, # в метрах
                  warm_start = 3, # в секундах
                  manual_control = False,
-                 max_steps=5000
+                 max_steps=5000,
+                 aggregate_reward=False
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
         Входные параметры:
@@ -69,7 +70,9 @@ class Game(gym.Env):
         manual_control (bool): 
             использовать ручное управление Ведомым;
         max_steps (int): 
-            максимальное число шагов для одной симуляции.
+            максимальное число шагов для одной симуляции;
+        aggregate_reward (bool):
+            если True, step будет давать акумулированную награду.
         """
         # нужно для сохранения видео
         self.metadata = {"render.modes": ["rgb_array"]}
@@ -132,6 +135,7 @@ class Game(gym.Env):
         
         self.max_steps = max_steps
 
+        self.aggregate_reward = aggregate_reward
         
         self.reset()
         
@@ -357,7 +361,12 @@ class Game(gym.Env):
 #         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
 #         print()
         
-        return obs, res_reward, self.done, {}
+        if self.aggregate_reward:
+            reward_to_return = self.overall_reward
+        else:
+            reward_to_return = res_reward
+    
+        return obs, reward_to_return, self.done, {}
     
     
     def render(self, custom_message=None, **kwargs):
