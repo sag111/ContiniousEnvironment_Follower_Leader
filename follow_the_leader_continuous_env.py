@@ -406,7 +406,12 @@ class Game(gym.Env):
         # отображение зоны, в которой нужно находиться Ведомому
         if self.show_box:
             if len(self.green_zone_trajectory_points)>5:
-                green_line = pygame.draw.polygon(self.gameDisplay,self.colours["green"],self.green_zone_trajectory_points[::5], width=self.max_dev*2)
+#                 green_line = pygame.draw.polygon(self.gameDisplay,self.colours["green"],self.green_zone_trajectory_points[::5], width=self.max_dev*2)
+                green_line = pygame.draw.lines(self.gameDisplay,
+                                               self.colours["green"],
+                                               False,                                               
+                                               self.green_zone_trajectory_points[::5], 
+                                               width=self.max_dev*2)
         
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
@@ -430,7 +435,7 @@ class Game(gym.Env):
         
         if self.show_sensors:
             for cur_point in self.follower_scan_list:
-                pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 5)
+                pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 3)
                 
         
         
