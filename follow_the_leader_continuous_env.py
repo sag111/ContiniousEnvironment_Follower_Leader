@@ -44,10 +44,11 @@ class Game(gym.Env):
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
-                 add_obstacles=True,#NotImpleneted
+                 add_obstacles=True,
                  add_bridge=True,#NotImplemented
                  obstacle_number=15,
-                 end_simulation_on_leader_finish=False#NotImplemented
+                 end_simulation_on_leader_finish=False,#NotImplemented
+                 discretization_factor=5#NotImplemented
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
         Входные параметры:
@@ -252,10 +253,8 @@ class Game(gym.Env):
         self.cur_target_point = self.trajectory[self.cur_target_id]  # координаты текущей целевой точки (возможно избыточны)
 
         # Инициализация сеанса pygame, создание окна и часов
-        pygame.init()
-        
+        pygame.init()        
         self.gameDisplay = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
-
         pygame.display.set_caption(self.caption)
         self.clock = pygame.time.Clock()
         
@@ -359,29 +358,10 @@ class Game(gym.Env):
         self.follower.move()
         self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
         
-        
-        
-        # определение столкновения с препятствиями
-        if self.leader.rectangle.colliderect(self.obstacles1.rectangle) or \
-                any(self.obstacles1.position >= (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(
-            self.obstacles1.position <= (0, 0)):
-            self.crash = True
-            self.done = True
-
-        if self.leader.rectangle.colliderect(self.obstacles2.rectangle) or \
-                any(self.obstacles2.position >= (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(
-            self.obstacles2.position <= (0, 0)):
-            self.crash = True
-            self.done = True
-
-        for i in range(self.obstacle_number):
-            # self.game_object_list.append(self.obstacles[i])
-            if self.leader.rectangle.colliderect(self.obstacles[i].rectangle) or \
-                    any(self.obstacles[i].position >= (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(
-                self.obstacles[i].position <= (0, 0)):
-                self.crash = True
-                self.done = True
-            
+        # определение столкновения ведомого с препятствиями
+        if self._collision_check(self.follower):
+            self.crash=True
+            self.done=True
         
         # Определение коробки и агента в ней
         # определение текущих точек маршрута, которые являются подходящими для Агента
@@ -408,7 +388,10 @@ class Game(gym.Env):
             self.leader.command_forward(0)
             self.leader.command_turn(0,0)
             
-        # TODO: обработка столкновений лидера [Слава]
+        # обработка столкновений лидера
+        if self._collision_check(self.leader):
+            print("Лидер столкнулся с препятствием!")
+            self.done=True
            
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # TODO: сделать параметром;
@@ -417,10 +400,10 @@ class Game(gym.Env):
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
         # обработка аварий агента в случае столкновения с лидером или границами карты
-        if self.leader.rectangle.colliderect(self.follower.rectangle) or \
-            any(self.follower.position>=(self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(self.follower.position<=(0, 0)):
-            self.crash=True
-            self.done=True
+#         if self.leader.rectangle.colliderect(self.follower.rectangle) or \
+#             any(self.follower.position>=(self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(self.follower.position<=(0, 0)):
+#             self.crash=True
+#             self.done=True
             
         
         res_reward = self._reward_computation()
@@ -452,6 +435,18 @@ class Game(gym.Env):
     
         return obs, reward_to_return, self.done, {}
     
+    
+    
+    def _collision_check(self,target_object):
+        """Рассматривает, не участвует ли объект в коллизиях"""
+        objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
+        
+        if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
+        any(target_object.position>(self.DISPLAY_WIDTH,self.DISPLAY_HEIGHT)) or \
+        any(target_object.position<0):
+            return True
+        else:
+            return False
     
     def render(self, custom_message=None, **kwargs):
         """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
