@@ -181,8 +181,8 @@ class LeaderTrajectory_v0(ObservationWrapper):
         self.radar_sectors_number = radar_sectors_number
         self.sectorsAngle = np.pi/radar_sectors_number
         
-        self.observation_space = Box(-np.ones(self.framestack+radar_sectors_number),
-                                      np.ones(self.framestack+radar_sectors_number))
+        self.observation_space = Box(-np.ones(self.framestack*2+radar_sectors_number),
+                                      np.ones(self.framestack*2+radar_sectors_number))
         
     
     
