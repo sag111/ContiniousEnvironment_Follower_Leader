@@ -3,18 +3,21 @@ import pygame
 import os
 from math import pi, degrees, radians, cos, sin
 import numpy as np
-from classes import AbstractRobot, GameObject, LaserSensor
 from scipy.spatial import distance
-from reward_constructor import Reward
+
+from utils.classes import AbstractRobot, GameObject, LaserSensor
+
+from utils.reward_constructor import Reward
 import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
 import random
 
-import astar
-from astar import Node
-from astar import astar
+from utils import astar
+from utils.astar import Node
+from utils.astar import astar
+
 from warnings import warn
 
 
@@ -32,16 +35,19 @@ class Game(gym.Env):
                  show_box=True,
                  show_sensors=True,
                  simulation_time_limit=None,
-                 reward_config = None,
-                 pixels_to_meter = 50,
-                 min_distance = 1, # в метрах
-                 max_distance = 4, # в метрах
-                 max_dev = 1, # в метрах
-                 warm_start = 3, # в секундах
-                 manual_control = False,
+                 reward_config=None,
+                 pixels_to_meter=50,
+                 min_distance=1, # в метрах
+                 max_distance=4, # в метрах
+                 max_dev=1, # в метрах
+                 warm_start=3, # в секундах
+                 manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
-                 obstacle_number=15
+                 add_obstacles=True,#NotImpleneted
+                 add_bridge=True,#NotImplemented
+                 obstacle_number=15,
+                 end_simulation_on_leader_finish=False#NotImplemented
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
         Входные параметры:
@@ -138,7 +144,6 @@ class Game(gym.Env):
         self.max_distance = max_distance * self.PIXELS_TO_METER
         self.max_dev = max_dev * self.PIXELS_TO_METER
 
-
         self.warm_start = warm_start * 1000
 
         self.leader_img = pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
@@ -149,10 +154,10 @@ class Game(gym.Env):
         self.caption = caption
         self.manual_control = manual_control
         self.max_steps = max_steps
-
         self.aggregate_reward = aggregate_reward
         
         self.obstacle_number = obstacle_number
+        self.add_obstacles = add_obstacles
 
         self.reset()
 
@@ -208,9 +213,58 @@ class Game(gym.Env):
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
 
-
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
+        self.step_count = 0
+        
+        # Список всех игровых объектов
+        self.game_object_list = list()
+        
         # Создание ведущего и ведомого
+        self._create_robots()
+        
+        # Создание препятствий
+        if self.add_obstacles:
+            self._create_obstacles()
+        
+        # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
+        self.green_zone_trajectory_points = list()
+
+        # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
+        if (self.trajectory is None) or self.trajectory_generated:
+            self.trajectory = self.generate_trajectory()
+            self.trajectory_generated = True
+
+        self.trajectory = self.trajectory
+        
+        # Флаги для расчёта reward
+        self._init_reward_flags()
+        self.overall_reward = 0
+        
+        # список пказааний лидара ведммого
+        self.follower_scan_list = list()
+
+        # Флаг конца симуляции
+        self.done = False
+
+        self.cur_target_id = 1  # индекс целевой точки из маршрута
+        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
+        self.leader_finished = False  # флаг, показывает, закончил ли лидер маршрут, т.е. достиг ли последней точки
+        self.cur_target_point = self.trajectory[self.cur_target_id]  # координаты текущей целевой точки (возможно избыточны)
+
+        # Инициализация сеанса pygame, создание окна и часов
+        pygame.init()
+        
+        self.gameDisplay = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
+
+        pygame.display.set_caption(self.caption)
+        self.clock = pygame.time.Clock()
+        
+        self.simulation_number += 1
+
+        return self._get_obs()
+    
+    
+    def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
@@ -238,8 +292,12 @@ class Game(gym.Env):
                                       start_position=((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
                                       # Сделать позицию относитеьно лидера
                                       sensor =  LaserSensor)
-
-        # камни
+        
+        self.game_object_list.append(self.leader)
+        self.game_object_list.append(self.follower)
+        
+    
+    def _create_obstacles(self):
         self.obstacles = [GameObject('rock',
                                         image=self.rock_img,
                                         start_position=np.array((np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
@@ -248,6 +306,7 @@ class Game(gym.Env):
                                         width=50) for i in range(self.obstacle_number)]
 
         #####################################
+        #TODO: отсутствие абсолютных чисел!
         self.most_point1 = (750,230)
         self.most_point2 = (750,770)
         # верхняя и нижняя часть моста
@@ -263,67 +322,19 @@ class Game(gym.Env):
                                         height=460,
                                         width=40)
         ####################################
-
-
-        # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
-        self.green_zone_trajectory_points = list()
-
-        # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
-        if (self.trajectory is None) or self.trajectory_generated:
-            self.trajectory = self.generate_trajectory()
-            self.trajectory_generated = True
-
-        self.trajectory = self.trajectory
-
-        # Флаги для расчёта reward
+        
+        self.game_object_list.append(self.obstacles1)
+        self.game_object_list.append(self.obstacles2)
+        self.game_object_list.extend(self.obstacles)
+        
+        
+    def _init_reward_flags(self):
         self.stop_signal = False
         self.is_in_box = False
         self.is_on_trace = False
-        self.step_count = 0
         self.follower_too_close = False
         self.crash = False
-
-        # Список всех игровых объектов
-        # Предполагается, что препятствия будут добавляться сюда
-        self.game_object_list = list()
-        self.game_object_list.append(self.leader)
-        self.game_object_list.append(self.follower)
-
-        # препятствия
-        self.game_object_list.append(self.obstacles1)
-        self.game_object_list.append(self.obstacles2)
-
-        for i in range(self.obstacle_number):
-            #if distance.euclidean(self.obstacles[i].start_position, (750,500)) > 50:
-            self.game_object_list.append(self.obstacles[i])
-        
-        self.follower_scan_list = list()
-
-        # Флаг конца симуляции
-        self.done = False
-
-        self.cur_target_id = 1  # индекс целевой точки из маршрута
-        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
-        self.leader_finished = False  # флаг, показывает, закончил ли лидер маршрут, т.е. достиг ли последней точки
-        self.cur_target_point = self.trajectory[self.cur_target_id]  # координаты текущей целевой точки (возможно избыточны)
-
-        # Инициализация сеанса pygame, создание окна и часов
-        # Возможно не нужно пересоздавать окно каждый раз, стоит подумать
-        pygame.init()
-        
-        self.gameDisplay = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
-
-        pygame.display.set_caption(self.caption)
-        self.clock = pygame.time.Clock()
-
-        # обнуление параметров, которые отслеживаются в рамках симуляции
-        self.step_count = 0  # число шагов
-        self.overall_reward = 0  # суммарная награда за все шаги
-
-        self.simulation_number += 1
-
-        return self._get_obs()
-
+    
     def step(self, action):
         """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
         self.is_in_box = False
@@ -338,7 +349,6 @@ class Game(gym.Env):
                     self.manual_game_contol(event,self.follower)
         else:
             self.follower.command_forward(action[0])
-            #self.follower.rotation_speed = action[1]  # command_turn ведь плавно изменяет текущую скорость поворота в зависимости от ограничения на изменение, зачем её явно задавать?
             if action[1]<0:
                 self.follower.command_turn(abs(action[1]),-1)
             elif action[1]>0:
@@ -348,9 +358,10 @@ class Game(gym.Env):
             
         self.follower.move()
         self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
-
-        # TODO:проверка на столкновение с препятствием вероятно здесь[Слава]
-        # определение столкновения с препятстивями
+        
+        
+        
+        # определение столкновения с препятствиями
         if self.leader.rectangle.colliderect(self.obstacles1.rectangle) or \
                 any(self.obstacles1.position >= (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(
             self.obstacles1.position <= (0, 0)):
