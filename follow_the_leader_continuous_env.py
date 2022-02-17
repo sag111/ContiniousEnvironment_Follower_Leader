@@ -10,10 +10,10 @@ import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
-import random2
+# import random2
 import random
 
-import Ast
+# import Ast
 import astar
 from astar import Node
 from astar import astar
@@ -54,7 +54,7 @@ class Game(gym.Env):
         caption (str): 
             заголовок игрового окна;
         trajectory (list of points or None): 
-            список точек, по которым едет Ведущий. Если None список генерируется случайно;
+            список точек, по которым едет Ведущий. Если None, список генерируется случайно;
         leader_pos_epsilon (int): 
             расстояние в пикселях от точки траектории, в пределах которого считается, что Ведущий прошёл через точку;
         show_leader_path (bool): 
@@ -143,7 +143,7 @@ class Game(gym.Env):
         self.leader_img = pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.follower_img = pygame.image.load("{}/imgs/car_poice.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.wall_img = pygame.image.load("{}/imgs/wall.png".format(os.path.dirname(os.path.abspath(__file__))))
-        self.rock_img = pygame.image.load("{}/imgs/stone.png".format(os.path.dirname(os.path.abspath(__file__))))
+        self.rock_img = pygame.image.load("{}/imgs/rock.png".format(os.path.dirname(os.path.abspath(__file__))))
 
         self.caption = caption
         self.manual_control = manual_control
@@ -523,7 +523,7 @@ class Game(gym.Env):
             pygame.draw.aalines(self.gameDisplay, self.colours["red"], False, self.trajectory)
 
         # отображение зоны, в которой нужно находиться Ведомому
-        if self.show_box
+        if self.show_box:
             if len(self.green_zone_trajectory_points)>5:
 #                 green_line = pygame.draw.polygon(self.gameDisplay,self.colours["green"],self.green_zone_trajectory_points[::5], width=self.max_dev*2)
                 green_line = pygame.draw.lines(self.gameDisplay,
@@ -557,29 +557,13 @@ class Game(gym.Env):
 
         # тут начинается обсчёт препятствий (почему-то в отображении
         for i in range(self.count_obsc):
-            collidels = leader_close_circle.colliderect(self.obstacles[i].rectangle)
-            # self.follower_too_close=False
-            if collidels:
-                leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position,
-                                                         self.min_distance, width=2)
+            collidels = self.leader.rectangle.colliderect(self.obstacles[i].rectangle)
                 # Для рассчета при проезде с препятсивем слишком близко ввести переменные
-                # self.follower_too_close = True
 
         #Проверка для моста
         # ПЕРЕМЕННЫЕ ДЛЯ РЕВАРДА НАДО ЗАДАТЬ
-        collide_most1 = leader_close_circle.colliderect(self.obstacles1.rectangle)
-        #self.follower_too_close = False
-        if collide_most1:
-            leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position,
-                                                     self.min_distance, width=2)
-            #self.follower_too_close = True
-
-        collide_most2 = leader_close_circle.colliderect(self.obstacles2.rectangle)
-        # self.follower_too_close = False
-        if collide_most2:
-            leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position,
-                                                     self.min_distance, width=2)
-            # self.follower_too_close = True
+        collide_most1 = self.leader.rectangle.colliderect(self.obstacles1.rectangle)
+        collide_most2 = self.leader.rectangle.colliderect(self.obstacles2.rectangle)
 
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
