@@ -42,7 +42,8 @@ class Game(gym.Env):
                  warm_start = 3, # в секундах
                  manual_control = False,
                  max_steps=5000,
-                 aggregate_reward=False
+                 aggregate_reward=False,
+                 obstacle_number=15
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
         Входные параметры:
@@ -84,7 +85,9 @@ class Game(gym.Env):
         max_steps (int): 
             максимальное число шагов для одной симуляции;
         aggregate_reward (bool):
-            если True, step будет давать акумулированную награду.
+            если True, step будет давать акумулированную награду;
+        obstacle_number (int):
+            число случайно генерируемых препятствий.
         """
 
         # нужно для сохранения видео
@@ -150,6 +153,8 @@ class Game(gym.Env):
         self.max_steps = max_steps
 
         self.aggregate_reward = aggregate_reward
+        
+        self.obstacle_number = obstacle_number
 
         self.reset()
 
@@ -237,14 +242,12 @@ class Game(gym.Env):
                                       sensor =  LaserSensor)
 
         # камни
-        self.count_obsc = 15
-
         self.obstacles = [AbstractRobot('rock',
                                         image=self.rock_img,
                                         start_position=np.array((np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
                                                                 np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))),
                                         height=50,
-                                        width=50) for i in range(self.count_obsc)]
+                                        width=50) for i in range(self.obstacle_number)]
 
         #####################################
         self.most_point1 = (750,230)
@@ -274,46 +277,6 @@ class Game(gym.Env):
 
         self.trajectory = self.trajectory
 
-        # Добавление начальной позиции лидера к траектории, чтобы отображать линию и от его начала к первой точке
-        #self.trajectory.insert(0, self.leader.start_position)
-
-        # Добавление финишной точки
-
-        # self.trajectory.append(self.finish_point)
-        #
-        # self.obsc_target_id = 1;
-        # self.point_obstacles1 = self.trajectory[self.obsc_target_id]
-
-        #Добавление моста
-        # self.point_obstacles1 = self.trajectory[20]
-        # self.point_obstacles2 = self.trajectory[22]
-        #
-        # #коэффициент расстояния препятсивя моста от точки на пути
-        # self.most_k = 35
-        #
-        # #вычисления координат правой и левой стороны моста
-        # self.most1_1 = [((self.point_obstacles1[0] + self.most_k)+(self.point_obstacles2[0] + self.most_k))/2,
-        #                 ((self.point_obstacles1[1] + self.most_k)+(self.point_obstacles2[1] + self.most_k))/2]
-        # self.most_point1 =tuple(self.most1_1)
-        #
-        # self.most2_1 =  [((self.point_obstacles1[0] - self.most_k)+(self.point_obstacles2[0] - self.most_k))/2,
-        #                 ((self.point_obstacles1[1] - self.most_k)+(self.point_obstacles2[1] - self.most_k))/2]
-        # self.most_point2 =tuple(self.most2_1)
-        #
-        # # правая и левая часть моста
-        # self.obstacles1 = AbstractRobot('wall',
-        #                                 image=self.wall_img,
-        #                                 start_position=self.most_point1,
-        #                                 height=20,
-        #                                 width=20)
-        #
-        # self.obstacles2 = AbstractRobot('wall',
-        #                                 image=self.wall_img,
-        #                                 start_position= self.most_point2,#(15,15),#((self.point_obstacles2 - 0.1 * (self.point_obstacles2)) +
-        #                                                 #(self.point_obstacles1 - 0.1 * (self.point_obstacles1))) / 2,
-        #                                 height=20,
-        #                                 width=20)
-
         # Флаги для расчёта reward
         self.stop_signal = False
         self.is_in_box = False
@@ -332,7 +295,7 @@ class Game(gym.Env):
         self.game_object_list.append(self.obstacles1)
         self.game_object_list.append(self.obstacles2)
 
-        for i in range(self.count_obsc):
+        for i in range(self.obstacle_number):
             #if distance.euclidean(self.obstacles[i].start_position, (750,500)) > 50:
             self.game_object_list.append(self.obstacles[i])
         
@@ -402,7 +365,7 @@ class Game(gym.Env):
             self.crash = True
             self.done = True
 
-        for i in range(self.count_obsc):
+        for i in range(self.obstacle_number):
             # self.game_object_list.append(self.obstacles[i])
             if self.leader.rectangle.colliderect(self.obstacles[i].rectangle) or \
                     any(self.obstacles[i].position >= (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(
@@ -556,7 +519,7 @@ class Game(gym.Env):
                 
 
         # тут начинается обсчёт препятствий (почему-то в отображении
-        for i in range(self.count_obsc):
+        for i in range(self.obstacle_number):
             collidels = self.leader.rectangle.colliderect(self.obstacles[i].rectangle)
                 # Для рассчета при проезде с препятсивем слишком близко ввести переменные
 
@@ -613,7 +576,7 @@ class Game(gym.Env):
 
         for i in range(wid):
             for j in range(hit):
-                for k in range(self.count_obsc):
+                for k in range(self.obstacle_number):
                     ob = (self.obstacles[k].start_position/step_grid)
                     ob = ob.astype(int)
                     #print(ob)
