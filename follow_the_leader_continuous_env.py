@@ -26,6 +26,7 @@ class Game(gym.Env):
     def __init__(self, game_width=1500,
                  game_height=1000,
                  framerate=100,
+                 frames_per_step=10,
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
                  leader_pos_epsilon=20,
@@ -45,11 +46,9 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
-                 add_bridge=True,#NotImplemented
                  obstacle_number=15,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
-                 
                  **kwargs
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -124,6 +123,7 @@ class Game(gym.Env):
         self.DISPLAY_HEIGHT = game_height
         self.PIXELS_TO_METER = pixels_to_meter
         self.framerate = framerate
+        self.frames_per_step = frames_per_step
 
         self.leader_pos_epsilon = leader_pos_epsilon
 
@@ -349,12 +349,11 @@ class Game(gym.Env):
         self.is_on_trace = False
         self.follower_too_close = False
         self.crash = False
-    
-    def step(self, action):
-        """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
-        self.is_in_box = False
-        self.is_on_trace = False
         
+        
+    
+    
+    def step(self,action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.manual_control:
             for event in pygame.event.get():
@@ -367,7 +366,19 @@ class Game(gym.Env):
                 self.follower.command_turn(action[1],1)
             else:
                 self.follower.command_turn(0,0)
-            
+                
+        
+        for cur_ministep_nb in range(self.frames_per_step):
+            obs,reward,done,_ = self.frame_step(action)
+        
+        return obs,reward,done,{} 
+        
+    
+    def frame_step(self, action):
+        """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
+        self.is_in_box = False
+        self.is_on_trace = False
+        
         self.follower.move()
         self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
         

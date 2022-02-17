@@ -196,7 +196,7 @@ class AbstractRobot(GameObject):
         else:
             desirable_angle = 0
             
-        if desirable_angle > 360:
+        if desirable_angle >= 360:
             desirable_angle -= 360
         
         if desirable_angle < 0:
