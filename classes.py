@@ -26,12 +26,20 @@ class GameObject():
         self.image = image
         
         if height and width:
+            self.height = height
+            self.width = width
             self.image = pygame.transform.scale(self.image, (width,height))
+        else:
+            self.height = self.image.get_height()
+            self.width = self.image.get_width()
+            
             
         self.start_position = np.array(start_position)
         self.position = self.start_position
         
         self.rectangle = self.image.get_rect(center=self.position, width=width, height=height)
+        
+        self.blocks_vision = blocks_vision
         
     def put(self,position):
         self.position = np.array(position)

@@ -10,10 +10,8 @@ import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
-# import random2
 import random
 
-# import Ast
 import astar
 from astar import Node
 from astar import astar
@@ -242,7 +240,7 @@ class Game(gym.Env):
                                       sensor =  LaserSensor)
 
         # камни
-        self.obstacles = [AbstractRobot('rock',
+        self.obstacles = [GameObject('rock',
                                         image=self.rock_img,
                                         start_position=np.array((np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
                                                                 np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))),
@@ -253,13 +251,13 @@ class Game(gym.Env):
         self.most_point1 = (750,230)
         self.most_point2 = (750,770)
         # верхняя и нижняя часть моста
-        self.obstacles1 = AbstractRobot('wall',
+        self.obstacles1 = GameObject('wall',
                                         image=self.wall_img,
                                         start_position=self.most_point1,
                                         height=460,
                                         width=40)
 
-        self.obstacles2 = AbstractRobot('wall',
+        self.obstacles2 = GameObject('wall',
                                         image=self.wall_img,
                                         start_position= self.most_point2,
                                         height=460,
