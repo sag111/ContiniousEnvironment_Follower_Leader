@@ -10,7 +10,7 @@ from time import sleep
 
 import argparse as ag
         
-if __name__=="__main__":
+if __name__ == "__main__":
     
     parser = ag.ArgumentParser()
     
@@ -40,7 +40,7 @@ if __name__=="__main__":
     
     args = parser.parse_args()
     
-    manual_handling = args.manual #False
+    manual_handling = True#args.manual #False
     
     if manual_handling:
         
