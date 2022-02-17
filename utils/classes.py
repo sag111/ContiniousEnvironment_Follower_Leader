@@ -34,7 +34,7 @@ class GameObject():
             self.width = self.image.get_width()
             
             
-        self.start_position = np.array(start_position)
+        self.start_position = np.array(start_position,dtype=np.float32)
         self.position = self.start_position
         
         self.rectangle = self.image.get_rect(center=self.position, width=width, height=height)
@@ -42,7 +42,7 @@ class GameObject():
         self.blocks_vision = blocks_vision
         
     def put(self,position):
-        self.position = np.array(position)
+        self.position = np.array(position,dtype=np.float32)
     
         
         
@@ -177,7 +177,7 @@ class AbstractRobot(GameObject):
             if self.direction < 0:
                 self.direction = 360+self.direction
         
-        movement_vec = np.array((cos(radians(self.direction))*self.speed, sin(radians(self.direction))*self.speed))
+        movement_vec = np.array((cos(radians(self.direction))*self.speed, sin(radians(self.direction))*self.speed),dtype=np.float32)
         self.position+=movement_vec
         
     
@@ -333,7 +333,7 @@ class LaserSensor():
                 
                 for cur_object in objects_in_range:
                     if cur_object.rectangle.collidepoint(cur_point):
-                        point_to_add = np.array(cur_point)
+                        point_to_add = np.array(cur_point,dtype=np.float32)
                         object_in_sight = True
                         break
                 
@@ -341,7 +341,7 @@ class LaserSensor():
                     break
 
             if point_to_add is None:
-                point_to_add = np.array((x2,y2))
+                point_to_add = np.array((x2,y2),dtype=np.float32)
             
             if not return_all_points:
                 sensed_points.append(point_to_add)

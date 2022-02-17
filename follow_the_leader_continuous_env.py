@@ -48,7 +48,9 @@ class Game(gym.Env):
                  add_bridge=True,#NotImplemented
                  obstacle_number=15,
                  end_simulation_on_leader_finish=False,#NotImplemented
-                 discretization_factor=5#NotImplemented
+                 discretization_factor=5,#NotImplemented
+                 
+                 **kwargs
                 ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
         Входные параметры:
@@ -274,11 +276,9 @@ class Game(gym.Env):
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
-                                    start_position= np.float64((random.randrange(800, 1500,10),
-                                                               random.randrange(20, 1000,10))))
-                                                            #(self.DISPLAY_WIDTH/2, self.DISPLAY_HEIGHT/2))
-                                                            #np.float64(((self.DISPLAY_WIDTH) - 100, (self.DISPLAY_HEIGHT) - 100)))
-
+                                    start_position= (random.randrange(self.DISPLAY_WIDTH/2+100, self.DISPLAY_WIDTH-100,10),
+                                                               random.randrange(20, self.DISPLAY_HEIGHT-100,10)))
+                                    
         self.follower = AbstractRobot("follower",
                                       image=self.follower_img,
                                       height=0.5 * self.PIXELS_TO_METER,
@@ -288,8 +288,8 @@ class Game(gym.Env):
                                       max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                       max_rotation_speed=57.296 / 100,
                                       max_rotation_speed_change=20 / 100,
-                                      start_position=((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
-                                      # Сделать позицию относитеьно лидера
+                                      start_position=self.leader.position+50,#(self.leader.position[0]+50,self.leader.position[1]+50),
+                                      #((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
                                       sensor =  LaserSensor)
         
         self.game_object_list.append(self.leader)
@@ -297,17 +297,11 @@ class Game(gym.Env):
         
     
     def _create_obstacles(self):
-        self.obstacles = [GameObject('rock',
-                                        image=self.rock_img,
-                                        start_position=np.array((np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
-                                                                np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))),
-                                        height=50,
-                                        width=50) for i in range(self.obstacle_number)]
-
+        
         #####################################
         #TODO: отсутствие абсолютных чисел!
-        self.most_point1 = (750,230)
-        self.most_point2 = (750,770)
+        self.most_point1 = (self.DISPLAY_WIDTH/2, 230)
+        self.most_point2 = (self.DISPLAY_WIDTH/2, 770)
         # верхняя и нижняя часть моста
         self.obstacles1 = GameObject('wall',
                                         image=self.wall_img,
@@ -321,7 +315,29 @@ class Game(gym.Env):
                                         height=460,
                                         width=40)
         ####################################
-        
+        self.obstacles = list()
+        for i in range(self.obstacle_number):
+            
+            is_free = False
+            
+            while not is_free:
+                generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
+                                    np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))
+                
+                if self.leader.rectangle.collidepoint(generated_position) or \
+                self.follower.rectangle.collidepoint(generated_position) or \
+                self.obstacles1.rectangle.collidepoint(generated_position) or \
+                self.obstacles2.rectangle.collidepoint(generated_position): # Условие, чтобы не попадал между стен
+                    is_free=False
+                else:
+                    is_free=True
+            
+            self.obstacles.append(GameObject('rock',
+                                             image=self.rock_img,
+                                             start_position=generated_position,
+                                             height=50,
+                                             width=50))
+                                  
         self.game_object_list.append(self.obstacles1)
         self.game_object_list.append(self.obstacles2)
         self.game_object_list.extend(self.obstacles)
@@ -342,10 +358,7 @@ class Game(gym.Env):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.manual_control:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.done = True
-                if self.manual_control:
-                    self.manual_game_contol(event,self.follower)
+                self.manual_game_contol(event,self.follower)
         else:
             self.follower.command_forward(action[0])
             if action[1]<0:
@@ -369,7 +382,6 @@ class Game(gym.Env):
         self._trajectory_in_box()
         
         # определяем положение Агента относительно маршрута и коробки
-        
         self._check_agent_position()
         
         # работа с движением лидера
@@ -399,13 +411,6 @@ class Game(gym.Env):
         if pygame.time.get_ticks()%5==0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
-        # обработка аварий агента в случае столкновения с лидером или границами карты
-#         if self.leader.rectangle.colliderect(self.follower.rectangle) or \
-#             any(self.follower.position>=(self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or any(self.follower.position<=(0, 0)):
-#             self.crash=True
-#             self.done=True
-            
-        
         res_reward = self._reward_computation()
         
 #         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
@@ -520,17 +525,6 @@ class Game(gym.Env):
         if self.show_sensors:
             for cur_point in self.follower_scan_list:
                 pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 3)
-                
-
-        # тут начинается обсчёт препятствий (почему-то в отображении
-        for i in range(self.obstacle_number):
-            collidels = self.leader.rectangle.colliderect(self.obstacles[i].rectangle)
-                # Для рассчета при проезде с препятсивем слишком близко ввести переменные
-
-        #Проверка для моста
-        # ПЕРЕМЕННЫЕ ДЛЯ РЕВАРДА НАДО ЗАДАТЬ
-        collide_most1 = self.leader.rectangle.colliderect(self.obstacles1.rectangle)
-        collide_most2 = self.leader.rectangle.colliderect(self.obstacles2.rectangle)
 
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
@@ -633,9 +627,13 @@ class Game(gym.Env):
 
 
 
-    def manual_game_contol(self, event, follower):
+    def manual_game_contol(self, event,follower):
         """обработчик нажатий клавиш при ручном контроле."""
         # В теории, можно на основе этого класса сделать управляемого руками Ведущего. Но надо модифицировать.
+        
+        if event.type == pygame.QUIT:
+            self.done = True
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 if follower.rotation_direction > 0:
