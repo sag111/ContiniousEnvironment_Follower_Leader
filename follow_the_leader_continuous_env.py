@@ -279,10 +279,14 @@ class Game(gym.Env):
                                     start_position= (random.randrange(self.DISPLAY_WIDTH/2+100, self.DISPLAY_WIDTH-100,10),
                                                                random.randrange(20, self.DISPLAY_HEIGHT-100,10)))
         
-        follower_start_position = self.leader.position+50
+#         follower_start_position = self.leader.position+50
+        
+        
+        follower_start_position = np.array((self.leader.position[0] + random.choice((-1,1)) * random.randint(50,100),
+                                           self.leader.position[1] + random.choice((-1,1)) * random.randint(50,100)), 
+                                           dtype=np.float32)
         
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-        print("follower direction: ", follower_direction)
                                     
         self.follower = AbstractRobot("follower",
                                       image=self.follower_img,
