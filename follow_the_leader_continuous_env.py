@@ -5,7 +5,7 @@ from math import pi, degrees, radians, cos, sin
 import numpy as np
 from scipy.spatial import distance
 
-from utils.classes import AbstractRobot, GameObject, LaserSensor
+from utils.classes import AbstractRobot, GameObject, LaserSensor, angle_to_point
 
 from utils.reward_constructor import Reward
 import gym
@@ -278,9 +278,15 @@ class Game(gym.Env):
                                     max_rotation_speed_change=20 / 100,
                                     start_position= (random.randrange(self.DISPLAY_WIDTH/2+100, self.DISPLAY_WIDTH-100,10),
                                                                random.randrange(20, self.DISPLAY_HEIGHT-100,10)))
+        
+        follower_start_position = self.leader.position+50
+        
+        follower_direction = angle_to_point(follower_start_position, self.leader.position)
+        print("follower direction: ", follower_direction)
                                     
         self.follower = AbstractRobot("follower",
                                       image=self.follower_img,
+                                      start_direction= follower_direction,
                                       height=0.5 * self.PIXELS_TO_METER,
                                       width=0.35 * self.PIXELS_TO_METER,
                                       min_speed=0,
@@ -288,8 +294,7 @@ class Game(gym.Env):
                                       max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                       max_rotation_speed=57.296 / 100,
                                       max_rotation_speed_change=20 / 100,
-                                      start_position=self.leader.position+50,#(self.leader.position[0]+50,self.leader.position[1]+50),
-                                      #((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
+                                      start_position=follower_start_position,
                                       sensor =  LaserSensor)
         
         self.game_object_list.append(self.leader)

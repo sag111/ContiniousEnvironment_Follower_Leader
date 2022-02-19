@@ -101,7 +101,7 @@ class AbstractRobot(GameObject):
             self.sensor = None
         else:
             self.has_sensor = True
-            self.sensor = sensor(self,direction=self.direction,**kwargs)
+            self.sensor = sensor(self,sensor_direction=self.direction,**kwargs)
             
 #         self.sensor = sensor
         
@@ -220,7 +220,7 @@ class AbstractRobot(GameObject):
         
     def use_sensor(self, env, **kwargs):
         if self.has_sensor:
-            self.sensor.direction = self.direction
+            self.sensor.sdirection = self.direction
             self.sensor.position = self.position
             return self.sensor.scan(env, **kwargs)
             
@@ -234,7 +234,7 @@ class LaserSensor():
     """Реализует один лазерный сенсор лидара"""
     def __init__(self,
                  host_object,
-                 direction=None,
+                 sensor_direction=None,
                  available_angle=360, 
                  angle_step=10, # в градусах
                  discretization=5, # число пикселей,
@@ -242,13 +242,14 @@ class LaserSensor():
                  distance_variance=0,
                  angle_variance=0, 
                  sensor_speed=0.1,
-                 add_noise=False
+                 add_noise=False,
+                 **kwargs
                 ): # в секундах? Пока не используется
 
         self.host_object = host_object
         self.position = host_object.position
 
-        self.direction = direction
+        self.direction = sensor_direction
         if self.direction is None:
             self.direction = self.host_object.direction
 
@@ -365,5 +366,19 @@ def angle_correction(angle):
         return 360+angle
     
     return angle
+
+def angle_to_point(cur_point,target_point):
+    relative_position = target_point - cur_point
+        
+        
+    if relative_position[0]>0:
+        res_angle = degrees(atan(relative_position[1]/relative_position[0]))
+    elif relative_position[0]<0:
+        res_angle = degrees(atan(relative_position[1]/relative_position[0]))+180
+    else:
+        res_angle = 0
+        
+    return angle_correction(res_angle)
+
             
             
