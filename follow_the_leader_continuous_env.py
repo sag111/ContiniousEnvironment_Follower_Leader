@@ -171,10 +171,12 @@ class Game(gym.Env):
             np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
             np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
 
-        # именно в таком виде, потому что stable_baselines не может векторизовать space, представленный в виде словаря.
-        # скорее всего, можно в перспективе использовать какой-то флаттенер, потому что пока что это курам на смех.
-        # ниже закомменчен вариант с Dict в качестве observation_space
-
+        # ниже закомменчен вариант с Dict в качестве недоделанного observation_space
+        
+        follower_sensor_size = len(self.follower.sensor)
+        
+        
+        
         self.observation_space = Box(np.array([0, 0,
                                                self.leader.min_speed,
                                                0,
@@ -277,11 +279,10 @@ class Game(gym.Env):
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
                                     start_position= (random.randrange(self.DISPLAY_WIDTH/2+100, self.DISPLAY_WIDTH-100,10),
-                                                               random.randrange(20, self.DISPLAY_HEIGHT-100,10)))
+                                                               random.randrange(20, self.DISPLAY_HEIGHT-100,10)),
+                                    start_direction = random.randint(1,360))
         
-#         follower_start_position = self.leader.position+50
-        
-        
+ 
         follower_start_position = np.array((self.leader.position[0] + random.choice((-1,1)) * random.randint(50,100),
                                            self.leader.position[1] + random.choice((-1,1)) * random.randint(50,100)), 
                                            dtype=np.float32)
@@ -299,7 +300,8 @@ class Game(gym.Env):
                                       max_rotation_speed=57.296 / 100,
                                       max_rotation_speed_change=20 / 100,
                                       start_position=follower_start_position,
-                                      sensor =  LaserSensor)
+                                      sensor =  LaserSensor,
+                                      return_all_points = True)
         
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)

@@ -222,7 +222,7 @@ class AbstractRobot(GameObject):
         if self.has_sensor:
             self.sensor.sdirection = self.direction
             self.sensor.position = self.position
-            return self.sensor.scan(env, **kwargs)
+            return self.sensor.scan(env)
             
         else:
             return list()
@@ -237,14 +237,16 @@ class LaserSensor():
                  sensor_direction=None,
                  available_angle=360, 
                  angle_step=10, # в градусах
-                 discretization=5, # число пикселей,
+                 points_number=20,
+#                  discretization_rate=20, # число пикселей,
                  sensor_range=5, # в метрах
                  distance_variance=0,
                  angle_variance=0, 
                  sensor_speed=0.1,
                  add_noise=False,
+                 return_all_points = False,
                  **kwargs
-                ): # в секундах? Пока не используется
+                ):
 
         self.host_object = host_object
         self.position = host_object.position
@@ -264,9 +266,22 @@ class LaserSensor():
         self.sensor_speed = sensor_speed
 
         self.sensed_points = list()
+        #TODO: переделать в set
+        
+        self.return_all_points = return_all_points
+#         self.discretization_rate = discretization_rate
+        
+        self.points_number = points_number
+        
+        self.data_shape = int(self.available_angle/self.angle_step)
+        
+        if return_all_points:
+             self.data_shape=self.data_shape*points_number  
 
-
-    def scan(self, env, return_all_points=False, discretization_rate = 20):
+    def __len__(self):
+        return self.data_shape
+    
+    def scan(self, env):
         """строит поля точек лидара.
            Входные параметры:
            env (Game environment):
@@ -283,7 +298,10 @@ class LaserSensor():
 
         # Если на нужной дистанции нет ни одного объекта - просто рисуем крайние точки, иначе нужно будет идти сложным путём
         objects_in_range = list()
-
+        
+        return_all_points = self.return_all_points
+#         discretization_rate = self.discretization_rate
+        
         env_range = self.range * env.PIXELS_TO_METER
 
         for cur_object in env.game_object_list:
@@ -325,8 +343,8 @@ class LaserSensor():
             point_to_add = None
             object_in_sight = False
             
-            for i in range(0,discretization_rate):
-                u = i/discretization_rate
+            for i in range(0,self.points_number):
+                u = i/self.points_number
                 cur_point = ((x2*u + x1 * (1-u)),(y2*u + y1 * (1-u)))
                 
                 if return_all_points:
@@ -350,9 +368,7 @@ class LaserSensor():
         return sensed_points
 
 
-#         def show(self, display):
-#             pass
-
+    
 
     @staticmethod
     def _add_noise(val,variance):
