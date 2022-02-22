@@ -171,11 +171,7 @@ class AbstractRobot(GameObject):
         # скорректировали скорости
         self._controller_call()
         if self.rotation_speed!=0:
-            self.direction = self.direction + self.rotation_direction*self.rotation_speed
-            if self.direction > 360:
-                self.direction = self.direction-360
-            if self.direction < 0:
-                self.direction = 360+self.direction
+            self.direction = angle_correction(self.direction + self.rotation_direction*self.rotation_speed)
         
         movement_vec = np.array((cos(radians(self.direction))*self.speed, sin(radians(self.direction))*self.speed),dtype=np.float32)
         self.position+=movement_vec
