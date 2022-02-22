@@ -173,11 +173,6 @@ class Game(gym.Env):
         self.action_space = Box(
             np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
             np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
-
-        # ниже закомменчен вариант с Dict в качестве недоделанного observation_space
-        
-        follower_sensor_size = len(self.follower.sensor)
-        
         
 
     def reset(self):
@@ -275,7 +270,6 @@ class Game(gym.Env):
     def _create_obstacles(self):
         
         #####################################
-        #TODO: отсутствие абсолютных чисел!
         self.most_point1 = (self.DISPLAY_WIDTH/2, 230)
         self.most_point2 = (self.DISPLAY_WIDTH/2, 770)
         # верхняя и нижняя часть моста
@@ -296,14 +290,18 @@ class Game(gym.Env):
             
             is_free = False
             
+            wall_start_x = (self.DISPLAY_WIDTH-self.obstacles1.width)/2
+            wall_end_x = (self.DISPLAY_WIDTH+self.obstacles1.width)/2
+            
             while not is_free:
                 generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
                                     np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))
                 
+                
+                
                 if self.leader.rectangle.collidepoint(generated_position) or \
                 self.follower.rectangle.collidepoint(generated_position) or \
-                self.obstacles1.rectangle.collidepoint(generated_position) or \
-                self.obstacles2.rectangle.collidepoint(generated_position): # Условие, чтобы не попадал между стен
+                ((generated_position[0]>=wall_start_x) and (generated_position[0]<=wall_end_x)):  # Условие, чтобы камень не попадал между стен
                     is_free=False
                 else:
                     is_free=True
@@ -327,8 +325,6 @@ class Game(gym.Env):
         self.crash = False
         
         
-    
-    
     def step(self,action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.manual_control:
@@ -393,7 +389,7 @@ class Game(gym.Env):
             self.done=True
            
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
-        # TODO: сделать параметром;
+        # show: сделать параметром;
         
         if pygame.time.get_ticks()%5==0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
@@ -512,16 +508,7 @@ class Game(gym.Env):
 
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
-        # TODO: добавить проверку, при которойо точки не на одной прямой
-        # TODO: добавить отдельную функцию, которая использует эту:
-        # на вход принимает шаблон -- список из r и c, где
-        #    r -- placeholder, на место которого будут подставляться случайные точки
-        #    c -- координаты точки, которые точно должны присутствовать в пути (например, координаты "моста")
-        # TODO: вообще нужен отдельный класс для траекторий;
-        # TODO: если строить маршрут с учётом препятствий сразу, вероятно обработка будет здесь или где-то рядом [Слава]
-        # TODO: ограничение на число итераций цикла (иначе может уйти в бесконечность).
-        # вероятно нужно сделать staticmethod
+        """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
 
         #  генерация финишной точки
         self.finish_point = np.float64((random.randrange(20, 500,10),random.randrange(20, 500,10)))
