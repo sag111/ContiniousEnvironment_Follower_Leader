@@ -186,21 +186,7 @@ class AbstractRobot(GameObject):
         """Функция автоматического управления движением к точке"""
         #TODO: сделать более хороший алгоритм следования маршруту [Слава]
         
-        next_point_scaled = next_point - self.position # таким образом мы рассчитываем положение точки относительно робота
-        
-        
-        if next_point_scaled[0]>0:
-            desirable_angle = degrees(atan(next_point_scaled[1]/next_point_scaled[0]))
-        elif next_point_scaled[0]<0:
-            desirable_angle = degrees(atan(next_point_scaled[1]/next_point_scaled[0]))+180
-        else:
-            desirable_angle = 0
-            
-        if desirable_angle >= 360:
-            desirable_angle -= 360
-        
-        if desirable_angle < 0:
-            desirable_angle = 360+desirable_angle
+        desirable_angle = angle_to_point(self.position,next_point)
         
         delta_turn = self.direction-desirable_angle
         
@@ -237,7 +223,7 @@ class LaserSensor():
                  sensor_direction=None,
                  available_angle=360, 
                  angle_step=10, # в градусах
-                 points_number=20,
+                 points_number=40,
 #                  discretization_rate=20, # число пикселей,
                  sensor_range=5, # в метрах
                  distance_variance=0,
