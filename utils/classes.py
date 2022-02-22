@@ -294,8 +294,6 @@ class LaserSensor():
         objects_in_range = list()
         
         return_all_points = self.return_all_points
-#         discretization_rate = self.discretization_rate
-        
         env_range = self.range * env.PIXELS_TO_METER
 
         for cur_object in env.game_object_list:
@@ -303,7 +301,8 @@ class LaserSensor():
                 continue
                 
             if cur_object.blocks_vision:
-                if distance.euclidean(cur_object.position, self.position)  <= env_range:
+                if distance_to_rect(self.position,cur_object) <= env_range:
+#                 if distance.euclidean(cur_object.position, self.position)  <= env_range:
                     objects_in_range.append(cur_object)
         
 
@@ -395,4 +394,20 @@ def angle_to_point(cur_point,target_point):
     return angle_correction(res_angle)
 
             
-            
+def distance_to_rect(cur_point, object2):
+    
+    min_distance = np.inf
+    for second_point in [object2.rectangle.topleft, 
+                         object2.rectangle.bottomleft, 
+                         object2.rectangle.topright, 
+                         object2.rectangle.bottomright,
+                         object2.rectangle.midtop, 
+                         object2.rectangle.midleft, 
+                         object2.rectangle.midbottom, 
+                         object2.rectangle.midright]:
+        
+        cur_distance = distance.euclidean(cur_point,second_point)
+        if cur_distance < min_distance:
+            min_distance = cur_distance
+    
+    return min_distance
