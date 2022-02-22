@@ -179,44 +179,6 @@ class Game(gym.Env):
         follower_sensor_size = len(self.follower.sensor)
         
         
-        
-        self.observation_space = Box(np.array([0, 0,
-                                               self.leader.min_speed,
-                                               0,
-                                               -self.leader.max_rotation_speed,
-                                               0, 0,
-                                               self.follower.min_speed,
-                                               0,
-                                               -self.follower.max_rotation_speed,
-                                               self.min_distance,
-                                               self.max_distance,
-                                               self.max_dev], dtype=np.float32),
-                                     np.array([self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
-                                               self.leader.max_speed,
-                                               360,
-                                               self.leader.max_rotation_speed,
-                                               self.DISPLAY_WIDTH,
-                                               self.DISPLAY_HEIGHT,
-                                               self.follower.max_speed,
-                                               360,
-                                               self.follower.max_rotation_speed,
-                                               self.min_distance,
-                                               self.max_distance,
-                                               self.max_dev], dtype=np.float32
-                                              ))
-
-    #         self.observation_space = Dict({
-    #                "leader_location_x": Box(0,self.DISPLAY_WIDTH, shape=[1]),
-    #                "leader_location_y": Box(0,self.DISPLAY_HEIGHT, shape=[1]),
-    #                "leader_speed": Box(self.leader.min_speed,self.leader.max_speed, shape=[1]),
-    #                "leader_direction": Discrete(360),
-    #                "leader_rotation_speed": Box(-self.leader.max_rotation_speed,self.leader.max_rotation_speed,shape=[1]),
-    #                "follower_location_x": Box(0,self.DISPLAY_WIDTH, shape=[1]),
-    #                "follower_location_y": Box(0,self.DISPLAY_HEIGHT, shape=[1]),
-    #                "follower_speed": Box(self.follower.min_speed,self.follower.max_speed,shape=[1]),
-    #                "follower_direction": Discrete(360),
-    #                "follower_rotation_speed": Box(-self.follower.max_rotation_speed,self.follower.max_rotation_speed, shape=[1]),
-    #                                       })
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -455,8 +417,6 @@ class Game(gym.Env):
         
         if self.step_count > self.max_steps:
             self.done=True
-#         print("Аккумулированная награда на step {0}: {1}".format(self.step_count, self.overall_reward))
-#         print()
         
         if self.aggregate_reward:
             reward_to_return = self.overall_reward
@@ -538,7 +498,6 @@ class Game(gym.Env):
         for cur_object in self.game_object_list:
             self.show_object(cur_object)
         
-        # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов) [Слава]
         # отображение круга минимального расстояния
         if self.follower_too_close:
             close_circle_width = 2
@@ -688,19 +647,25 @@ class Game(gym.Env):
     
     def _get_obs(self):
         """Возвращает наблюдения (observations) среды каждый шаг (step)"""
-        return np.array([self.leader.position[0],
-                         self.leader.position[1],
-                         self.leader.speed,
-                         self.leader.direction,
-                         self.leader.rotation_speed,
-                         self.follower.position[0],
-                         self.follower.position[1],
-                         self.follower.speed,
-                         self.follower.direction,
-                         self.follower.rotation_speed,
-                         self.min_distance,
-                         self.max_distance,
-                         self.max_dev], dtype=np.float32)
+        obs_dict = dict()
+        
+        obs_dict["numerical_features"] = np.array([self.leader.position[0],
+                                         self.leader.position[1],
+                                         self.leader.speed,
+                                         self.leader.direction,
+                                         self.leader.rotation_speed,
+                                         self.follower.position[0],
+                                         self.follower.position[1],
+                                         self.follower.speed,
+                                         self.follower.direction,
+                                         self.follower.rotation_speed,
+                                         self.min_distance,
+                                         self.max_distance,
+                                         self.max_dev], dtype=np.float32)
+        obs_dict["lidar_points"] = self.follower_scan_list
+#         obs_dict["lidar_distances"] = 
+
+        return obs_dict
 
     #                 {#"trajectory": self.leader_factual_trajectory,
     #                "leader_location_x": self.leader.position[0],
