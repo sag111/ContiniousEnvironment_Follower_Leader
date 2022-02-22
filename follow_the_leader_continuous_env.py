@@ -159,8 +159,11 @@ class Game(gym.Env):
         self.max_steps = max_steps
         self.aggregate_reward = aggregate_reward
         
-        self.obstacle_number = obstacle_number
         self.add_obstacles = add_obstacles
+        self.obstacles = list()
+        self.obstacle_number = obstacle_number
+        if not self.add_obstacles:
+            self.obstacle_number = 0
 
         self.reset()
 
@@ -568,8 +571,8 @@ class Game(gym.Env):
         step_grid = 10
         step_obs = 70/step_grid
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
         self.wid = self.DISPLAY_WIDTH
         self.hit = self.DISPLAY_HEIGHT
@@ -577,15 +580,15 @@ class Game(gym.Env):
         start = (int(self.leader.start_position[0]/step_grid),int(self.leader.start_position[1]/step_grid))
         #int(start)
         #start.tolist(start)
-        print(start)
+        #print(start)
         end = (int(self.finish_point[0]/step_grid),int(self.finish_point[1]/step_grid))
         #int(end)
-        print(end)
+        #print(end)
 
         wid = int(self.wid/step_grid)
-        print(wid)
+        #print(wid)
         hit = int(self.hit/step_grid)
-        print(hit)
+        #print(hit)
 
         #print(self.start)
         #print(self.end)
@@ -607,14 +610,14 @@ class Game(gym.Env):
                     if i >= 700/step_grid and i <=800/step_grid and j >= 530/step_grid and j <= 1000/step_grid:
                         grid[i][j] = 1
 
-        print(grid)
+        #print(grid)
         path = astar(maze=grid, start=start, end=end)
         #print(path)
         #print(grid)
         trajectory = []
         trajectory = path
-        print(trajectory)
-        print(grid[75][23])
+        #print(trajectory)
+        #print(grid[75][23])
         
         return trajectory
         

@@ -3,6 +3,7 @@ from collections import deque
 import numpy as np
 from gym import ObservationWrapper
 from gym.spaces import Box
+from numpy import arccos
 
 class MyFrameStack(ObservationWrapper):
     r"""Observation wrapper that stacks the observations in a rolling manner.
@@ -157,6 +158,100 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         self.prev_obs = obs
         #print("OBSS", obs)
         return obs_modified#np.clip(obs, -1, 1)
+
+    def reset(self, **kwargs):
+        observation = self.env.reset(**kwargs)
+        self.prev_obs = None
+        return self.observation(observation)
+
+def rotateVector(vec, angle):
+        theta = np.radians(angle)
+        rot = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+        return np.dot(rot, vec)
+        
+        
+def CalculateAngle(v, w): return arccos(v.dot(w)/(np.linalg.norm(v, axis=1)*np.linalg.norm(w)))
+
+class LeaderTrajectory_v0(ObservationWrapper):
+    
+    def __init__(self, env, framestack, radar_sectors_number, lz4_compress=False):
+        super().__init__(env)
+        self.framestack = framestack
+        self.leader_positions_hist = list()
+        self.radar_sectors_number = radar_sectors_number
+        self.sectorsAngle = np.pi/radar_sectors_number
+        
+        self.observation_space = Box(-np.ones(self.framestack*2+radar_sectors_number),
+                                      np.ones(self.framestack*2+radar_sectors_number))
+        
+    
+    
+    
+    def observation(self, obs):
+        """
+        На вход ожидается вектор с 13 компонентами:
+        - позиция х лидера
+        - позиция y лидера
+        - скорость лидера
+        - направление лидера
+        - скорость поворота лидера
+        - позиция х фолловера
+        - позиция y фолловера
+        - скорость фолловера
+        - направление фолловера
+        - скорость поворота фолловера
+        - минимальная дистанция
+        - максимальная дистанция
+        - максимальное отклонение от маршрута
+        
+        На выходе вектор из 2 конкатеринованных вектора:
+        - вектор из пар координат векторов разностей между текущей позицией ведомого и последними N позициями ведущего по которым он прошёл
+        - вектор радара, имеет количество компонент равное аргументу из конфига radar_sectors_number, каждая компонента дистанция до ближайшей точки в соответствующем секторе полугруга перед собой.
+        """
+        # change leader absolute pos, speed, direction to relative
+        #self.leader_positions_hist.append(obs[:2])
+        vecs_follower_to_leadhistory_far = np.zeros((self.framestack, 2))
+        if len(self.leader_positions_hist) >0:
+            vecs = np.array(self.leader_positions_hist[-self.framestack:]) - obs[5:7]
+            vecs_follower_to_leadhistory_far[:min(len(self.leader_positions_hist), self.framestack)] = vecs
+        vecs_follower_to_leadhistory_far = vecs_follower_to_leadhistory_far.flatten()
+        vecs_follower_to_leadhistory_far = np.clip(vecs_follower_to_leadhistory_far / (self.max_distance*2), -1, 1)
+        
+        followerDirVec = rotateVector(np.array([1,0]), self.follower.direction)
+        followerRightDir = self.follower.direction+90
+        if followerRightDir>=360:
+            followerRightDir -= 360
+        followerRightVec = rotateVector(np.array([1,0]), followerRightDir)
+        """
+        distances_follower_to_leadhistory = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
+        angles_history_to_dir = CalculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
+        angles_history_to_right = CalculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
+        """
+        radar_values = np.zeros(self.radar_sectors_number)
+        if len(self.leader_positions_hist)>0:
+            closest_dots = np.array(self.leader_positions_hist[:min(len(self.leader_positions_hist), self.framestack)])
+            vecs_follower_to_leadhistory_close = closest_dots - obs[5:7]
+            distances_follower_to_closestDots = np.linalg.norm(vecs_follower_to_leadhistory_close, axis=1)
+            angles_history_to_dir = CalculateAngle(vecs_follower_to_leadhistory_close, followerDirVec)
+            angles_history_to_right = CalculateAngle(vecs_follower_to_leadhistory_close, followerRightVec)
+            angles_history_to_right[angles_history_to_dir>np.pi/2] = -angles_history_to_right[angles_history_to_dir>np.pi/2]
+            for i in range(self.radar_sectors_number):
+                secrot_dots_distances = distances_follower_to_closestDots[(angles_history_to_right>=self.sectorsAngle*i) & (angles_history_to_right<self.sectorsAngle*(i+1))]
+                if len(secrot_dots_distances)>0:
+                    radar_values[i] = np.min(secrot_dots_distances)
+        
+        radar_values = np.clip(radar_values / (self.max_distance*2), -1, 1)
+        return np.concatenate([vecs_follower_to_leadhistory_far, radar_values])
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        self.leader_positions_hist.append(observation[:2])
+        norms = np.linalg.norm(np.array(self.leader_positions_hist) - observation[5:7], axis=1)
+        indexes = np.nonzero(norms<=max(self.follower.width, self.follower.height))[0]
+        for index in sorted(indexes, reverse=True):
+            del self.leader_positions_hist[index]
+
+        return self.observation(observation), reward, done, info
 
     def reset(self, **kwargs):
         observation = self.env.reset(**kwargs)

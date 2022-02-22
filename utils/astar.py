@@ -148,7 +148,7 @@ def astar(maze, start, end, allow_diagonal_movement=True):
                         #distance.cityblock(child.position,start_node.position)
             #print(child.h)
             child.f = child.g + child.h
-            print(child.f)
+            #print(child.f)
 
             # Child is already in the open list
             if len([open_node for open_node in open_list if
