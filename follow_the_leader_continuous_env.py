@@ -206,7 +206,7 @@ class Game(gym.Env):
         self.overall_reward = 0
         
         # список пказааний лидара ведммого
-        self.follower_scan_list = list()
+        self.follower_scan_dict = dict()
 
         # Флаг конца симуляции
         self.done = False
@@ -223,7 +223,8 @@ class Game(gym.Env):
         self.clock = pygame.time.Clock()
         
         self.simulation_number += 1
-
+        
+        self.follower_scan_dict = self.follower.use_sensor(self)
         return self._get_obs()
     
     
@@ -247,8 +248,11 @@ class Game(gym.Env):
                                            self.leader.position[1] + random.choice((-1,1)) * random.randint(50,100)), 
                                            dtype=np.float32)
         
+        
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
                                     
+        follower_sensor = LaserSensor(return_all_points = True)
+        
         self.follower = AbstractRobot("follower",
                                       image=self.follower_img,
                                       start_direction= follower_direction,
@@ -260,8 +264,9 @@ class Game(gym.Env):
                                       max_rotation_speed=57.296 / 100,
                                       max_rotation_speed_change=20 / 100,
                                       start_position=follower_start_position,
-                                      sensor =  LaserSensor,
-                                      return_all_points = True)
+                                     sensor = follower_sensor)
+        
+        
         
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
@@ -340,6 +345,8 @@ class Game(gym.Env):
                 self.follower.command_turn(0,0)
                 
         
+        self.follower_scan_dict = self.follower.use_sensor(self)
+        
         for cur_ministep_nb in range(self.frames_per_step):
             obs,reward,done,_ = self.frame_step(action)
         
@@ -352,7 +359,8 @@ class Game(gym.Env):
         self.is_on_trace = False
         
         self.follower.move()
-        self.follower_scan_list = self.follower.use_sensor(self, return_all_points=False)
+#         self.follower_scan_dict = sensor_dict
+#         self.follower_scan_dict = self.follower.use_sensor(self)
         
         # определение столкновения ведомого с препятствиями
         if self._collision_check(self.follower):
@@ -503,8 +511,9 @@ class Game(gym.Env):
         self.leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position, self.min_distance, width=close_circle_width)
         
         if self.show_sensors:
-            for cur_point in self.follower_scan_list:
-                pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 3)
+            for cur_sensor in self.follower.sensor_list:
+                cur_sensor.show(self)
+            
 
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
@@ -568,33 +577,33 @@ class Game(gym.Env):
         return trajectory
         
 
-    def generate_trajectory_old(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
-        trajectory = list()
+#     def generate_trajectory_old(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
+#         """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
+#         trajectory = list()
         
-        i = 0 # пока отслеживаем зацикливание по числу итераций на генерацию каждой точки. Примитивно, но лучше, чем никак
+#         i = 0 # пока отслеживаем зацикливание по числу итераций на генерацию каждой точки. Примитивно, но лучше, чем никак
         
-        while (len(trajectory) < n) and (i < iter_limit):
-            new_point = np.array((np.random.randint(border,high=self.DISPLAY_WIDTH-border),
-                                  np.random.randint(border,high=self.DISPLAY_HEIGHT-border)))
+#         while (len(trajectory) < n) and (i < iter_limit):
+#             new_point = np.array((np.random.randint(border,high=self.DISPLAY_WIDTH-border),
+#                                   np.random.randint(border,high=self.DISPLAY_HEIGHT-border)))
             
-            if len(trajectory)==0:
-                trajectory.append(new_point)
-                i=0
-            else:
-                to_add = True
+#             if len(trajectory)==0:
+#                 trajectory.append(new_point)
+#                 i=0
+#             else:
+#                 to_add = True
                 
-                # работает только на ограниченном числе точек, может уйти в бесконечный цикл, осторожнее!!!
+#                 # работает только на ограниченном числе точек, может уйти в бесконечный цикл, осторожнее!!!
                 
-                for prev_point in trajectory:
-                    if distance.euclidean(prev_point,new_point) < min_distance:
-                        to_add=False
+#                 for prev_point in trajectory:
+#                     if distance.euclidean(prev_point,new_point) < min_distance:
+#                         to_add=False
                 
-                if to_add:
-                    trajectory.append(new_point)  
+#                 if to_add:
+#                     trajectory.append(new_point)  
                 
-                i+=1
-        return trajectory
+#                 i+=1
+#         return trajectory
 
 
 
@@ -649,8 +658,14 @@ class Game(gym.Env):
                                          self.min_distance,
                                          self.max_distance,
                                          self.max_dev], dtype=np.float32)
-        obs_dict["lidar_points"] = self.follower_scan_list
+        
+        for cur_sensor in self.follower.sensor_list: 
+            obs_dict["{0}_points".format(cur_sensor.sensor_name)] = self.follower_scan_dict[cur_sensor.sensor_name]
+        
+#         obs_dict["lidar_points"] = self.follower_scan_list
 #         obs_dict["lidar_distances"] = 
+        # "lidar_distances" -- дистанция, на которую добил лидар по каждому направлению работы;
+        # "sector_scan_trajectory"
 
         return obs_dict
 

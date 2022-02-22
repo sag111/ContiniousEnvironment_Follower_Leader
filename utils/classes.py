@@ -2,6 +2,7 @@ import pygame
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
+import json
 
 class GameObject():
     def __init__(self,
@@ -65,7 +66,6 @@ class AbstractRobot(GameObject):
                  **kwargs
                  ):
         """Класс, который реализует робота."""
-        # TODO: задание формы робота полигоном или абстрактной фигурой
         
         super(AbstractRobot, self).__init__(name,
                  image=image,
@@ -98,13 +98,26 @@ class AbstractRobot(GameObject):
         
         if sensor is None:
             self.has_sensor = False
-            self.sensor = None
+            self.sensor_list = []
         else:
             self.has_sensor = True
-            self.sensor = sensor(self,sensor_direction=self.direction,**kwargs)
             
-#         self.sensor = sensor
-        
+            if sensor is list:
+                self.sensor_list = sensor
+            else:
+                self.sensor_list = [sensor]
+            
+            self._sensor_pos_update()
+    
+    def _sensor_pos_update(self):
+        for cur_sensor in self.sensor_list:
+            cur_sensor.sensor_direction = self.direction
+            cur_sensor.sensor_position = self.position
+    
+#     def set_sensor(self, sensor_type, **kwargs):
+#         new_sensor = sensor_type(self,**kwargs)
+#         self.sensor_list.append(new_sensor)
+    
     def command_turn(self, desirable_rotation_speed, rotation_direction):
         """Обработка команд, влияющих на скорость угловую w"""
             # Не превышаем максимальной скорости
@@ -175,7 +188,7 @@ class AbstractRobot(GameObject):
         
         movement_vec = np.array((cos(radians(self.direction))*self.speed, sin(radians(self.direction))*self.speed),dtype=np.float32)
         self.position+=movement_vec
-        
+        self._sensor_pos_update()
     
     
     def move_to_the_point(self, next_point):
@@ -200,11 +213,24 @@ class AbstractRobot(GameObject):
         
         self.move()
         
-    def use_sensor(self, env, **kwargs):
+    def use_sensor(self, env):
         if self.has_sensor:
-            self.sensor.sdirection = self.direction
-            self.sensor.position = self.position
-            return self.sensor.scan(env)
+            
+            res_scans = dict()
+            
+            for cur_sensor in self.sensor_list:
+                cur_sensor.direction = self.direction
+                cur_sensor.position = self.position
+                
+                if cur_sensor.sensor_name in res_scans:
+                    #
+                    raise KeyError("Дублирование имени сенсора: {}".format("cur_sensor.sensor_name"))
+                else:
+                    res_scans[cur_sensor.sensor_name] = cur_sensor.scan(env)
+                
+#                 res_scans.append(cur_sensor.scan(env))
+            
+            return res_scans
             
         else:
             return list()
@@ -215,51 +241,37 @@ class AbstractRobot(GameObject):
 class LaserSensor():
     """Реализует один лазерный сенсор лидара"""
     def __init__(self,
-                 host_object,
                  sensor_direction=None,
+                 sensor_position=None,
+                 sensor_name="lidar",
                  available_angle=360, 
                  angle_step=10, # в градусах
-                 points_number=40,
-#                  discretization_rate=20, # число пикселей,
+                 points_number=40, # чилло точек
                  sensor_range=5, # в метрах
-                 distance_variance=0,
-                 angle_variance=0, 
-                 sensor_speed=0.1,
-                 add_noise=False,
                  return_all_points = False,
                  **kwargs
                 ):
-
-        self.host_object = host_object
-        self.position = host_object.position
-
+         
+        self.sensor_name = sensor_name
+        self.position = sensor_position
         self.direction = sensor_direction
-        if self.direction is None:
-            self.direction = self.host_object.direction
 
         self.available_angle = min(360,available_angle)
         self.angle_step = angle_step
 
         self.range = sensor_range
 
-        self.distance_variance = distance_variance
-        self.angle_variance = angle_variance
-
-        self.sensor_speed = sensor_speed
-
-        self.sensed_points = list()
-        #TODO: переделать в set
-        
+        self.sensed_points = list()        
         self.return_all_points = return_all_points
-#         self.discretization_rate = discretization_rate
-        
+
         self.points_number = points_number
         
-        self.data_shape = int(self.available_angle/self.angle_step)
+        self.sensed_points = list()
         
-        if return_all_points:
+        self.data_shape = int(self.available_angle/self.angle_step)        
+        if self.return_all_points:
              self.data_shape=self.data_shape*points_number  
-
+    
     def __len__(self):
         return self.data_shape
     
@@ -346,15 +358,19 @@ class LaserSensor():
             
             if not return_all_points:
                 sensed_points.append(point_to_add)
-
+        
+        self.sensed_points = sensed_points
         return sensed_points
 
 
-    
+    def show(self,env):
+        for cur_point in self.sensed_points:
+            pygame.draw.circle(env.gameDisplay, env.colours["pink"], cur_point, 3)
+        
 
-    @staticmethod
-    def _add_noise(val,variance):
-        return max(np.random.normal(val,variance), 0)
+#     @staticmethod
+#     def _add_noise(val,variance):
+#         return max(np.random.normal(val,variance), 0)
 
 def angle_correction(angle):
     if angle>=360:
