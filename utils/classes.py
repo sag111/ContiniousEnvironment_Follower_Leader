@@ -191,18 +191,26 @@ class AbstractRobot(GameObject):
         """Функция автоматического управления движением к точке"""
         desirable_angle = int(angle_to_point(self.position,next_point))
         
-        delta_turn = abs(int(self.direction)-desirable_angle)
+        cur_direction = int(self.direction)
         
-        if int(self.direction) < desirable_angle:
-            new_rotation_direction = 1
-        elif int(self.direction) > desirable_angle:
-            new_rotation_direction = -1
+        if desirable_angle-cur_direction > 0:
+            if desirable_angle - cur_direction > 180:
+                delta_turn = cur_direction + (360-desirable_angle)
+                new_rotation_direction = -1
+            else:
+                delta_turn = desirable_angle - cur_direction
+                new_rotation_direction = 1
+        
         else:
-            new_rotation_direction = 0
-            delta_turn = 0
+            if cur_direction - desirable_angle > 180:
+                new_rotation_direction = 1
+                delta_turn = (360-cur_direction)+desirable_angle
+            else:
+                new_rotation_direction = -1
+                delta_turn = cur_direction - desirable_angle
 
-        self.command_forward(distance.euclidean(self.position,next_point))
         self.command_turn(delta_turn, new_rotation_direction)
+        self.command_forward(distance.euclidean(self.position,next_point))
         
         self.move()
         
