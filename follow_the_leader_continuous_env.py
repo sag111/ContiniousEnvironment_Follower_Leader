@@ -15,8 +15,8 @@ from gym.spaces import Discrete, Box, Dict, Tuple
 import random
 
 from utils import astar
-from utils.astar import Node
-from utils.astar import astar
+from utils.astar import Node, astar
+from utils.misc import rotateVector
 
 from warnings import warn
 
@@ -535,9 +535,29 @@ class Game(gym.Env):
                 for cur_point in self.follower.sensors["LaserSensor"].sensed_points:
                     pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 3)
             if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
+                pass
+                """
+                # медленно, но для отладки пойдёт
                 for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values.shape[0]):
                     if np.sum(self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i]) > 0:
-                        pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
+                        #pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
+                        pygame.draw.circle(self.gameDisplay, (255, 100, 50), self.follower.position +
+                                         self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i], 1)
+                for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values.shape[0]):
+                    followerRightDir = self.follower.direction + 90
+                    if followerRightDir >= 360:
+                        followerRightDir -= 360
+
+                    for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number):
+                        if self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i]==0:
+                            continue
+                        followerRightVec = rotateVector(np.array([self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i], 0]), followerRightDir)
+                        relativeDot = rotateVector(followerRightVec,  self.follower.sensors["ObservedLeaderPositions_packmanStyle"].sectorsAngle_deg * (self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number - i))
+                        absDot = self.follower.position-relativeDot
+                        #pygame.draw.line(self.gameDisplay, (100, 100, 255), self.follower.position, absDot)
+                        pygame.draw.circle(self.gameDisplay, (100, 80, 255), absDot, 1)
+                """
+
                 #self.follower.sensors["ObservedLeaderPositions_packmanStyle"].get_radar_values()
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):

@@ -138,7 +138,8 @@ class ObservedLeaderPositions_packmanStyle:
         self.host_object = host_object
         self.position_sequence_length = position_sequence_length
         self.radar_sectors_number = radar_sectors_number
-        self.sectorsAngle = np.pi / radar_sectors_number
+        self.sectorsAngle_rad = np.pi / radar_sectors_number
+        self.sectorsAngle_deg = 180 / radar_sectors_number
         self.leader_positions_hist = list()
         self.radar_values = None
         self.vecs_values = None
@@ -178,11 +179,11 @@ class ObservedLeaderPositions_packmanStyle:
             angles_history_to_right[angles_history_to_dir > np.pi / 2] = -angles_history_to_right[
                 angles_history_to_dir > np.pi / 2]
             for i in range(self.radar_sectors_number):
-                secrot_dots_distances = distances_follower_to_chosenDots[
-                    (angles_history_to_right >= self.sectorsAngle * i) & (
-                            angles_history_to_right < self.sectorsAngle * (i + 1))]
-                if len(secrot_dots_distances) > 0:
-                    radar_values[i] = np.min(secrot_dots_distances)
+                sector_dots_distances = distances_follower_to_chosenDots[
+                    (angles_history_to_right >= self.sectorsAngle_rad * i) & (
+                            angles_history_to_right < self.sectorsAngle_rad * (i + 1))]
+                if len(sector_dots_distances) > 0:
+                    radar_values[i] = np.min(sector_dots_distances)
         self.radar_values = radar_values
         return radar_values
 
