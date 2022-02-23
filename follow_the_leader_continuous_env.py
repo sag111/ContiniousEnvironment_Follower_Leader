@@ -531,6 +531,9 @@ class Game(gym.Env):
                 cur_sensor.show(self)
         
         pygame.draw.circle(self.gameDisplay, self.colours["red"],  self.cur_target_point, 10, width=2)
+                
+        pygame.draw.circle(self.gameDisplay, self.colours["black"],  self.first_bridge_point, 10, width=3)
+        pygame.draw.circle(self.gameDisplay, self.colours["black"],  self.second_bridge_point, 10, width=3)
             
 
 
@@ -567,7 +570,7 @@ class Game(gym.Env):
             
         grid = np.zeros([astar_grid_width,astar_grid_height],dtype=int)
         
-        leader_size_factor = (max(self.leader.width,self.leader.height)*2)
+        leader_size_factor = int((max(self.leader.width,self.leader.height)*2))
         
         
         for cur_obstacle in self.game_object_list:
@@ -588,27 +591,39 @@ class Game(gym.Env):
         bridge_point = (bridge_point[0],bridge_point[1])
         grid[bridge_point] = 0
         
-        for i in range(int(self.obstacles1.rectangle.left/step_grid-leader_size_factor/step_grid),
-                       int(self.obstacles1.rectangle.right/step_grid+leader_size_factor/step_grid)):
+        for i in range(int((self.obstacles1.rectangle.left/step_grid)-(leader_size_factor/step_grid)),
+                       int((self.obstacles1.rectangle.right/step_grid)+(leader_size_factor/step_grid))):
             grid[i,bridge_point[1]] = 0
+        
+        
+        first_bridge_point = (int((self.obstacles1.rectangle.right+self.leader_pos_epsilon)/step_grid),bridge_point[1])
+        second_bridge_point = (int((self.obstacles1.rectangle.left-self.leader_pos_epsilon)/step_grid), bridge_point[1])
+        
+        self.first_bridge_point = (int((self.obstacles1.rectangle.right+self.leader_pos_epsilon)),step_grid*bridge_point[1])
+        self.second_bridge_point = (int((self.obstacles1.rectangle.left-self.leader_pos_epsilon)), step_grid*bridge_point[1])
+        
         
         path = astar(maze=grid, 
                      start=start, 
-                     end=(self.obstacles1.rectangle.right+self.leader_pos_epsilon,bridge_point[1]), 
+                     end=first_bridge_point, 
                      max_iterations=max_iter, 
                      return_none_on_max_iter=False)
-        
+            
         if path is None:
             return []
         
-        path_continued = astar(maze=grid, 
-                               start=(self.obstacles1.rectangle.left-self.leader_pos_epsilon, bridge_point[1]),
-                               end=end, 
-                               max_iterations=max_iter, 
+        if path[-1]!=first_bridge_point:
+            path.append(self.first_bridge_point)
+        
+        path_continued = astar(maze=grid,
+                               start=second_bridge_point,
+                               end=end,
+                               max_iterations=max_iter,
                                return_none_on_max_iter=False)
         
-        if path_continued is None:
-            return path
+        
+#         if path_continued is None:
+#             return path
         
         return path+path_continued
 
