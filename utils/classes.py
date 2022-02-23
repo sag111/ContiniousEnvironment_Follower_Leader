@@ -114,10 +114,6 @@ class AbstractRobot(GameObject):
             cur_sensor.sensor_direction = self.direction
             cur_sensor.sensor_position = self.position
     
-#     def set_sensor(self, sensor_type, **kwargs):
-#         new_sensor = sensor_type(self,**kwargs)
-#         self.sensor_list.append(new_sensor)
-    
     def command_turn(self, desirable_rotation_speed, rotation_direction):
         """Обработка команд, влияющих на скорость угловую w"""
             # Не превышаем максимальной скорости
@@ -193,23 +189,20 @@ class AbstractRobot(GameObject):
     
     def move_to_the_point(self, next_point):
         """Функция автоматического управления движением к точке"""
-        #TODO: сделать более хороший алгоритм следования маршруту [Слава]
+        desirable_angle = int(angle_to_point(self.position,next_point))
         
-        desirable_angle = angle_to_point(self.position,next_point)
+        delta_turn = abs(int(self.direction)-desirable_angle)
         
-        delta_turn = int(self.direction-desirable_angle)
-        
-        if delta_turn > 0.:
-            new_rotation_direction = -1
-        elif delta_turn < 0.:
+        if int(self.direction) < desirable_angle:
             new_rotation_direction = 1
+        elif int(self.direction) > desirable_angle:
+            new_rotation_direction = -1
         else:
             new_rotation_direction = 0
-        
-        delta_turn = abs(delta_turn)
+            delta_turn = 0
 
         self.command_forward(distance.euclidean(self.position,next_point))
-        self.command_turn(abs(delta_turn), new_rotation_direction)
+        self.command_turn(delta_turn, new_rotation_direction)
         
         self.move()
         
@@ -227,8 +220,6 @@ class AbstractRobot(GameObject):
                     raise KeyError("Дублирование имени сенсора: {}".format("cur_sensor.sensor_name"))
                 else:
                     res_scans[cur_sensor.sensor_name] = cur_sensor.scan(env)
-                
-#                 res_scans.append(cur_sensor.scan(env))
             
             return res_scans
             
