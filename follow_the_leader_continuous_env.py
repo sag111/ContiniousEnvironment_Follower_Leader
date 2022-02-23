@@ -25,7 +25,7 @@ from warnings import warn
 class Game(gym.Env):
     def __init__(self, game_width=1500,
                  game_height=1000,
-                 framerate=5000,
+                 framerate=500,
                  frames_per_step=10,
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
@@ -529,6 +529,8 @@ class Game(gym.Env):
         if self.show_sensors:
             for cur_sensor in self.follower.sensor_list:
                 cur_sensor.show(self)
+        
+        pygame.draw.circle(self.gameDisplay, self.colours["red"],  self.cur_target_point, 10, width=2)
             
 
 
@@ -590,12 +592,20 @@ class Game(gym.Env):
                        int(self.obstacles1.rectangle.right/step_grid+leader_size_factor/step_grid)):
             grid[i,bridge_point[1]] = 0
         
-        path = astar(maze=grid, start=start, end=bridge_point, max_iterations=max_iter, return_none_on_max_iter=False)
+        path = astar(maze=grid, 
+                     start=start, 
+                     end=(self.obstacles1.rectangle.right+self.leader_pos_epsilon,bridge_point[1]), 
+                     max_iterations=max_iter, 
+                     return_none_on_max_iter=False)
         
         if path is None:
             return []
         
-        path_continued = astar(maze=grid, start=bridge_point, end= end, max_iterations=max_iter, return_none_on_max_iter=False)
+        path_continued = astar(maze=grid, 
+                               start=(self.obstacles1.rectangle.left-self.leader_pos_epsilon, bridge_point[1]),
+                               end=end, 
+                               max_iterations=max_iter, 
+                               return_none_on_max_iter=False)
         
         if path_continued is None:
             return path
