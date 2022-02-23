@@ -291,7 +291,8 @@ class Game(gym.Env):
                                          start_position=self.leader.position + 50,
                                          # (self.leader.position[0]+50,self.leader.position[1]+50),
                                          # ((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
-                                         sensors={"LaserSensor": {}})
+                                         sensors={"LaserSensor": {},
+                                                  "ObservedLeaderPositions_packmanStyle": {}})
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
@@ -366,7 +367,8 @@ class Game(gym.Env):
 
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
-
+        if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
+            self.follower.sensors["ObservedLeaderPositions_packmanStyle"].update_observations_hist(self.leader.position)
         return obs, reward, done, {}
 
     def frame_step(self, action):
@@ -532,6 +534,11 @@ class Game(gym.Env):
             if "LaserSensor" in self.follower.sensors:
                 for cur_point in self.follower.sensors["LaserSensor"].sensed_points:
                     pygame.draw.circle(self.gameDisplay, self.colours["pink"], cur_point, 3)
+            if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
+                for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values.shape[0]):
+                    if np.sum(self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i]) > 0:
+                        pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
+                #self.follower.sensors["ObservedLeaderPositions_packmanStyle"].get_radar_values()
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий"""

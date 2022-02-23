@@ -231,3 +231,6 @@ class RobotWithSensors(AbstractRobot):
     def use_sensors(self, env):
         if "LaserSensor" in self.sensors:
             self.sensors["LaserSensor"].scan(env)
+        if "ObservedLeaderPositions_packmanStyle" in self.sensors:
+            self.sensors["ObservedLeaderPositions_packmanStyle"].get_vectors_to_position()
+            self.sensors["ObservedLeaderPositions_packmanStyle"].get_radar_values()

@@ -2,7 +2,8 @@ from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
 
-from utils.misc import angle_correction
+from utils.misc import angle_correction, rotateVector, calculateAngle
+
 
 class LaserSensor():
     """Реализует один лазерный сенсор лидара"""
@@ -108,6 +109,7 @@ class LaserSensor():
                 self.sensed_points.append(point_to_add)
 
         return self.sensed_points
+
     #         def show(self, display):
     #             pass
 
@@ -115,7 +117,95 @@ class LaserSensor():
     def _add_noise(val, variance):
         return max(np.random.normal(val, variance), 0)
 
+class ObservedLeaderPositions_packmanStyle:
+    """
+    Класс, отслеживающий наблюдаемые позиции лидера.
+    Класс генерирует наблюдения двух типов:
+        вектора до определённых позиций
+        радар, указывающий, есть ли позиции лидера в определённых секторах полукруга перед преследователем
+    отслеживать можно самые новые позиции лидера или самые старые
+    TODO: Добавить вариант отслеживания позиций или радара до ближайших точек до преследователя
+    """
+    def __init__(self,
+                 host_object,
+                 position_sequence_length=100,
+                 radar_sectors_number=180):
+        """
+        :param host_object: робот пресследователь, на котором работает этот сенсор
+        :param position_sequence_length: длина последовательности, которая будет использоваться радаром
+        :param radar_sectors_number: количество секторов в радаре
+        """
+        self.host_object = host_object
+        self.position_sequence_length = position_sequence_length
+        self.radar_sectors_number = radar_sectors_number
+        self.sectorsAngle = np.pi / radar_sectors_number
+        self.leader_positions_hist = list()
+        self.radar_values = None
+        self.vecs_values = None
+
+    def get_vectors_to_position(self, positions_time_mode="new"):
+        vecs_follower_to_leadhistory_far = np.zeros((self.position_sequence_length, 2))
+        if len(self.leader_positions_hist) > 0:
+            if positions_time_mode=="new":
+                vecs = np.array(self.leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
+            elif positions_time_mode=="old":
+                vecs = np.array(self.leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
+            vecs_follower_to_leadhistory_far[:min(len(self.leader_positions_hist), self.position_sequence_length)] = vecs
+        self.vecs_values = vecs_follower_to_leadhistory_far
+        return vecs_follower_to_leadhistory_far
+
+    def get_radar_values(self, positions_time_mode="old"):
+        followerDirVec = rotateVector(np.array([1, 0]), self.host_object.direction)
+        followerRightDir = self.host_object.direction + 90
+        if followerRightDir >= 360:
+            followerRightDir -= 360
+        followerRightVec = rotateVector(np.array([1, 0]), followerRightDir)
+        """
+        distances_follower_to_leadhistory = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
+        angles_history_to_dir = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
+        angles_history_to_right = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
+        """
+        radar_values = np.zeros(self.radar_sectors_number)
+        if len(self.leader_positions_hist) > 0:
+            if positions_time_mode=="new":
+                chosen_dots = np.array(self.leader_positions_hist[-self.position_sequence_length:])
+            elif positions_time_mode=="old":
+                chosen_dots = np.array(self.leader_positions_hist[:self.position_sequence_length])
+            vecs_follower_to_leadhistory = chosen_dots - self.host_object.position
+            distances_follower_to_chosenDots = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
+            angles_history_to_dir = calculateAngle(vecs_follower_to_leadhistory, followerDirVec)
+            angles_history_to_right = calculateAngle(vecs_follower_to_leadhistory, followerRightVec)
+            angles_history_to_right[angles_history_to_dir > np.pi / 2] = -angles_history_to_right[
+                angles_history_to_dir > np.pi / 2]
+            for i in range(self.radar_sectors_number):
+                secrot_dots_distances = distances_follower_to_chosenDots[
+                    (angles_history_to_right >= self.sectorsAngle * i) & (
+                            angles_history_to_right < self.sectorsAngle * (i + 1))]
+                if len(secrot_dots_distances) > 0:
+                    radar_values[i] = np.min(secrot_dots_distances)
+        self.radar_values = radar_values
+        return radar_values
+
+    def update_observations_hist(self, leader_position):
+        """
+        Обновляет историю позиций.
+        Добавляет наблюдаемую позицию лидера в историю.
+        Удаляет из истории позиции, которые преследователь прошёл
+        :param leader_position: np.array (2,) - 2 абсолютные координаты лидера
+        :return:
+        """
+        self.leader_positions_hist.append(leader_position.copy())
+        norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
+        indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
+        for index in sorted(indexes, reverse=True):
+            del self.leader_positions_hist[index]
+
+    def reset(self):
+        self.leader_positions_hist = list()
+
+
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
 SENSOR_NAME_TO_CLASS = {
-    "LaserSensor": LaserSensor
+    "LaserSensor": LaserSensor,
+    "ObservedLeaderPositions_packmanStyle": ObservedLeaderPositions_packmanStyle
 }
