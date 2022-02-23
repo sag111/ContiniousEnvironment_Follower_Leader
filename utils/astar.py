@@ -49,7 +49,7 @@ def return_path(current_node):
         current = current.parent
     return path[::-1]  # Return reversed path
 
-def astar(maze, start, end, allow_diagonal_movement=True):
+def astar(maze, start, end, allow_diagonal_movement=True, max_iteration=None):
     """
     Returns a list of tuples as a path from the given start to the given end in the given maze
     :param maze:
@@ -74,7 +74,9 @@ def astar(maze, start, end, allow_diagonal_movement=True):
 
     # Adding a stop condition
     outer_iterations = 0
-    max_iterations = (len(maze[0]) * len(maze) // 2)
+    
+    if max_iterations is None:
+        max_iterations = (len(maze[0]) * len(maze) // 2)
 
     # what squares do we search
     adjacent_squares = ((0, -1), (0, 1), (-1, 0), (1, 0),)
