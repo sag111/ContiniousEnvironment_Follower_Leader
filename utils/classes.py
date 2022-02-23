@@ -197,19 +197,19 @@ class AbstractRobot(GameObject):
         
         desirable_angle = angle_to_point(self.position,next_point)
         
-        delta_turn = self.direction-desirable_angle
+        delta_turn = int(self.direction-desirable_angle)
         
         if delta_turn > 0.:
-            self.rotation_direction = -1
+            new_rotation_direction = -1
         elif delta_turn < 0.:
-            self.rotation_direction = 1
+            new_rotation_direction = 1
         else:
-            self.rotation_direction = 0
+            new_rotation_direction = 0
         
         delta_turn = abs(delta_turn)
 
         self.command_forward(distance.euclidean(self.position,next_point))
-        self.command_turn(abs(delta_turn), self.rotation_direction)
+        self.command_turn(abs(delta_turn), new_rotation_direction)
         
         self.move()
         
@@ -246,7 +246,7 @@ class LaserSensor():
                  sensor_name="lidar",
                  available_angle=360, 
                  angle_step=10, # в градусах
-                 points_number=40, # чилло точек
+                 points_number=20, # чиcло точек
                  sensor_range=5, # в метрах
                  return_all_points = False,
                  **kwargs
@@ -301,8 +301,7 @@ class LaserSensor():
                 continue
                 
             if cur_object.blocks_vision:
-                if distance_to_rect(self.position,cur_object) <= env_range:
-#                 if distance.euclidean(cur_object.position, self.position)  <= env_range:
+                if distance_to_rect(self.position,cur_object) <= env_range+(3*env.PIXELS_TO_METER):
                     objects_in_range.append(cur_object)
         
 
