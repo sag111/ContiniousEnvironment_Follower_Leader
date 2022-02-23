@@ -49,7 +49,7 @@ def return_path(current_node):
         current = current.parent
     return path[::-1]  # Return reversed path
 
-def astar(maze, start, end, allow_diagonal_movement=True, max_iteration=None):
+def astar(maze, start, end, allow_diagonal_movement=True, max_iterations=None):
     """
     Returns a list of tuples as a path from the given start to the given end in the given maze
     :param maze:
