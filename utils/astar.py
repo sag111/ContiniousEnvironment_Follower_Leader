@@ -42,14 +42,14 @@ class Node:
 def return_path(current_node):
     path = []
     current = current_node
-    step_grid = 10
+    step_grid = 20
     while current is not None:
         #print(current.position[0])
         path.append((current.position[0]*step_grid,current.position[1]*step_grid))
         current = current.parent
     return path[::-1]  # Return reversed path
 
-def astar(maze, start, end, allow_diagonal_movement=True, max_iterations=None):
+def astar(maze, start, end, allow_diagonal_movement=True, max_iterations=None,return_none_on_max_iter=True):
     """
     Returns a list of tuples as a path from the given start to the given end in the given maze
     :param maze:
@@ -93,7 +93,10 @@ def astar(maze, start, end, allow_diagonal_movement=True, max_iterations=None):
             # if we hit this point return the path such as it is
             # it will not contain the destination
             warn("giving up on pathfinding too many iterations")
-            return return_path(current_node)
+            if return_none_on_max_iter:
+                return None
+            else:
+                return return_path(current_node)
 
             # Get the current node
         current_node = heapq.heappop(open_list)
