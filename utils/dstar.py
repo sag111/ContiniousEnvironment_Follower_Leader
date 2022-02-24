@@ -189,6 +189,8 @@ class Dstar:
             iterat += 1
             print(iterat)
             if iterat > max_iterat:
+                rx.clear()
+                ry.clear()
                 break
 
             tmp.set_state("*")
