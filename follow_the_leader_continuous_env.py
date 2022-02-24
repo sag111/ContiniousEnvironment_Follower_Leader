@@ -346,7 +346,7 @@ class Game(gym.Env):
                 self.follower.rectangle.collidepoint(generated_position) or \
                 self.obstacles1.rectangle.collidepoint(generated_position) or \
                 self.obstacles2.rectangle.collidepoint(generated_position) or \
-                distance.euclidean((750, 500), generated_position) < 30: # Условие, чтобы не попадал между стен
+                distance.euclidean((750, 500), generated_position) < 60: # Условие, чтобы не попадал между стен
                     is_free=False
                 else:
                     is_free=True
