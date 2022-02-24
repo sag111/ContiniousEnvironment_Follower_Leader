@@ -169,6 +169,9 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
 
 class LeaderTrajectory_v0(ObservationWrapper):
+    """
+    Устаревший класс, нужен только для проверки обратной совместимости с экспериемнтами, запущенными на коммите 86211bf4a3b0406e23bc561c00e1ea975c20f90b
+    """
 
     def __init__(self, env, framestack, radar_sectors_number, lz4_compress=False):
         super().__init__(env)
@@ -203,9 +206,9 @@ class LeaderTrajectory_v0(ObservationWrapper):
         """
         # change leader absolute pos, speed, direction to relative
         # self.leader_positions_hist.append(obs[:2])
-        vecs_follower_to_leadhistory_far = np.zeros((self.framestack, 2))
+        vecs_follower_to_leadhistory_far = np.zeros((self.framestack, 2), dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
-            vecs = np.array(self.leader_positions_hist[-self.framestack:]) - obs[5:7]
+            vecs = np.array(self.leader_positions_hist[-self.framestack:]) - obs['numerical_features'][5:7]
             vecs_follower_to_leadhistory_far[:min(len(self.leader_positions_hist), self.framestack)] = vecs
         vecs_follower_to_leadhistory_far = vecs_follower_to_leadhistory_far.flatten()
         vecs_follower_to_leadhistory_far = np.clip(vecs_follower_to_leadhistory_far / (self.max_distance * 2), -1, 1)
@@ -220,10 +223,10 @@ class LeaderTrajectory_v0(ObservationWrapper):
         angles_history_to_dir = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
         angles_history_to_right = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
         """
-        radar_values = np.zeros(self.radar_sectors_number)
+        radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
             closest_dots = np.array(self.leader_positions_hist[:min(len(self.leader_positions_hist), self.framestack)])
-            vecs_follower_to_leadhistory_close = closest_dots - obs[5:7]
+            vecs_follower_to_leadhistory_close = closest_dots - obs['numerical_features'][5:7]
             distances_follower_to_closestDots = np.linalg.norm(vecs_follower_to_leadhistory_close, axis=1)
             angles_history_to_dir = calculateAngle(vecs_follower_to_leadhistory_close, followerDirVec)
             angles_history_to_right = calculateAngle(vecs_follower_to_leadhistory_close, followerRightVec)
@@ -237,12 +240,14 @@ class LeaderTrajectory_v0(ObservationWrapper):
                     radar_values[i] = np.min(secrot_dots_distances)
 
         radar_values = np.clip(radar_values / (self.max_distance * 2), -1, 1)
-        return np.concatenate([obs, vecs_follower_to_leadhistory_far, radar_values])
+        obs["wrapper_vecs"] = vecs_follower_to_leadhistory_far
+        obs["wrapper_radar"] = radar_values
+        return obs
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        self.leader_positions_hist.append(observation[:2])
-        norms = np.linalg.norm(np.array(self.leader_positions_hist) - observation[5:7], axis=1)
+        self.leader_positions_hist.append(observation['numerical_features'][:2])
+        norms = np.linalg.norm(np.array(self.leader_positions_hist) - observation['numerical_features'][5:7], axis=1)
         indexes = np.nonzero(norms <= max(self.follower.width, self.follower.height))[0]
         for index in sorted(indexes, reverse=True):
             del self.leader_positions_hist[index]
