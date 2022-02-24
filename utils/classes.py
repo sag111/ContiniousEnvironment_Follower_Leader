@@ -59,7 +59,7 @@ class AbstractRobot(GameObject):
                  max_rotation_speed=60, # в градусах
                  max_speed_change=0.5, # в метрах в секунду
                  max_rotation_speed_change=57, # в градусах
-                 start_direction = 0, # в градусах
+                 start_direction = 180, # в градусах
                  sensor = None,
                  blocks_vision=True,
                  **kwargs
@@ -128,7 +128,7 @@ class AbstractRobot(GameObject):
     
     
     def _controller_call(self):
-        """Изменение скорости в зависимости от установленных желаемых скоростей на основе управеения"""
+        """Изменение скорости в зависимости от установленных желаемых скоростей на основе управления"""
         self._turn_processing()
         self._speed_processing()
      
