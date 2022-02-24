@@ -341,7 +341,7 @@ class Game(gym.Env):
                 # istom = distance.euclidean((750,500), generated_position)
                 # if distance.euclidean((750, 500), generated_position) < 50:
                 #     is_free = False
-
+                # НЕ УВЕРЕН, ЧТО РАБОТАЕТ ПРОВЕРКА НА НАЛИЧИЕ ПРЕПЯТСВИЯ НА МОСТУ
                 if self.leader.rectangle.collidepoint(generated_position) or \
                 self.follower.rectangle.collidepoint(generated_position) or \
                 self.obstacles1.rectangle.collidepoint(generated_position) or \

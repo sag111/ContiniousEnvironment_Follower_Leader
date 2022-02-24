@@ -160,24 +160,16 @@ class Dstar:
         ry = []
 
         self.open_list.add(end)
-
+        # Задаем количество итераций для прерыания (15к около 5секунд)
         max_iterat = 15000
         iterat = 0
-
-
 
         while True:
             self.process_state()
 
-            #iterat +=1
-            #print(iterat)
-
             if start.t == "close":
                 break
-        # while len(self.open_list)>0:
-        #     continue
 
-        #print(iterat)
         start.set_state("s")
         s = start
         s = s.parent
@@ -185,9 +177,9 @@ class Dstar:
         tmp = start
 
         while tmp != end:
-
+            # Реализовал прерывание таким образом
             iterat += 1
-            print(iterat)
+            #print(iterat)
             if iterat > max_iterat:
                 rx.clear()
                 ry.clear()
