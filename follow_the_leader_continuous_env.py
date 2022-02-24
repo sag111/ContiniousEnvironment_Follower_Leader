@@ -5,7 +5,7 @@ from math import pi, degrees, radians, cos, sin
 import numpy as np
 from scipy.spatial import distance
 
-from utils.classes import AbstractRobot, GameObject, LaserSensor, angle_to_point, distance_to_rect
+from utils.classes import AbstractRobot, GameObject, LaserSensor, angle_to_point, distance_to_rect, angle_correction
 
 from utils.reward_constructor import Reward
 import gym
@@ -29,7 +29,7 @@ class Game(gym.Env):
                  frames_per_step=10,
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
-                 leader_pos_epsilon=20,
+                 leader_pos_epsilon=25,
                  show_leader_path=True,
                  show_leader_trajectory=True,
                  show_rectangles=True,
@@ -227,6 +227,12 @@ class Game(gym.Env):
     
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
+        leader_start_position = (random.randrange(self.DISPLAY_WIDTH/2+200, self.DISPLAY_WIDTH-110,10),
+                                                               random.randrange(110, self.DISPLAY_HEIGHT-110,10))
+        
+        leader_start_direction = angle_to_point(leader_start_position,
+                                               np.array((self.DISPLAY_WIDTH/2, self.DISPLAY_HEIGHT/2),dtype=int))#random.randint(1,360)
+        
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
@@ -236,18 +242,20 @@ class Game(gym.Env):
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
-                                    start_position= (random.randrange(self.DISPLAY_WIDTH/2+200, self.DISPLAY_WIDTH-110,10),
-                                                               random.randrange(110, self.DISPLAY_HEIGHT-110,10)),
-                                    start_direction = random.randint(1,360))
+                                    start_position= leader_start_position,
+                                    start_direction = leader_start_direction)
         
- 
-        follower_start_position = np.array((self.leader.position[0] + random.choice((-1,1)) * random.randint(50,100),
-                                           self.leader.position[1] + random.choice((-1,1)) * random.randint(50,100)), 
-                                           dtype=np.float32)
+         
+        
+        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_position_theta = angle_correction(leader_start_direction+180)
+        
+        follower_start_position = np.array((follower_start_distance_from_leader*cos(follower_start_position_theta),
+                                           follower_start_distance_from_leader*sin(follower_start_position_theta))) + leader_start_position
         
         
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-                                    
+        
         follower_sensor = LaserSensor(return_all_points = True)
         
         self.follower = AbstractRobot("follower",
@@ -587,6 +595,14 @@ class Game(gym.Env):
                     for y_coord in range(start_y,end_y):
                         grid[x_coord,y_coord] = 1
         
+        for cur_x in (1,2,astar_grid_width-1,astar_grid_width-2):
+            for cur_y in range(astar_grid_height):
+                grid[cur_x,cur_y] = 1
+        
+        for cur_x in range(astar_grid_height):
+            for cur_y in (1,2,astar_grid_height-1,astar_grid_height-2):
+                grid[cur_x,cur_y] = 1
+        
         bridge_point = np.divide(self.bridge_point,step_grid).astype(int)
         bridge_point = (bridge_point[0],bridge_point[1])
         grid[bridge_point] = 0
@@ -601,6 +617,9 @@ class Game(gym.Env):
         
         self.first_bridge_point = (int((self.obstacles1.rectangle.right+self.leader_pos_epsilon)),step_grid*bridge_point[1])
         self.second_bridge_point = (int((self.obstacles1.rectangle.left-self.leader_pos_epsilon)), step_grid*bridge_point[1])
+        
+        
+        
         
         
         path = astar(maze=grid, 
@@ -621,9 +640,6 @@ class Game(gym.Env):
                                max_iterations=max_iter,
                                return_none_on_max_iter=False)
         
-        
-#         if path_continued is None:
-#             return path
         
         return path+path_continued
 
