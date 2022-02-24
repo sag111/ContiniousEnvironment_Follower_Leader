@@ -233,8 +233,8 @@ class Game(gym.Env):
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
                                     start_position=(
-                                    random.randrange(self.DISPLAY_WIDTH / 2 + 200, self.DISPLAY_WIDTH - 110, 10),
-                                    random.randrange(110, self.DISPLAY_HEIGHT - 110, 10)),
+                                        random.randrange(self.DISPLAY_WIDTH / 2 + 200, self.DISPLAY_WIDTH - 110, 10),
+                                        random.randrange(110, self.DISPLAY_HEIGHT - 110, 10)),
                                     start_direction=random.randint(1, 360))
 
         follower_start_position = np.array((self.leader.position[0] + random.choice((-1, 1)) * random.randint(50, 100),
@@ -480,7 +480,8 @@ class Game(gym.Env):
     def _show_tick(self):
         """Отображает всё, что положено отображать на каждом шаге"""
         self.gameDisplay.fill(self.colours["white"])  # фон
-        pygame.draw.circle(self.gameDisplay, self.colours["black"], self.bridge_point, 5)
+        if self.add_obstacles:
+            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.bridge_point, 5)
         pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point, 5)
 
         # отображение полного маршрута Ведущего
@@ -520,8 +521,9 @@ class Game(gym.Env):
                 cur_sensor.show(self)
 
         pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
-        pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
-        pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
+        if self.add_obstacles:
+            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
+            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
 
     def generate_trajectory(self,
                             max_iter=None):  # n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
@@ -572,47 +574,50 @@ class Game(gym.Env):
                 for x_coord in range(start_x, end_x):
                     for y_coord in range(start_y, end_y):
                         grid[x_coord, y_coord] = 1
+        if self.add_obstacles:
+            bridge_point = np.divide(self.bridge_point, step_grid).astype(int)
+            bridge_point = (bridge_point[0], bridge_point[1])
+            grid[bridge_point] = 0
 
-        bridge_point = np.divide(self.bridge_point, step_grid).astype(int)
-        bridge_point = (bridge_point[0], bridge_point[1])
-        grid[bridge_point] = 0
+            for i in range(int((self.obstacles1.rectangle.left / step_grid) - (leader_size_factor / step_grid)),
+                           int((self.obstacles1.rectangle.right / step_grid) + (leader_size_factor / step_grid))):
+                grid[i, bridge_point[1]] = 0
 
-        for i in range(int((self.obstacles1.rectangle.left / step_grid) - (leader_size_factor / step_grid)),
-                       int((self.obstacles1.rectangle.right / step_grid) + (leader_size_factor / step_grid))):
-            grid[i, bridge_point[1]] = 0
+            first_bridge_point = (
+                int((self.obstacles1.rectangle.right + self.leader_pos_epsilon) / step_grid), bridge_point[1])
+            second_bridge_point = (
+                int((self.obstacles1.rectangle.left - self.leader_pos_epsilon) / step_grid), bridge_point[1])
 
-        first_bridge_point = (
-        int((self.obstacles1.rectangle.right + self.leader_pos_epsilon) / step_grid), bridge_point[1])
-        second_bridge_point = (
-        int((self.obstacles1.rectangle.left - self.leader_pos_epsilon) / step_grid), bridge_point[1])
+            self.first_bridge_point = (
+                int((self.obstacles1.rectangle.right + self.leader_pos_epsilon)), step_grid * bridge_point[1])
+            self.second_bridge_point = (
+                int((self.obstacles1.rectangle.left - self.leader_pos_epsilon)), step_grid * bridge_point[1])
 
-        self.first_bridge_point = (
-        int((self.obstacles1.rectangle.right + self.leader_pos_epsilon)), step_grid * bridge_point[1])
-        self.second_bridge_point = (
-        int((self.obstacles1.rectangle.left - self.leader_pos_epsilon)), step_grid * bridge_point[1])
+            path = astar(maze=grid,
+                         start=start,
+                         end=first_bridge_point,
+                         max_iterations=max_iter,
+                         return_none_on_max_iter=False)
 
-        path = astar(maze=grid,
-                     start=start,
-                     end=first_bridge_point,
-                     max_iterations=max_iter,
-                     return_none_on_max_iter=False)
+            if path is None:
+                return []
 
-        if path is None:
-            return []
+            if path[-1] != first_bridge_point:
+                path.append(self.first_bridge_point)
 
-        if path[-1] != first_bridge_point:
-            path.append(self.first_bridge_point)
-
-        path_continued = astar(maze=grid,
-                               start=second_bridge_point,
-                               end=end,
-                               max_iterations=max_iter,
-                               return_none_on_max_iter=False)
-
-        #         if path_continued is None:
-        #             return path
-
-        return path + path_continued
+            path_continued = astar(maze=grid,
+                                   start=second_bridge_point,
+                                   end=end,
+                                   max_iterations=max_iter,
+                                   return_none_on_max_iter=False)
+            return path + path_continued
+        else:
+            path = astar(maze=grid,
+                         start=start,
+                         end=end,
+                         max_iterations=max_iter,
+                         return_none_on_max_iter=False)
+            return path
 
     def manual_game_contol(self, event, follower):
         """обработчик нажатий клавиш при ручном контроле."""
@@ -803,7 +808,7 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000)
+        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000)
 
 
 gym_register(
