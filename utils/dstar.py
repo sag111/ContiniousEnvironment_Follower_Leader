@@ -88,7 +88,8 @@ class Dstar:
     def process_state(self):
         x = self.min_state()
 
-
+        # if len(self.open_list)==0:
+        #     return -1
 
         if x is None:
             return -1
@@ -160,11 +161,23 @@ class Dstar:
 
         self.open_list.add(end)
 
+        max_iterat = 15000
+        iterat = 0
+
+
+
         while True:
             self.process_state()
+
+            #iterat +=1
+            #print(iterat)
+
             if start.t == "close":
                 break
+        # while len(self.open_list)>0:
+        #     continue
 
+        #print(iterat)
         start.set_state("s")
         s = start
         s = s.parent
@@ -172,6 +185,12 @@ class Dstar:
         tmp = start
 
         while tmp != end:
+
+            iterat += 1
+            print(iterat)
+            if iterat > max_iterat:
+                break
+
             tmp.set_state("*")
             rx.append(tmp.x*10) #ИСПРАВЛЕНЫ НА СЕТКУ
             ry.append(tmp.y*10)
@@ -183,6 +202,7 @@ class Dstar:
                 continue
             tmp = tmp.parent
         tmp.set_state("e")
+        #print(iterat)
 
         return rx, ry
 
