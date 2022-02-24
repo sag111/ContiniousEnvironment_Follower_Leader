@@ -261,7 +261,6 @@ class Game(gym.Env):
         self.clock = pygame.time.Clock()
 
         self.simulation_number += 1
-
         return self._get_obs()
 
     def _create_robots(self):
@@ -364,11 +363,18 @@ class Game(gym.Env):
                 self.follower.command_turn(action[1], 1)
             else:
                 self.follower.command_turn(0, 0)
-
+        
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
         if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
+            # Костыль. Из-за того, что этот сенсор хранит позиции лидера из возвращаемого обсёрва, ему нужно сохранить 
+            # только позицию с последнего frame_step, а не со всех.
+            # но показатели сенсора формируются внутри frame_step. Поэтому их надо обновить. 
+            # TODO: Потом как-нибудь красивее сделаю
             self.follower.sensors["ObservedLeaderPositions_packmanStyle"].update_observations_hist(self.leader.position)
+            self.follower.sensors["ObservedLeaderPositions_packmanStyle"].get_vectors_to_position()
+            self.follower.sensors["ObservedLeaderPositions_packmanStyle"].get_radar_values()
+            obs = self._get_obs()
         return obs, reward, done, {}
 
     def frame_step(self, action):
@@ -687,7 +693,7 @@ class Game(gym.Env):
 
     def _get_obs(self):
         """Возвращает наблюдения (observations) среды каждый шаг (step)"""
-        return np.array([self.leader.position[0],
+        basic_features = np.array([self.leader.position[0],
                          self.leader.position[1],
                          self.leader.speed,
                          self.leader.direction,
@@ -700,6 +706,7 @@ class Game(gym.Env):
                          self.min_distance,
                          self.max_distance,
                          self.max_dev], dtype=np.float32)
+        return np.concatenate([basic_features, self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values.flatten(), self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values])
 
     #                 {#"trajectory": self.leader_factual_trajectory,
     #                "leader_location_x": self.leader.position[0],

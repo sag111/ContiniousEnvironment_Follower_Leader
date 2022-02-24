@@ -141,11 +141,11 @@ class ObservedLeaderPositions_packmanStyle:
         self.sectorsAngle_rad = np.pi / radar_sectors_number
         self.sectorsAngle_deg = 180 / radar_sectors_number
         self.leader_positions_hist = list()
-        self.radar_values = None
-        self.vecs_values = None
+        self.radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
+        self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
 
     def get_vectors_to_position(self, positions_time_mode="new"):
-        vecs_follower_to_leadhistory_far = np.zeros((self.position_sequence_length, 2))
+        vecs_follower_to_leadhistory_far = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
             if positions_time_mode=="new":
                 vecs = np.array(self.leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
@@ -166,7 +166,7 @@ class ObservedLeaderPositions_packmanStyle:
         angles_history_to_dir = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
         angles_history_to_right = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
         """
-        radar_values = np.zeros(self.radar_sectors_number)
+        radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
             if positions_time_mode=="new":
                 chosen_dots = np.array(self.leader_positions_hist[-self.position_sequence_length:])

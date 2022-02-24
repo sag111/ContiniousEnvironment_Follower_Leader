@@ -237,7 +237,7 @@ class LeaderTrajectory_v0(ObservationWrapper):
                     radar_values[i] = np.min(secrot_dots_distances)
 
         radar_values = np.clip(radar_values / (self.max_distance * 2), -1, 1)
-        return np.concatenate([vecs_follower_to_leadhistory_far, radar_values])
+        return np.concatenate([obs, vecs_follower_to_leadhistory_far, radar_values])
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
