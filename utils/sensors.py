@@ -4,6 +4,7 @@ import pygame
 
 from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
+
 class LaserSensor():
     """Реализует один лазерный сенсор лидара"""
 
@@ -145,7 +146,7 @@ class ObservedLeaderPositions_packmanStyle:
         :param position_sequence_length: длина последовательности, которая будет использоваться радаром
         :param radar_sectors_number: количество секторов в радаре
         """
-        self.sensor_name='ObservedLeaderPositions_packmanStyle'
+        self.sensor_name = 'ObservedLeaderPositions_packmanStyle'
         self.host_object = host_object
         self.position_sequence_length = position_sequence_length
         self.radar_sectors_number = radar_sectors_number
