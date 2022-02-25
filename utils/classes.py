@@ -214,11 +214,23 @@ class RobotWithSensors(AbstractRobot):
                          max_rotation_speed, max_speed_change, max_rotation_speed_change, start_direction,
                          blocks_vision)
         self.sensors = {}
+        # TODO: Чтобы можно было несколько сенсоров одного типа, надо в качестве ключей использовать имена, и добавлять поле - класс
+        # например если надо будет отслеживание истории позиций лидера с поеданием точек и без для разных целей
         for k in sensors:
+            if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
+                if 'LeaderPositionsTracker' not in sensors.keys():
+                    raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
             self.sensors[k] = SENSOR_NAME_TO_CLASS[k](self, **sensors[k])
 
     def use_sensors(self, env):
         sensors_observes = dict()
+        if 'LeaderPositionsTracker' in self.sensors.keys():
+            leader_positions_hist = self.sensors['LeaderPositionsTracker'].scan(env)
         for sensor_name, sensor in self.sensors.items():
-            sensors_observes[sensor_name] = sensor.scan(env)
+            if sensor_name == 'LeaderPositionsTracker':
+                continue
+            if sensor_name in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
+                sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
+            else:
+                sensors_observes[sensor_name] = sensor.scan(env)
         return sensors_observes

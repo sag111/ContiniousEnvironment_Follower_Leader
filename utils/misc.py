@@ -55,7 +55,7 @@ def rotateVector(vec, angle):
 
 def calculateAngle(v, w):
     """
-
+    углы между массивом точек v и точкой w
     :param v:
     :param w:
     :return:
