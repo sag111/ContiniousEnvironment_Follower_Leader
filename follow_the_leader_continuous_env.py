@@ -51,6 +51,7 @@ class Game(gym.Env):
                  early_stopping={},
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
+                 follower_sensors = {},
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -171,6 +172,8 @@ class Game(gym.Env):
         self.obstacle_number = obstacle_number
         if not self.add_obstacles:
             self.obstacle_number = 0
+          
+        self.follower_sensors = follower_sensors
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -270,22 +273,7 @@ class Game(gym.Env):
                                          max_rotation_speed=57.296 / 100,
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
-                                         sensors={
-                                             "LaserSensor": {"return_all_points": True, 'sensor_name': "LaserSensor"},
-                                             "LeaderPositionsTracker": {
-                                                 'sensor_name': "LeaderPositionsTracker",
-                                                 'eat_close_points': True},
-                                             "LeaderTrackDetector_vector": {
-                                                 'sensor_name': "LeaderTrackDetector_vector",
-                                                 'position_sequence_length': 100
-                                             },
-                                             "LeaderTrackDetector_radar": {
-                                                 'sensor_name': "LeaderTrackDetector_radar",
-                                                 'position_sequence_length': 100,
-                                                 'radar_sectors_number': 30,
-                                                 'detectable_positions': 'near'
-                                             }
-                                         })
+                                         sensors=self.follower_sensors)
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
@@ -372,12 +360,8 @@ class Game(gym.Env):
             else:
                 self.follower.command_turn(0, 0)
 
-        self.follower_scan_dict = self.follower.use_sensors(self)
-
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
-        if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
-            self.follower.sensors["ObservedLeaderPositions_packmanStyle"].update_observations_hist(self.leader.position)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
         return obs, reward, done, {}
@@ -430,17 +414,19 @@ class Game(gym.Env):
 
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
-
+        
+        if self.leader_finished and self.is_in_box:
+            self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
-                print("LOW REWARD")
+                #print("LOW REWARD")
                 self.crash = True
                 self.done = True
 
             if "max_distance_coef" in self.early_stopping and np.linalg.norm(
                     self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
                 "max_distance_coef"]:
-                print("FOLLOWER IS TOO FAR")
+                #print("FOLLOWER IS TOO FAR")
                 self.crash = True
                 self.done = True
 

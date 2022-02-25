@@ -66,106 +66,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def __init__(self, env, lz4_compress=False):
         super().__init__(env)
-        self.prev_obs = None
-        self.observation_space = Box(np.array([-1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1
-                                               ], dtype=np.float32),
-                                     np.array([1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1
-                                               ], dtype=np.float32
-                                              ))
 
     def observation(self, obs):
-        """
-        На вход ожидается вектор с 13 компонентами:
-        - позиция х лидера
-        - позиция y лидера
-        - скорость лидера
-        - направление лидера
-        - скорость поворота лидера
-        - позиция х фолловера
-        - позиция y фолловера
-        - скорость фолловера
-        - направление фолловера
-        - скорость поворота фолловера
-        - минимальная дистанция
-        - максимальная дистанция
-        - максимальное отклонение от маршрута
-        
-        На выходе вектор из 17 нормированных значений от -1 до 1:
-        - изменение позиции х лидера с предыдущего шага
-        - изменение позиции y лидера с предыдущего шага
-        - изменение скорости лидера с предыдущего шага
-        - изменение направления лидера с предыдущего шага
-        - изменение скорости поворота лидера с предыдущего шага
-        - изменение позиции х фолловера с предыдущего шага
-        - изменение позиции y фолловера с предыдущего шага
-        - изменение скорости фолловера с предыдущего шага
-        - изменение направления фолловера с предыдущего шага
-        - изменение скорости поворота фолловера с предыдущего шага
-        - разница в позиции х между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница в позиции y между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница между скоростями лидера и фолловера 
-        - разница между направлениями лидера и фолловера
-        - расстояние между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница между расстоянием и минимально допустимой дистанцией (клип по максимально допустимой дистанции *2)
-        - разница между расстоянием и максимально допустимой дистанцией (клип по максимально допустимой дистанции *2)
-        """
-        # change leader absolute pos, speed, direction to relative
-        relativePositions = obs[0:4] - obs[5:9]
-        distance = np.linalg.norm(relativePositions[:2])
-        distanceFromBorders = [distance - obs[-3], obs[-2] - distance]
-        obs = obs[:-3]
-
-        if self.prev_obs is None:
-            self.prev_obs = obs
-        obs_modified = np.concatenate([obs, relativePositions, [distance], distanceFromBorders])
-
-        obs_modified[0] -= self.prev_obs[0]
-        obs_modified[1] -= self.prev_obs[1]
-        obs_modified[3] /= 360
-        obs_modified[5] -= self.prev_obs[5]
-        obs_modified[6] -= self.prev_obs[6]
-        obs_modified[8] /= 360
-        obs_modified[10] = np.clip(obs_modified[10] / (self.max_distance * 2), -1, 1)
-        obs_modified[11] = np.clip(obs_modified[11] / (self.max_distance * 2), -1, 1)
-        obs_modified[13] /= 360
-        obs_modified[14] = np.clip(obs_modified[14] / (self.max_distance * 2), -1, 1)
-        obs_modified[15] = np.clip(obs_modified[15] / (self.max_distance * 2), -1, 1)
-        obs_modified[16] = np.clip(obs_modified[16] / (self.max_distance * 2), -1, 1)
-        self.prev_obs = obs
-        # print("OBSS", obs)
-        return obs_modified  # np.clip(obs, -1, 1)
-
-    def reset(self, **kwargs):
-        observation = self.env.reset(**kwargs)
-        self.prev_obs = None
-        return self.observation(observation)
-
-
-
+        history_vecs = obs['LeaderTrackDetector_vector'].flatten()
+        history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
+        history_radar = obs['LeaderTrackDetector_radar']
+        history_radar = np.clip(history_radar / self.max_distance, -1, 1)
+        return np.concatenate([history_vecs, history_radar])
 
 
 class LeaderTrajectory_v0(ObservationWrapper):

@@ -139,16 +139,21 @@ class LeaderPositionsTracker:
                  host_object,
                  sensor_name,
                  eat_close_points=False,
-                 max_point=5000):
+                 max_point=5000,
+                 saving_period=4):
         self.sensor_name = sensor_name
         self.host_object = host_object
         self.max_point = max_point
         self.eat_close_points = True
         # TODO: попробовать реализовать как ndarray, может быстрее будет.
         self.leader_positions_hist = list()
+        self.saving_period = saving_period
+        self.saving_counter = 0
 
     def scan(self, env):
-        self.leader_positions_hist.append(env.leader.position.copy())
+        if self.saving_counter % self.saving_period == 0:
+            self.leader_positions_hist.append(env.leader.position.copy())
+        self.saving_counter += 1
         norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
         indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
         for index in sorted(indexes, reverse=True):
