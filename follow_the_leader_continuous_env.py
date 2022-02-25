@@ -42,12 +42,13 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=3,  # в секундах
+                 warm_start=1.0,  # в секундах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
                  obstacle_number=15,
+                 early_stopping={},
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
                  **kwargs
@@ -109,6 +110,9 @@ class Game(gym.Env):
             'green': (0, 255, 0),
             "pink": (251, 204, 231)
         }
+        self.early_stopping = early_stopping
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Arial', 30)
 
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
@@ -415,6 +419,17 @@ class Game(gym.Env):
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
+        if self.step_count > self.warm_start:
+            if "low_reward" in self.early_stopping and self.overall_reward <  self.early_stopping["low_reward"]:
+                print("LOW REWARD")
+                self.crash = True
+                self.done = True
+
+            if "max_distance_coef" in self.early_stopping and np.linalg.norm(self.follower.position - self.leader.position) > self.max_distance*self.early_stopping["max_distance_coef"]:
+                print("FOLLOWER IS TOO FAR")
+                self.crash = True
+                self.done = True
+
         res_reward = self._reward_computation()
 
         #         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
@@ -533,6 +548,8 @@ class Game(gym.Env):
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
+        reward_text = self.font.render(str(self.overall_reward), False, (0,0,0))
+        self.gameDisplay.blit(reward_text, (0,0))
 
     def generate_trajectory(self,
                             max_iter=None):  # n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
@@ -800,7 +817,7 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000)
+        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000, early_stopping={"max_distance_coef": 1., "low_reward":-100})
 
 
 gym_register(
