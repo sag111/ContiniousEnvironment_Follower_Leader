@@ -226,25 +226,27 @@ class ObservedLeaderPositions_packmanStyle:
         pass
         """
         # медленно, но для отладки пойдёт
-        for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values.shape[0]):
-            if np.sum(self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i]) > 0:
+        for i in range(self.vecs_values.shape[0]):
+            if np.sum(self.host_object.position+self.vecs_values[i]) > 0:
                 #pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
-                pygame.draw.circle(self.gameDisplay, (255, 100, 50), self.follower.position +
-                                 self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i], 1)
-        for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values.shape[0]):
-            followerRightDir = self.follower.direction + 90
+                pygame.draw.circle(env.gameDisplay, (255, 100, 50), self.host_object.position +
+                                 self.vecs_values[i], 1)
+
+        for i in range(self.radar_values.shape[0]):
+            followerRightDir = self.host_object.direction + 90
             if followerRightDir >= 360:
                 followerRightDir -= 360
 
-            for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number):
-                if self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i]==0:
+            for i in range(self.radar_sectors_number):
+                if self.radar_values[i]==0:
                     continue
-                followerRightVec = rotateVector(np.array([self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i], 0]), followerRightDir)
-                relativeDot = rotateVector(followerRightVec,  self.follower.sensors["ObservedLeaderPositions_packmanStyle"].sectorsAngle_deg * (self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number - i))
-                absDot = self.follower.position-relativeDot
+                followerRightVec = rotateVector(np.array([self.radar_values[i], 0]), followerRightDir)
+                relativeDot = rotateVector(followerRightVec,  self.sectorsAngle_deg * (self.radar_sectors_number - i))
+                absDot = self.host_object.position-relativeDot
                 #pygame.draw.line(self.gameDisplay, (100, 100, 255), self.follower.position, absDot)
-                pygame.draw.circle(self.gameDisplay, (100, 80, 255), absDot, 1)
-                """
+                pygame.draw.circle(env.gameDisplay, (100, 80, 255), absDot, 4)
+        """
+
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить

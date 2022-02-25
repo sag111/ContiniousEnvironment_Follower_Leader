@@ -5,7 +5,9 @@ from math import pi, degrees, radians, cos, sin
 import numpy as np
 from scipy.spatial import distance
 
-from utils.classes import AbstractRobot, GameObject, RobotWithSensors
+from utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
+from utils.sensors import LaserSensor
+from utils.misc import angle_correction, distance_to_rect
 
 from utils.reward_constructor import Reward
 import gym
@@ -28,7 +30,7 @@ class Game(gym.Env):
                  frames_per_step=10,
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
-                 leader_pos_epsilon=20,
+                 leader_pos_epsilon=25,
                  show_leader_path=True,
                  show_leader_trajectory=True,
                  show_rectangles=True,
@@ -223,6 +225,13 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
+        leader_start_position = (random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                 random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
+
+        leader_start_direction = angle_to_point(leader_start_position,
+                                                np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
+                                                         dtype=int))  # random.randint(1,360)
+
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
@@ -232,16 +241,19 @@ class Game(gym.Env):
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
-                                    start_position=(
-                                        random.randrange(self.DISPLAY_WIDTH / 2 + 200, self.DISPLAY_WIDTH - 110, 10),
-                                        random.randrange(110, self.DISPLAY_HEIGHT - 110, 10)),
-                                    start_direction=random.randint(1, 360))
+                                    start_position=leader_start_position,
+                                    start_direction=leader_start_direction)
 
-        follower_start_position = np.array((self.leader.position[0] + random.choice((-1, 1)) * random.randint(50, 100),
-                                            self.leader.position[1] + random.choice((-1, 1)) * random.randint(50, 100)),
-                                           dtype=np.float32)
+        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
+        follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
+                                            follower_start_distance_from_leader * sin(
+                                                follower_start_position_theta))) + leader_start_position
+
 
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
+
+        #         follower_sensor = LaserSensor(return_all_points = True)
 
         self.follower = RobotWithSensors("follower",
                                          image=self.follower_img,
@@ -254,8 +266,6 @@ class Game(gym.Env):
                                          max_rotation_speed=57.296 / 100,
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
-                                         # (self.leader.position[0]+50,self.leader.position[1]+50),
-                                         # ((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
                                          sensors={
                                              "LaserSensor": {"return_all_points": True, 'sensor_name': "LaserSensor"},
                                              "ObservedLeaderPositions_packmanStyle": {
@@ -448,7 +458,6 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
-
         return np.transpose(
             pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
 
@@ -671,24 +680,7 @@ class Game(gym.Env):
         for sensor_name, cur_sensor in self.follower.sensors.items():
             obs_dict["{0}_points".format(sensor_name)] = self.follower_scan_dict[sensor_name]
 
-        #         obs_dict["lidar_points"] = self.follower_scan_list
-        #         obs_dict["lidar_distances"] =
-        # "lidar_distances" -- дистанция, на которую добил лидар по каждому направлению работы;
-        # "sector_scan_trajectory"
-
         return obs_dict
-
-    #                 {#"trajectory": self.leader_factual_trajectory,
-    #                "leader_location_x": self.leader.position[0],
-    #                "leader_location_y": self.leader.position[1],
-    #                "leader_speed":self.leader.speed,
-    #                "leader_direction":int(self.leader.direction),
-    #                "leader_rotation_speed":self.leader.rotation_speed,
-    #                "follower_location_x":self.follower.position[0],
-    #                "follower_location_y":self.follower.position[1],
-    #                "follower_speed":self.follower.speed,
-    #                "follower_direction":int(self.follower.direction),
-    #                "follower_rotation_speed":self.follower.rotation_speed,}.values()
 
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
