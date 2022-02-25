@@ -225,12 +225,13 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
-        leader_start_position = (random.randrange(self.DISPLAY_WIDTH/2+200, self.DISPLAY_WIDTH-110,10),
-                                                               random.randrange(110, self.DISPLAY_HEIGHT-110,10))
-        
+        leader_start_position = (random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                 random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
+
         leader_start_direction = angle_to_point(leader_start_position,
-                                               np.array((self.DISPLAY_WIDTH/2, self.DISPLAY_HEIGHT/2),dtype=int))#random.randint(1,360)
-        
+                                                np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
+                                                         dtype=int))  # random.randint(1,360)
+
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
@@ -240,35 +241,36 @@ class Game(gym.Env):
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
-                                    start_position= leader_start_position,
-                                    start_direction = leader_start_direction)
-        
+                                    start_position=leader_start_position,
+                                    start_direction=leader_start_direction)
+
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
-        follower_start_position_theta = angle_correction(leader_start_direction+180)
-        
-        follower_start_position = np.array((follower_start_distance_from_leader*cos(follower_start_position_theta),
-                                           follower_start_distance_from_leader*sin(follower_start_position_theta))) + leader_start_position
-        
-        
+        follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
+        follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
+                                            follower_start_distance_from_leader * sin(
+                                                follower_start_position_theta))) + leader_start_position
+
+
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-        
-#         follower_sensor = LaserSensor(return_all_points = True)
-        
+
+        #         follower_sensor = LaserSensor(return_all_points = True)
+
         self.follower = RobotWithSensors("follower",
-                                      image=self.follower_img,
-                                      start_direction=follower_direction,
-                                      height=0.5 * self.PIXELS_TO_METER,
-                                      width=0.35 * self.PIXELS_TO_METER,
-                                      min_speed=0,
-                                      max_speed=0.5 * self.PIXELS_TO_METER / 100,
-                                      max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                      max_rotation_speed=57.296 / 100,
-                                      max_rotation_speed_change=20 / 100,
-                                      start_position=follower_start_position,
-                                     sensors = {"LaserSensor": {"return_all_points": True, 'sensor_name': "LaserSensor"},
-                                                "ObservedLeaderPositions_packmanStyle": {
+                                         image=self.follower_img,
+                                         start_direction=follower_direction,
+                                         height=0.5 * self.PIXELS_TO_METER,
+                                         width=0.35 * self.PIXELS_TO_METER,
+                                         min_speed=0,
+                                         max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                         max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
+                                         max_rotation_speed=57.296 / 100,
+                                         max_rotation_speed_change=20 / 100,
+                                         start_position=follower_start_position,
+                                         sensors={
+                                             "LaserSensor": {"return_all_points": True, 'sensor_name': "LaserSensor"},
+                                             "ObservedLeaderPositions_packmanStyle": {
                                                  'sensor_name': "ObservedLeaderPositions_packmanStyle"}})
-        
+
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
 
@@ -456,7 +458,6 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
-
         return np.transpose(
             pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
 
@@ -626,7 +627,6 @@ class Game(gym.Env):
                          max_iterations=max_iter,
                          return_none_on_max_iter=False)
             return path
-
 
     def manual_game_contol(self, event, follower):
         """обработчик нажатий клавиш при ручном контроле."""
