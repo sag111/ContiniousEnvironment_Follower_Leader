@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial import distance
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 
+
 def angle_correction(angle):
     if angle >= 360:
         return angle - 360
@@ -41,6 +42,7 @@ def distance_to_rect(cur_point, object2):
             min_distance = cur_distance
 
     return min_distance
+
 
 def rotateVector(vec, angle):
     """
