@@ -66,6 +66,10 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def __init__(self, env, lz4_compress=False):
         super().__init__(env)
+        self.observation_space = Box(-np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
+                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number),
+                                     np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
+                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number))
 
     def observation(self, obs):
         history_vecs = obs['LeaderTrackDetector_vector'].flatten()

@@ -170,10 +170,15 @@ class Game(gym.Env):
         self.add_obstacles = add_obstacles
         self.obstacles = list()
         self.obstacle_number = obstacle_number
+        
         if not self.add_obstacles:
             self.obstacle_number = 0
           
         self.follower_sensors = follower_sensors
+        self.reset()
+        self.action_space = Box(
+            np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
+            np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
