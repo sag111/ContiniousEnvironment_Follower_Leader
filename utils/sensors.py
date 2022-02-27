@@ -166,6 +166,7 @@ class LeaderPositionsTracker:
     def show(self, env):
         pass
 
+
 class LeaderTrackDetector_vector:
     """
     Класс, реагирующий на старые позиции лидера и генерирующий вектора до определённых позиций.
@@ -292,10 +293,11 @@ class LeaderTrackDetector_radar:
                 if self.radar_values[i] == 0:
                     continue
                 followerRightVec = rotateVector(np.array([self.radar_values[i], 0]), followerRightDir)
-                relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i-1))
+                relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i) - (
+                            self.sectorsAngle_deg / 2))
                 absDot = self.host_object.position - relativeDot
                 pygame.draw.line(env.gameDisplay, (255, 80, 180), self.host_object.position, absDot)
-                #pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
+                # pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
