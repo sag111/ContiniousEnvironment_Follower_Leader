@@ -190,7 +190,7 @@ class Game(gym.Env):
         if (self.trajectory is None) or self.trajectory_generated:
             self.trajectory = self.generate_trajectory(max_iter=None)
             self.trajectory_generated = True
-
+        
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
         self.green_zone_trajectory_points = list()
 
@@ -218,7 +218,13 @@ class Game(gym.Env):
         self.clock = pygame.time.Clock()
 
         self.simulation_number += 1
+        
+        # располагаем ведомого с учётом того, куда направлен лидер
+        self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
+        self._pos_follower_behind_leader()
+        
 
+        
         self.follower_scan_dict = self.follower.use_sensors(self)
 
         return self._get_obs()
@@ -243,6 +249,8 @@ class Game(gym.Env):
                                     start_position= leader_start_position,
                                     start_direction = leader_start_direction)
         
+        
+        
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
         follower_start_position_theta = angle_correction(leader_start_direction+180)
         
@@ -251,8 +259,6 @@ class Game(gym.Env):
         
         
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-        
-#         follower_sensor = LaserSensor(return_all_points = True)
         
         self.follower = RobotWithSensors("follower",
                                       image=self.follower_img,
@@ -271,6 +277,20 @@ class Game(gym.Env):
         
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
+        
+    def _pos_follower_behind_leader(self):
+        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_position_theta = angle_correction(self.leader.direction+180)
+        
+        follower_start_position = np.array((follower_start_distance_from_leader*cos(radians(follower_start_position_theta)),
+                                           follower_start_distance_from_leader*sin(radians(follower_start_position_theta)))) + self.leader.position
+        
+        
+        follower_direction = angle_to_point(follower_start_position, self.leader.position)
+        
+        self.follower.position = follower_start_position
+        self.follower.direction = follower_direction
+        
 
     def _create_obstacles(self):
 
@@ -293,17 +313,18 @@ class Game(gym.Env):
 
         self.bridge_point = np.array(((self.most_point1[0] + self.most_point2[0]) / 2,
                                       (self.most_point1[1] + self.most_point2[1]) / 2), dtype=np.float32)
-        # np.array([(self.obstacles1.rectangle.bottom+self.obstacles2.rectangle.top)/2,
-        #         (self.obstacles1.rectangle.left+self.obstacles1.rectangle.right)/2])
 
         ####################################
         self.obstacles = list()
+
+        wall_start_x = self.obstacles1.rectangle.left
+        wall_end_x = self.obstacles1.rectangle.right
+        
+        obstacle_size = 50
+        
         for i in range(self.obstacle_number):
 
             is_free = False
-
-            wall_start_x = self.obstacles1.rectangle.left
-            wall_end_x = self.obstacles1.rectangle.right
 
             while not is_free:
                 generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
@@ -317,8 +338,9 @@ class Game(gym.Env):
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
                         ((generated_position[0] >= wall_start_x) and (generated_position[0] <= wall_end_x)) or \
-                        bridge_rectangle.collidepoint(
-                            generated_position):  # Условие, чтобы камень не попадал между стен
+                        bridge_rectangle.collidepoint(generated_position) or \
+                        (distance.euclidean(self.leader.position,generated_position) <= (self.max_distance)+obstacle_size/2):
+                        # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генрировать ведомого за ним)
                     is_free = False
                 else:
                     is_free = True
@@ -326,8 +348,8 @@ class Game(gym.Env):
             self.obstacles.append(GameObject('rock',
                                              image=self.rock_img,
                                              start_position=generated_position,
-                                             height=50,
-                                             width=50))
+                                             height=obstacle_size,
+                                             width=obstacle_size))
 
         self.game_object_list.append(self.obstacles1)
         self.game_object_list.append(self.obstacles2)
@@ -370,8 +392,6 @@ class Game(gym.Env):
         self.is_on_trace = False
 
         self.follower.move()
-        #         self.follower_scan_dict = sensor_dict
-        #         self.follower_scan_dict = self.follower.use_sensor(self)
 
         # определение столкновения ведомого с препятствиями
         if self._collision_check(self.follower):
@@ -503,7 +523,7 @@ class Game(gym.Env):
                 green_line = pygame.draw.lines(self.gameDisplay,
                                                self.colours["green"],
                                                False,
-                                               self.green_zone_trajectory_points[::5],
+                                               self.green_zone_trajectory_points[::4],
                                                width=self.max_dev * 2)
 
         # отображение пройденной Ведущим траектории
