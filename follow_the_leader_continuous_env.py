@@ -205,7 +205,9 @@ class Game(gym.Env):
         
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
         self.green_zone_trajectory_points = list()
-
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
+        
         # Флаг конца симуляции
         self.done = False
 
@@ -235,7 +237,6 @@ class Game(gym.Env):
         self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
         self._pos_follower_behind_leader()
         
-
         
         self.follower_scan_dict = self.follower.use_sensors(self)
 
@@ -300,6 +301,7 @@ class Game(gym.Env):
         
         self.follower.position = follower_start_position
         self.follower.direction = follower_direction
+        self.follower.start_direction = follower_direction
         
 
     def _create_obstacles(self):
@@ -760,7 +762,7 @@ class Game(gym.Env):
         self.left_border_points_list = list()
         self.right_border_points_list = list()
         
-        for cur_point, prev_point in zip(green_zone_points_list[1:], green_zone_points_list[:-1]):
+        for cur_point, prev_point in zip(green_zone_points_list[1::2], green_zone_points_list[:-1:2]):
             move_direction = angle_to_point(prev_point,cur_point)
             point_distance = distance.euclidean(prev_point,cur_point) * self.PIXELS_TO_METER
             
@@ -894,8 +896,10 @@ class TestGameBaseAlgoNoObst(Game):
 class TestGameBaseAlgoObst(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=True, game_width=1500, game_height=1000,
-                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
-                         )
+                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                             follower_sensors={"GreenBoxBorderSensor":{"sensor_range":2,
+                                                                       "available_angle":180,
+                                                                       "angle_step":45}})
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
