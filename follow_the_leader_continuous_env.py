@@ -186,7 +186,7 @@ class Game(gym.Env):
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
 
-        valid_trajectory = False
+#         valid_trajectory = False
 
         # Список всех игровых объектов
         self.game_object_list = list()
@@ -377,7 +377,7 @@ class Game(gym.Env):
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-        else:
+        else:            
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -385,7 +385,8 @@ class Game(gym.Env):
                 self.follower.command_turn(action[1], 1)
             else:
                 self.follower.command_turn(0, 0)
-
+                
+        
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
@@ -455,9 +456,7 @@ class Game(gym.Env):
                 self.done = True
 
         res_reward = self._reward_computation()
-
-        #         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
-        #             res_reward = 0
+        
         self.overall_reward += res_reward
 
         self.clock.tick(self.framerate)
@@ -717,6 +716,11 @@ class Game(gym.Env):
                                                    self.min_distance,
                                                    self.max_distance,
                                                    self.max_dev], dtype=np.float32)
+        
+        if self.cur_target_point==self.trajectory[-1]:
+            obs_dict["leader_target_point"] = self.trajectory[-2]
+        else:
+            obs_dict["leader_target_point"] = self.cur_target_point
 
         obs_dict.update(self.follower_scan_dict)
 
@@ -835,7 +839,9 @@ class Game(gym.Env):
 
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         )
 
 
 class TestGameManual(Game):
@@ -844,6 +850,17 @@ class TestGameManual(Game):
                          early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
                          )
 
+class TestGameBaseAlgoNoObst(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
+                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                             )
+    
+class TestGameBaseAlgoObst(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=True, game_width=1500, game_height=1000,
+                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         )
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
@@ -856,3 +873,11 @@ gym_register(
     entry_point="follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
+
+gym_register(
+    id="Test-Cont-Env-Auto-Follow-no-obstacles-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
+
+gym_register(
+    id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoObst")
