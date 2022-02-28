@@ -409,6 +409,7 @@ class Game(gym.Env):
         # определение текущих точек маршрута, которые являются подходящими для Агента
         self.green_zone_trajectory_points = list()
         self._trajectory_in_box()
+        self._get_green_zone_border_points()
 
         # определяем положение Агента относительно маршрута и коробки
         self._check_agent_position()
@@ -436,7 +437,7 @@ class Game(gym.Env):
 
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # show: сделать параметром;
-
+        
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
         
@@ -544,6 +545,14 @@ class Game(gym.Env):
                                                False,
                                                self.green_zone_trajectory_points[::4],
                                                width=self.max_dev * 2)
+                
+                
+                for cur_point in self.left_border_points_list:
+                    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
+                    
+                for cur_point in self.right_border_points_list:
+                    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
+                
 
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
@@ -738,10 +747,36 @@ class Game(gym.Env):
 
             accumulated_distance += distance.euclidean(prev_point, cur_point)
 
-            if accumulated_distance <= self.max_distance:  # /self.PIXELS_TO_METER
+            if accumulated_distance <= self.max_distance:
                 self.green_zone_trajectory_points.append(cur_point)
             else:
                 break
+                
+                
+    def _get_green_zone_border_points(self):
+        
+        green_zone_points_list = self.green_zone_trajectory_points
+        
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
+        
+        for cur_point, prev_point in zip(green_zone_points_list[1:], green_zone_points_list[:-1]):
+            move_direction = angle_to_point(prev_point,cur_point)
+            point_distance = distance.euclidean(prev_point,cur_point) * self.PIXELS_TO_METER
+            
+            right_border_angle = angle_correction(move_direction+90)
+            left_border_angle = angle_correction(move_direction-90)
+            
+            res_point = np.divide((cur_point+prev_point),2)
+            
+            right_border_vec = np.array((self.max_dev*cos(radians(right_border_angle)),
+                                        self.max_dev*sin(radians(right_border_angle))))
+            left_border_vec = np.array((self.max_dev*cos(radians(left_border_angle)),
+                                        self.max_dev*sin(radians(left_border_angle))))
+            
+            self.right_border_points_list.append(res_point + right_border_vec)
+            self.left_border_points_list.append(res_point + left_border_vec)
+            
 
     def _reward_computation(self):
         """функция для расчёта награды на основе конфигурации награды"""
