@@ -65,7 +65,6 @@ if __name__ == "__main__":
         
         recorder = VideoRecorder(env, "./video/{0}".format(args.video_name), enabled = True)
         
-        
         target_point_stack = []
         
         obs = env.reset()
