@@ -121,17 +121,54 @@ class LaserSensor():
         for cur_point in self.sensed_points:
             pygame.draw.circle(env.gameDisplay, env.colours["pink"], cur_point, 3)
 
+    def reset(self):
+        self.sensed_points = list()
+
     # @staticmethod
     # def _add_noise(val, variance):
     #    return max(np.random.normal(val, variance), 0)
 
 
-class ObservedLeaderPositions_packmanStyle:
+class LeaderPositionsTracker:
     """
-    Класс, отслеживающий наблюдаемые позиции лидера.
-    Класс генерирует наблюдения двух типов:
-        вектора до определённых позиций
-        радар, указывающий, есть ли позиции лидера в определённых секторах полукруга перед преследователем
+        Класс, отслеживающий наблюдаемые позиции лидера.
+        не генерирует наблюдения, но хранит историю позиций лидера для других сенсоров.
+    """
+
+    def __init__(self,
+                 host_object,
+                 sensor_name,
+                 eat_close_points=False,
+                 max_point=5000,
+                 saving_period=4):
+        self.sensor_name = sensor_name
+        self.host_object = host_object
+        self.max_point = max_point
+        self.eat_close_points = True
+        # TODO: попробовать реализовать как ndarray, может быстрее будет.
+        self.leader_positions_hist = list()
+        self.saving_period = saving_period
+        self.saving_counter = 0
+
+    def scan(self, env):
+        if self.saving_counter % self.saving_period == 0:
+            self.leader_positions_hist.append(env.leader.position.copy())
+        self.saving_counter += 1
+        norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
+        indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
+        for index in sorted(indexes, reverse=True):
+            del self.leader_positions_hist[index]
+        return self.leader_positions_hist
+
+    def reset(self):
+        self.leader_positions_hist = list()
+
+    def show(self, env):
+        pass
+
+class LeaderTrackDetector_vector:
+    """
+    Класс, реагирующий на старые позиции лидера и генерирующий вектора до определённых позиций.
     отслеживать можно самые новые позиции лидера или самые старые
     TODO: Добавить вариант отслеживания позиций или радара до ближайших точек до преследователя
     """
@@ -140,35 +177,69 @@ class ObservedLeaderPositions_packmanStyle:
                  host_object,
                  sensor_name,
                  position_sequence_length=100,
+                 detectable_positions="new"):
+        """
+        :param host_object: робот пресследователь, на котором работает этот сенсор
+        :param position_sequence_length: длина последовательности, которая будет использоваться радаром
+        """
+        self.sensor_name = sensor_name
+        self.host_object = host_object
+        self.position_sequence_length = position_sequence_length
+        self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
+        self.detectable_positions = detectable_positions
+
+    def scan(self, env, leader_positions_hist):
+        self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
+        if len(leader_positions_hist) > 0:
+            if self.detectable_positions == "new":
+                vecs = np.array(leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
+            elif self.detectable_positions == "old":
+                vecs = np.array(leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
+            self.vecs_values[
+            :min(len(leader_positions_hist), self.position_sequence_length)] = vecs
+        return self.vecs_values
+
+    def show(self, env):
+        for i in range(self.vecs_values.shape[0]):
+            if np.sum(self.host_object.position + self.vecs_values[i]) > 0:
+                # pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, \
+                # self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
+                pygame.draw.circle(env.gameDisplay, (255, 100, 50), self.host_object.position +
+                                   self.vecs_values[i], 1)
+
+    def reset(self):
+        self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
+
+
+class LeaderTrackDetector_radar:
+    """
+    Радар, реагирующий на старые позиции лидера, и указывающий, есть ли позиции лидера в
+    определённых секторах полукруга перед преследователем
+    отслеживать можно самые новые позиции лидера или самые старые
+    TODO: Добавить вариант отслеживания позиций или радара до ближайших точек до преследователя
+    """
+
+    def __init__(self,
+                 host_object,
+                 sensor_name,
+                 position_sequence_length=100,
+                 detectable_positions="old",
                  radar_sectors_number=180):
         """
         :param host_object: робот пресследователь, на котором работает этот сенсор
         :param position_sequence_length: длина последовательности, которая будет использоваться радаром
         :param radar_sectors_number: количество секторов в радаре
         """
-        self.sensor_name = 'ObservedLeaderPositions_packmanStyle'
+        self.sensor_name = sensor_name
         self.host_object = host_object
+        self.detectable_positions = detectable_positions
         self.position_sequence_length = position_sequence_length
         self.radar_sectors_number = radar_sectors_number
         self.sectorsAngle_rad = np.pi / radar_sectors_number
         self.sectorsAngle_deg = 180 / radar_sectors_number
-        self.leader_positions_hist = list()
         self.radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
-        self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
 
-    def get_vectors_to_position(self, positions_time_mode="new"):
-        vecs_follower_to_leadhistory_far = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
-        if len(self.leader_positions_hist) > 0:
-            if positions_time_mode == "new":
-                vecs = np.array(self.leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
-            elif positions_time_mode == "old":
-                vecs = np.array(self.leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
-            vecs_follower_to_leadhistory_far[
-            :min(len(self.leader_positions_hist), self.position_sequence_length)] = vecs
-        self.vecs_values = vecs_follower_to_leadhistory_far
-        return vecs_follower_to_leadhistory_far
-
-    def get_radar_values(self, positions_time_mode="old"):
+    def scan(self, env, leader_positions_hist):
         followerDirVec = rotateVector(np.array([1, 0]), self.host_object.direction)
         followerRightDir = self.host_object.direction + 90
         if followerRightDir >= 360:
@@ -179,14 +250,23 @@ class ObservedLeaderPositions_packmanStyle:
         angles_history_to_dir = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
         angles_history_to_right = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
         """
-        radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
-        if len(self.leader_positions_hist) > 0:
-            if positions_time_mode == "new":
-                chosen_dots = np.array(self.leader_positions_hist[-self.position_sequence_length:])
-            elif positions_time_mode == "old":
-                chosen_dots = np.array(self.leader_positions_hist[:self.position_sequence_length])
-            vecs_follower_to_leadhistory = chosen_dots - self.host_object.position
-            distances_follower_to_chosenDots = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
+        self.radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
+        if len(leader_positions_hist) > 0:
+
+            if self.detectable_positions == "near":
+                leader_positions_hist = np.array(leader_positions_hist)
+                vecs_follower_to_leadhistory = leader_positions_hist - self.host_object.position
+                distances_follower_to_chosenDots = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
+                closest_indexes = np.argsort(distances_follower_to_chosenDots)
+                vecs_follower_to_leadhistory = vecs_follower_to_leadhistory[closest_indexes]
+                distances_follower_to_chosenDots = distances_follower_to_chosenDots[closest_indexes]
+            else:
+                if self.detectable_positions == "new":
+                    chosen_dots = np.array(leader_positions_hist[-self.position_sequence_length:])
+                elif self.detectable_positions == "old":
+                    chosen_dots = np.array(leader_positions_hist[:self.position_sequence_length])
+                vecs_follower_to_leadhistory = chosen_dots - self.host_object.position
+                distances_follower_to_chosenDots = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
             angles_history_to_dir = calculateAngle(vecs_follower_to_leadhistory, followerDirVec)
             angles_history_to_right = calculateAngle(vecs_follower_to_leadhistory, followerRightVec)
             angles_history_to_right[angles_history_to_dir > np.pi / 2] = -angles_history_to_right[
@@ -196,59 +276,32 @@ class ObservedLeaderPositions_packmanStyle:
                     (angles_history_to_right >= self.sectorsAngle_rad * i) & (
                             angles_history_to_right < self.sectorsAngle_rad * (i + 1))]
                 if len(sector_dots_distances) > 0:
-                    radar_values[i] = np.min(sector_dots_distances)
-        self.radar_values = radar_values
-        return radar_values
-
-    def update_observations_hist(self, leader_position):
-        """
-        Обновляет историю позиций.
-        Добавляет наблюдаемую позицию лидера в историю.
-        Удаляет из истории позиции, которые преследователь прошёл
-        :param leader_position: np.array (2,) - 2 абсолютные координаты лидера
-        :return:
-        """
-        self.leader_positions_hist.append(leader_position.copy())
-        norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
-        indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
-        for index in sorted(indexes, reverse=True):
-            del self.leader_positions_hist[index]
-
-    def scan(self, env):
-        vecs_values = self.get_vectors_to_position(positions_time_mode="new")
-        radar_values = self.get_radar_values(positions_time_mode="old")
-        return np.concatenate([vecs_values.flatten(), radar_values])
+                    self.radar_values[i] = np.min(sector_dots_distances)
+        return self.radar_values
 
     def reset(self):
-        self.leader_positions_hist = list()
+        self.radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
 
     def show(self, env):
-        pass
-        """
-        # медленно, но для отладки пойдёт
-        for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values.shape[0]):
-            if np.sum(self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i]) > 0:
-                #pygame.draw.line(self.gameDisplay, (250, 200, 150), self.follower.position, self.follower.position+self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i])
-                pygame.draw.circle(self.gameDisplay, (255, 100, 50), self.follower.position +
-                                 self.follower.sensors["ObservedLeaderPositions_packmanStyle"].vecs_values[i], 1)
-        for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values.shape[0]):
-            followerRightDir = self.follower.direction + 90
+        for i in range(self.radar_values.shape[0]):
+            followerRightDir = self.host_object.direction + 90
             if followerRightDir >= 360:
                 followerRightDir -= 360
 
-            for i in range(self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number):
-                if self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i]==0:
+            for i in range(self.radar_sectors_number):
+                if self.radar_values[i] == 0:
                     continue
-                followerRightVec = rotateVector(np.array([self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_values[i], 0]), followerRightDir)
-                relativeDot = rotateVector(followerRightVec,  self.follower.sensors["ObservedLeaderPositions_packmanStyle"].sectorsAngle_deg * (self.follower.sensors["ObservedLeaderPositions_packmanStyle"].radar_sectors_number - i))
-                absDot = self.follower.position-relativeDot
-                #pygame.draw.line(self.gameDisplay, (100, 100, 255), self.follower.position, absDot)
-                pygame.draw.circle(self.gameDisplay, (100, 80, 255), absDot, 1)
-                """
+                followerRightVec = rotateVector(np.array([self.radar_values[i], 0]), followerRightDir)
+                relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i-1))
+                absDot = self.host_object.position - relativeDot
+                pygame.draw.line(env.gameDisplay, (255, 80, 180), self.host_object.position, absDot)
+                #pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
 SENSOR_NAME_TO_CLASS = {
     "LaserSensor": LaserSensor,
-    "ObservedLeaderPositions_packmanStyle": ObservedLeaderPositions_packmanStyle
+    "LeaderPositionsTracker": LeaderPositionsTracker,
+    "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
+    "LeaderTrackDetector_radar": LeaderTrackDetector_radar
 }

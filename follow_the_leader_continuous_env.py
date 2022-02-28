@@ -42,14 +42,16 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=3,  # в секундах
+                 warm_start=1.0,  # в секундах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
                  obstacle_number=15,
+                 early_stopping={},
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
+                 follower_sensors = {},
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -109,6 +111,9 @@ class Game(gym.Env):
             'green': (0, 255, 0),
             "pink": (251, 204, 231)
         }
+        self.early_stopping = early_stopping
+        pygame.font.init()
+        self.font = pygame.font.SysFont('Arial', 30)
 
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
@@ -165,8 +170,15 @@ class Game(gym.Env):
         self.add_obstacles = add_obstacles
         self.obstacles = list()
         self.obstacle_number = obstacle_number
+        
         if not self.add_obstacles:
             self.obstacle_number = 0
+          
+        self.follower_sensors = follower_sensors
+        self.reset()
+        self.action_space = Box(
+            np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
+            np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -231,12 +243,14 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
-        leader_start_position = (random.randrange(self.DISPLAY_WIDTH/2+200, self.DISPLAY_WIDTH-110,10),
-                                                               random.randrange(110, self.DISPLAY_HEIGHT-110,10))
-        
+        leader_start_position = (
+        random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+        random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
+
         leader_start_direction = angle_to_point(leader_start_position,
-                                               np.array((self.DISPLAY_WIDTH/2, self.DISPLAY_HEIGHT/2),dtype=int))#random.randint(1,360)
-        
+                                                np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
+                                                         dtype=int))  # random.randint(1,360)
+
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
@@ -250,31 +264,27 @@ class Game(gym.Env):
                                     start_direction = leader_start_direction)
         
         
-        
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
-        follower_start_position_theta = angle_correction(leader_start_direction+180)
-        
-        follower_start_position = np.array((follower_start_distance_from_leader*cos(follower_start_position_theta),
-                                           follower_start_distance_from_leader*sin(follower_start_position_theta))) + leader_start_position
-        
-        
+        follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
+        follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
+                                            follower_start_distance_from_leader * sin(
+                                                follower_start_position_theta))) + leader_start_position
+
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-        
+
         self.follower = RobotWithSensors("follower",
-                                      image=self.follower_img,
-                                      start_direction=follower_direction,
-                                      height=0.5 * self.PIXELS_TO_METER,
-                                      width=0.35 * self.PIXELS_TO_METER,
-                                      min_speed=0,
-                                      max_speed=0.5 * self.PIXELS_TO_METER / 100,
-                                      max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                      max_rotation_speed=57.296 / 100,
-                                      max_rotation_speed_change=20 / 100,
-                                      start_position=follower_start_position,
-                                     sensors = {"LaserSensor": {"return_all_points": True, 'sensor_name': "LaserSensor"},
-                                                "ObservedLeaderPositions_packmanStyle": {
-                                                 'sensor_name': "ObservedLeaderPositions_packmanStyle"}})
-        
+                                         image=self.follower_img,
+                                         start_direction=follower_direction,
+                                         height=0.5 * self.PIXELS_TO_METER,
+                                         width=0.35 * self.PIXELS_TO_METER,
+                                         min_speed=0,
+                                         max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                         max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
+                                         max_rotation_speed=57.296 / 100,
+                                         max_rotation_speed_change=20 / 100,
+                                         start_position=follower_start_position,
+                                         sensors=self.follower_sensors)
+
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
         
@@ -376,12 +386,8 @@ class Game(gym.Env):
             else:
                 self.follower.command_turn(0, 0)
 
-        self.follower_scan_dict = self.follower.use_sensors(self)
-
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
-        if "ObservedLeaderPositions_packmanStyle" in self.follower.sensors:
-            self.follower.sensors["ObservedLeaderPositions_packmanStyle"].update_observations_hist(self.leader.position)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
         return obs, reward, done, {}
@@ -432,6 +438,21 @@ class Game(gym.Env):
 
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
+        
+        if self.leader_finished and self.is_in_box:
+            self.done = True
+        if self.step_count > self.warm_start:
+            if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
+                #print("LOW REWARD")
+                self.crash = True
+                self.done = True
+
+            if "max_distance_coef" in self.early_stopping and np.linalg.norm(
+                    self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
+                "max_distance_coef"]:
+                #print("FOLLOWER IS TOO FAR")
+                self.crash = True
+                self.done = True
 
         res_reward = self._reward_computation()
 
@@ -476,7 +497,6 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
-
         return np.transpose(
             pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
 
@@ -552,6 +572,8 @@ class Game(gym.Env):
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
+        reward_text = self.font.render(str(self.overall_reward), False, (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 0))
 
     def generate_trajectory(self,
                             max_iter=None):  # n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
@@ -647,7 +669,6 @@ class Game(gym.Env):
                          return_none_on_max_iter=False)
             return path
 
-
     def manual_game_contol(self, event, follower):
         """обработчик нажатий клавиш при ручном контроле."""
         # В теории, можно на основе этого класса сделать управляемого руками Ведущего. Но надо модифицировать.
@@ -697,8 +718,7 @@ class Game(gym.Env):
                                                    self.max_distance,
                                                    self.max_dev], dtype=np.float32)
 
-        for sensor_name, cur_sensor in self.follower.sensors.items():
-            obs_dict["{0}_points".format(sensor_name)] = self.follower_scan_dict[sensor_name]
+        obs_dict.update(self.follower_scan_dict)
 
         return obs_dict
 
@@ -820,7 +840,9 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000)
+        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         )
 
 
 gym_register(

@@ -66,109 +66,23 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def __init__(self, env, lz4_compress=False):
         super().__init__(env)
-        self.prev_obs = None
-        self.observation_space = Box(np.array([-1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1,
-                                               -1,
-                                               -1,
-                                               -1,
-                                               -1, -1
-                                               ], dtype=np.float32),
-                                     np.array([1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1,
-                                               1,
-                                               1,
-                                               1,
-                                               1, 1
-                                               ], dtype=np.float32
-                                              ))
+        self.observation_space = Box(-np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
+                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number),
+                                     np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
+                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number))
 
     def observation(self, obs):
-        """
-        На вход ожидается вектор с 13 компонентами:
-        - позиция х лидера
-        - позиция y лидера
-        - скорость лидера
-        - направление лидера
-        - скорость поворота лидера
-        - позиция х фолловера
-        - позиция y фолловера
-        - скорость фолловера
-        - направление фолловера
-        - скорость поворота фолловера
-        - минимальная дистанция
-        - максимальная дистанция
-        - максимальное отклонение от маршрута
-        
-        На выходе вектор из 17 нормированных значений от -1 до 1:
-        - изменение позиции х лидера с предыдущего шага
-        - изменение позиции y лидера с предыдущего шага
-        - изменение скорости лидера с предыдущего шага
-        - изменение направления лидера с предыдущего шага
-        - изменение скорости поворота лидера с предыдущего шага
-        - изменение позиции х фолловера с предыдущего шага
-        - изменение позиции y фолловера с предыдущего шага
-        - изменение скорости фолловера с предыдущего шага
-        - изменение направления фолловера с предыдущего шага
-        - изменение скорости поворота фолловера с предыдущего шага
-        - разница в позиции х между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница в позиции y между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница между скоростями лидера и фолловера 
-        - разница между направлениями лидера и фолловера
-        - расстояние между лидером и фолловером (клип по максимально допустимой дистанции *2)
-        - разница между расстоянием и минимально допустимой дистанцией (клип по максимально допустимой дистанции *2)
-        - разница между расстоянием и максимально допустимой дистанцией (клип по максимально допустимой дистанции *2)
-        """
-        # change leader absolute pos, speed, direction to relative
-        relativePositions = obs[0:4] - obs[5:9]
-        distance = np.linalg.norm(relativePositions[:2])
-        distanceFromBorders = [distance - obs[-3], obs[-2] - distance]
-        obs = obs[:-3]
-
-        if self.prev_obs is None:
-            self.prev_obs = obs
-        obs_modified = np.concatenate([obs, relativePositions, [distance], distanceFromBorders])
-
-        obs_modified[0] -= self.prev_obs[0]
-        obs_modified[1] -= self.prev_obs[1]
-        obs_modified[3] /= 360
-        obs_modified[5] -= self.prev_obs[5]
-        obs_modified[6] -= self.prev_obs[6]
-        obs_modified[8] /= 360
-        obs_modified[10] = np.clip(obs_modified[10] / (self.max_distance * 2), -1, 1)
-        obs_modified[11] = np.clip(obs_modified[11] / (self.max_distance * 2), -1, 1)
-        obs_modified[13] /= 360
-        obs_modified[14] = np.clip(obs_modified[14] / (self.max_distance * 2), -1, 1)
-        obs_modified[15] = np.clip(obs_modified[15] / (self.max_distance * 2), -1, 1)
-        obs_modified[16] = np.clip(obs_modified[16] / (self.max_distance * 2), -1, 1)
-        self.prev_obs = obs
-        # print("OBSS", obs)
-        return obs_modified  # np.clip(obs, -1, 1)
-
-    def reset(self, **kwargs):
-        observation = self.env.reset(**kwargs)
-        self.prev_obs = None
-        return self.observation(observation)
-
-
-
+        history_vecs = obs['LeaderTrackDetector_vector'].flatten()
+        history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
+        history_radar = obs['LeaderTrackDetector_radar']
+        history_radar = np.clip(history_radar / self.max_distance, -1, 1)
+        return np.concatenate([history_vecs, history_radar])
 
 
 class LeaderTrajectory_v0(ObservationWrapper):
+    """
+    Устаревший класс, нужен только для проверки обратной совместимости с экспериемнтами, запущенными на коммите 86211bf4a3b0406e23bc561c00e1ea975c20f90b
+    """
 
     def __init__(self, env, framestack, radar_sectors_number, lz4_compress=False):
         super().__init__(env)
@@ -203,9 +117,9 @@ class LeaderTrajectory_v0(ObservationWrapper):
         """
         # change leader absolute pos, speed, direction to relative
         # self.leader_positions_hist.append(obs[:2])
-        vecs_follower_to_leadhistory_far = np.zeros((self.framestack, 2))
+        vecs_follower_to_leadhistory_far = np.zeros((self.framestack, 2), dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
-            vecs = np.array(self.leader_positions_hist[-self.framestack:]) - obs[5:7]
+            vecs = np.array(self.leader_positions_hist[-self.framestack:]) - obs['numerical_features'][5:7]
             vecs_follower_to_leadhistory_far[:min(len(self.leader_positions_hist), self.framestack)] = vecs
         vecs_follower_to_leadhistory_far = vecs_follower_to_leadhistory_far.flatten()
         vecs_follower_to_leadhistory_far = np.clip(vecs_follower_to_leadhistory_far / (self.max_distance * 2), -1, 1)
@@ -220,10 +134,10 @@ class LeaderTrajectory_v0(ObservationWrapper):
         angles_history_to_dir = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerDirVec)
         angles_history_to_right = calculateAngle(np.array([self.leader.position-self.follower.position, self.leader.position, self.follower.position]), followerRightVec)
         """
-        radar_values = np.zeros(self.radar_sectors_number)
+        radar_values = np.zeros(self.radar_sectors_number, dtype=np.float32)
         if len(self.leader_positions_hist) > 0:
             closest_dots = np.array(self.leader_positions_hist[:min(len(self.leader_positions_hist), self.framestack)])
-            vecs_follower_to_leadhistory_close = closest_dots - obs[5:7]
+            vecs_follower_to_leadhistory_close = closest_dots - obs['numerical_features'][5:7]
             distances_follower_to_closestDots = np.linalg.norm(vecs_follower_to_leadhistory_close, axis=1)
             angles_history_to_dir = calculateAngle(vecs_follower_to_leadhistory_close, followerDirVec)
             angles_history_to_right = calculateAngle(vecs_follower_to_leadhistory_close, followerRightVec)
@@ -237,12 +151,14 @@ class LeaderTrajectory_v0(ObservationWrapper):
                     radar_values[i] = np.min(secrot_dots_distances)
 
         radar_values = np.clip(radar_values / (self.max_distance * 2), -1, 1)
-        return np.concatenate([obs, vecs_follower_to_leadhistory_far, radar_values])
+        obs["wrapper_vecs"] = vecs_follower_to_leadhistory_far
+        obs["wrapper_radar"] = radar_values
+        return obs
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        self.leader_positions_hist.append(observation[:2])
-        norms = np.linalg.norm(np.array(self.leader_positions_hist) - observation[5:7], axis=1)
+        self.leader_positions_hist.append(observation['numerical_features'][:2])
+        norms = np.linalg.norm(np.array(self.leader_positions_hist) - observation['numerical_features'][5:7], axis=1)
         indexes = np.nonzero(norms <= max(self.follower.width, self.follower.height))[0]
         for index in sorted(indexes, reverse=True):
             del self.leader_positions_hist[index]
