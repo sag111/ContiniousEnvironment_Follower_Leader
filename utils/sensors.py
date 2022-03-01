@@ -1,12 +1,13 @@
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 import pygame
+from scipy.spatial import distance
 
 from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 
 class LaserSensor():
-    """Реализует один лазерный сенсор лидара"""
+    """Реализует лазерный лидар"""
 
     def __init__(self,
                  host_object,
@@ -79,13 +80,13 @@ class LaserSensor():
 
         cur_angle_diff = 0
 
-        angles.append(self.host_object.direction)
+        angles.append(-self.host_object.direction)
 
         while cur_angle_diff < border_angle:
             cur_angle_diff += self.angle_step
 
-            angles.append(angle_correction(self.host_object.direction + cur_angle_diff))
-            angles.append(angle_correction(self.host_object.direction - cur_angle_diff))
+            angles.append(angle_correction(-self.host_object.direction + cur_angle_diff))
+            angles.append(angle_correction(-self.host_object.direction - cur_angle_diff))
 
         for angle in angles:
 
@@ -120,9 +121,6 @@ class LaserSensor():
     def show(self, env):
         for cur_point in self.sensed_points:
             pygame.draw.circle(env.gameDisplay, env.colours["pink"], cur_point, 3)
-
-    def reset(self):
-        self.sensed_points = list()
 
     # @staticmethod
     # def _add_noise(val, variance):
@@ -326,6 +324,85 @@ class LeaderTrackDetector_radar:
                 # pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
 
 
+class GreenBoxBorderSensor(LaserSensor):
+    """Лидар для отслеживания границ зелёной зоны, в которой должен быть ведущий."""
+
+    def __init__(self, host_object, **kwargs):
+        raise ValueError("Для использования нужно раскомментировать в среде вызов self._get_green_zone_border_points("
+                         "). Закомментировал, потому что замедляет симмуляцию")
+        self.sensor_name = 'GreenBox_Border_Sensor'
+
+        super().__init__(host_object, self.sensor_name, **kwargs)
+
+    def scan(self, env):
+        """строит поля точек лидара.
+           Входные параметры:
+           env (Game environment):
+               среда, в которой осуществляется сканирование;
+            Возвращает:
+            sensed_points (list):
+                список точек, которые отследил лидар.
+            """
+
+        # Далее определить, в какой стороне находится объект из списка, и если он входит в область лидара, ставить точку как надо
+        # иначе -- просто ставим точку на максимуме
+
+        env_range = self.range * env.PIXELS_TO_METER
+
+        border_angle = int(self.available_angle / 2)
+
+        x1 = self.host_object.position[0]
+        y1 = self.host_object.position[1]
+
+        self.sensed_points = list()
+        angles = list()
+
+        cur_angle_diff = 0
+
+        angles.append(-self.host_object.direction)
+
+        while cur_angle_diff < border_angle:
+            cur_angle_diff += self.angle_step
+
+            angles.append(angle_correction(-self.host_object.direction + cur_angle_diff))
+            angles.append(angle_correction(-self.host_object.direction - cur_angle_diff))
+
+        list_points_to_scan = env.left_border_points_list + env.right_border_points_list
+
+        for angle in angles:
+
+            x2, y2 = (x1 + env_range * cos(radians(angle)), y1 - env_range * sin(radians(angle)))
+
+            point_to_add = None
+            object_in_sight = False
+
+            for i in range(0, self.points_number):
+                u = i / self.points_number
+                cur_point = ((x2 * u + x1 * (1 - u)), (y2 * u + y1 * (1 - u)))
+
+                if self.return_all_points:
+                    self.sensed_points.append(cur_point)
+
+                for cur_point_to_scan in list_points_to_scan:
+                    if distance.euclidean(cur_point_to_scan, cur_point) <= 5:
+                        point_to_add = np.array(cur_point, dtype=np.float32)
+                        object_in_sight = True
+                        break
+
+                if object_in_sight:
+                    break
+
+            if point_to_add is None:
+                point_to_add = np.array((x2, y2), dtype=np.float32)
+
+            if not self.return_all_points:
+                self.sensed_points.append(point_to_add)
+
+        return self.sensed_points
+
+    def show(self, env):
+        for cur_point in self.sensed_points:
+            pygame.draw.circle(env.gameDisplay, env.colours["blue"], cur_point, 2)
 def perp(a):
     # https://stackoverflow.com/a/3252222/4807259
     b = np.empty_like(a)
@@ -424,5 +501,6 @@ SENSOR_NAME_TO_CLASS = {
     "LeaderPositionsTracker": LeaderPositionsTracker,
     "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
     "LeaderTrackDetector_radar": LeaderTrackDetector_radar,
-    "LeaderCorridor_lasers": LeaderCorridor_lasers
+    "LeaderCorridor_lasers": LeaderCorridor_lasers,
+    "GreenBoxBorderSensor": GreenBoxBorderSensor
 }

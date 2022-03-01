@@ -40,7 +40,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    manual_handling = True#args.manual #False
+    manual_handling = args.manual
     
     if manual_handling:
         
@@ -56,34 +56,86 @@ if __name__ == "__main__":
         env.close()
         
     else:
-        from stable_baselines3 import PPO
-        env = gym.make("Test-Cont-Env-Auto-v0")
-
-        model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001)
-        model.learn(total_timesteps=args.training_steps)
-
-        print("Обучение закончено")
-        sleep(10)
-        print("начинается управление")
+        from scipy.spatial import distance
+        from utils.misc import angle_to_point, move_to_the_point
+        import numpy as np
         
-        env =  gym.make("Test-Cont-Env-Auto-v0")
+        env =  gym.make("Test-Cont-Env-Auto-Follow-with-obstacles-v0")
         env.metadata["render.modes"] = ["rgb_array"]
         
         recorder = VideoRecorder(env, "./video/{0}".format(args.video_name), enabled = True)
         
+        target_point_stack = []
         
         obs = env.reset()
+        target_point_stack.append(obs["leader_target_point"])
+        
         for step in range(args.n_steps):
             env.render()
             recorder.capture_frame()
             
-            action, _states = model.predict(obs)
-            obs, rewards, dones, info = env.step(action) 
+            direction = obs["numerical_features"][8]
+            position = np.array((obs["numerical_features"][5], 
+                                obs["numerical_features"][6]))
+            
+            next_point = target_point_stack[0]
+            
+            action = move_to_the_point(direction, 
+                              position, 
+                              next_point)
+
+            
+            obs, rewards, dones, info = env.step(action)
+            
+            if not np.array_equal(obs["leader_target_point"], target_point_stack[-1]):
+                target_point_stack.append(np.array(obs["leader_target_point"]))
+            
+            if distance.euclidean(position,next_point) <= 20:
+                _ = target_point_stack.pop(0)
+            
             if dones:
                 break
         
         recorder.close()
-        env.close()
+        env.close()     
+        
+        
+        
+        
+
+        
+        
+        
+        
+#         from stable_baselines3 import PPO
+        
+#         env = gym.make("Test-Cont-Env-Auto-v0")
+
+#         model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001)
+#         model.learn(total_timesteps=args.training_steps)
+
+#         print("Обучение закончено")
+#         sleep(10)
+#         print("начинается управление")
+        
+#         env =  gym.make("Test-Cont-Env-Auto-v0")
+#         env.metadata["render.modes"] = ["rgb_array"]
+        
+#         recorder = VideoRecorder(env, "./video/{0}".format(args.video_name), enabled = True)
+        
+        
+#         obs = env.reset()
+#         for step in range(args.n_steps):
+#             env.render()
+#             recorder.capture_frame()
+            
+#             action, _states = model.predict(obs)
+#             obs, rewards, dones, info = env.step(action) 
+#             if dones:
+#                 break
+        
+#         recorder.close()
+#         env.close()
 
 
         

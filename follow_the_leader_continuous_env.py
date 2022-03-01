@@ -187,7 +187,7 @@ class Game(gym.Env):
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
 
-        valid_trajectory = False
+#         valid_trajectory = False
 
         # Список всех игровых объектов
         self.game_object_list = list()
@@ -203,10 +203,12 @@ class Game(gym.Env):
         if (self.trajectory is None) or self.trajectory_generated:
             self.trajectory = self.generate_trajectory(max_iter=None)
             self.trajectory_generated = True
-
+        
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
         self.green_zone_trajectory_points = list()
-
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
+        
         # Флаг конца симуляции
         self.done = False
 
@@ -231,7 +233,12 @@ class Game(gym.Env):
         self.clock = pygame.time.Clock()
 
         self.simulation_number += 1
-
+        
+        # располагаем ведомого с учётом того, куда направлен лидер
+        self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
+        self._pos_follower_behind_leader()
+        
+        
         self.follower_scan_dict = self.follower.use_sensors(self)
 
         return self._get_obs()
@@ -255,9 +262,10 @@ class Game(gym.Env):
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
-                                    start_position=leader_start_position,
-                                    start_direction=leader_start_direction)
-
+                                    start_position= leader_start_position,
+                                    start_direction = leader_start_direction)
+        
+        
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
@@ -265,8 +273,6 @@ class Game(gym.Env):
                                                 follower_start_position_theta))) + leader_start_position
 
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-
-        #         follower_sensor = LaserSensor(return_all_points = True)
 
         self.follower = RobotWithSensors("follower",
                                          image=self.follower_img,
@@ -283,6 +289,21 @@ class Game(gym.Env):
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
+        
+    def _pos_follower_behind_leader(self):
+        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_position_theta = angle_correction(self.leader.direction+180)
+        
+        follower_start_position = np.array((follower_start_distance_from_leader*cos(radians(follower_start_position_theta)),
+                                           follower_start_distance_from_leader*sin(radians(follower_start_position_theta)))) + self.leader.position
+        
+        
+        follower_direction = angle_to_point(follower_start_position, self.leader.position)
+        
+        self.follower.position = follower_start_position
+        self.follower.direction = follower_direction
+        self.follower.start_direction = follower_direction
+        
 
     def _create_obstacles(self):
 
@@ -305,17 +326,18 @@ class Game(gym.Env):
 
         self.bridge_point = np.array(((self.most_point1[0] + self.most_point2[0]) / 2,
                                       (self.most_point1[1] + self.most_point2[1]) / 2), dtype=np.float32)
-        # np.array([(self.obstacles1.rectangle.bottom+self.obstacles2.rectangle.top)/2,
-        #         (self.obstacles1.rectangle.left+self.obstacles1.rectangle.right)/2])
 
         ####################################
         self.obstacles = list()
+
+        wall_start_x = self.obstacles1.rectangle.left
+        wall_end_x = self.obstacles1.rectangle.right
+        
+        obstacle_size = 50
+        
         for i in range(self.obstacle_number):
 
             is_free = False
-
-            wall_start_x = self.obstacles1.rectangle.left
-            wall_end_x = self.obstacles1.rectangle.right
 
             while not is_free:
                 generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
@@ -329,8 +351,9 @@ class Game(gym.Env):
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
                         ((generated_position[0] >= wall_start_x) and (generated_position[0] <= wall_end_x)) or \
-                        bridge_rectangle.collidepoint(
-                            generated_position):  # Условие, чтобы камень не попадал между стен
+                        bridge_rectangle.collidepoint(generated_position) or \
+                        (distance.euclidean(self.leader.position,generated_position) <= (self.max_distance)+obstacle_size/2):
+                        # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генрировать ведомого за ним)
                     is_free = False
                 else:
                     is_free = True
@@ -338,8 +361,8 @@ class Game(gym.Env):
             self.obstacles.append(GameObject('rock',
                                              image=self.rock_img,
                                              start_position=generated_position,
-                                             height=50,
-                                             width=50))
+                                             height=obstacle_size,
+                                             width=obstacle_size))
 
         self.game_object_list.append(self.obstacles1)
         self.game_object_list.append(self.obstacles2)
@@ -357,7 +380,7 @@ class Game(gym.Env):
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-        else:
+        else:            
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -365,7 +388,8 @@ class Game(gym.Env):
                 self.follower.command_turn(action[1], 1)
             else:
                 self.follower.command_turn(0, 0)
-
+                
+        
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, _ = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
@@ -378,8 +402,6 @@ class Game(gym.Env):
         self.is_on_trace = False
 
         self.follower.move()
-        #         self.follower_scan_dict = sensor_dict
-        #         self.follower_scan_dict = self.follower.use_sensor(self)
 
         # определение столкновения ведомого с препятствиями
         if self._collision_check(self.follower):
@@ -390,6 +412,7 @@ class Game(gym.Env):
         # определение текущих точек маршрута, которые являются подходящими для Агента
         self.green_zone_trajectory_points = list()
         self._trajectory_in_box()
+        #self._get_green_zone_border_points()
 
         # определяем положение Агента относительно маршрута и коробки
         self._check_agent_position()
@@ -417,7 +440,7 @@ class Game(gym.Env):
 
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # show: сделать параметром;
-
+        
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
@@ -437,9 +460,7 @@ class Game(gym.Env):
                 self.done = True
 
         res_reward = self._reward_computation()
-
-        #         if (pygame.time.get_ticks()<self.warm_start) and (res_reward < 0):
-        #             res_reward = 0
+        
         self.overall_reward += res_reward
 
         self.clock.tick(self.framerate)
@@ -525,8 +546,16 @@ class Game(gym.Env):
                 green_line = pygame.draw.lines(self.gameDisplay,
                                                self.colours["green"],
                                                False,
-                                               self.green_zone_trajectory_points[::5],
+                                               self.green_zone_trajectory_points[::4],
                                                width=self.max_dev * 2)
+                
+                
+                #for cur_point in self.left_border_points_list:
+                #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
+                    
+                #for cur_point in self.right_border_points_list:
+                #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
+                
 
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
@@ -699,6 +728,11 @@ class Game(gym.Env):
                                                    self.min_distance,
                                                    self.max_distance,
                                                    self.max_dev], dtype=np.float32)
+        
+        if self.cur_target_point==self.trajectory[-1]:
+            obs_dict["leader_target_point"] = self.trajectory[-2]
+        else:
+            obs_dict["leader_target_point"] = self.cur_target_point
 
         obs_dict.update(self.follower_scan_dict)
 
@@ -716,10 +750,36 @@ class Game(gym.Env):
 
             accumulated_distance += distance.euclidean(prev_point, cur_point)
 
-            if accumulated_distance <= self.max_distance:  # /self.PIXELS_TO_METER
+            if accumulated_distance <= self.max_distance:
                 self.green_zone_trajectory_points.append(cur_point)
             else:
                 break
+                
+                
+    def _get_green_zone_border_points(self):
+        
+        green_zone_points_list = self.green_zone_trajectory_points
+        
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
+        
+        for cur_point, prev_point in zip(green_zone_points_list[1::2], green_zone_points_list[:-1:2]):
+            move_direction = angle_to_point(prev_point,cur_point)
+            point_distance = distance.euclidean(prev_point,cur_point) * self.PIXELS_TO_METER
+            
+            right_border_angle = angle_correction(move_direction+90)
+            left_border_angle = angle_correction(move_direction-90)
+            
+            res_point = np.divide((cur_point+prev_point),2)
+            
+            right_border_vec = np.array((self.max_dev*cos(radians(right_border_angle)),
+                                        self.max_dev*sin(radians(right_border_angle))))
+            left_border_vec = np.array((self.max_dev*cos(radians(left_border_angle)),
+                                        self.max_dev*sin(radians(left_border_angle))))
+            
+            self.right_border_points_list.append(res_point + right_border_vec)
+            self.left_border_points_list.append(res_point + left_border_vec)
+            
 
     def _reward_computation(self):
         """функция для расчёта награды на основе конфигурации награды"""
@@ -817,7 +877,9 @@ class Game(gym.Env):
 
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         )
 
 
 class TestGameManual(Game):
@@ -843,6 +905,19 @@ class TestGameManual(Game):
                          }
                          )
 
+class TestGameBaseAlgoNoObst(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
+                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                             )
+    
+class TestGameBaseAlgoObst(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=True, game_width=1500, game_height=1000,
+                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                             follower_sensors={"GreenBoxBorderSensor":{"sensor_range":2,
+                                                                       "available_angle":180,
+                                                                       "angle_step":45}})
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
@@ -855,3 +930,11 @@ gym_register(
     entry_point="follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
+
+gym_register(
+    id="Test-Cont-Env-Auto-Follow-no-obstacles-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
+
+gym_register(
+    id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoObst")

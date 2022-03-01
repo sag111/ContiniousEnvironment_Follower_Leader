@@ -61,3 +61,35 @@ def calculateAngle(v, w):
     :return:
     """
     return np.arccos(v.dot(w) / (np.linalg.norm(v, axis=1) * np.linalg.norm(w)))
+
+def move_to_the_point(direction, 
+                      position, 
+                      next_point):
+    """Функция автоматического управления движением к точке"""
+    desirable_angle = int(angle_to_point(position, next_point))
+
+    cur_direction = int(direction)
+
+    if desirable_angle - cur_direction > 0:
+        if desirable_angle - cur_direction > 180:
+            delta_turn = cur_direction + (360 - desirable_angle)
+            new_rotation_direction = -1
+        else:
+            delta_turn = desirable_angle - cur_direction
+            new_rotation_direction = 1
+
+    elif desirable_angle - cur_direction < 0:
+        if cur_direction - desirable_angle > 180:
+            new_rotation_direction = 1
+            delta_turn = (360 - cur_direction) + desirable_angle
+        else:
+            new_rotation_direction = -1
+            delta_turn = cur_direction - desirable_angle
+
+    else:
+        new_rotation_direction = 0
+        delta_turn = 0
+
+    v = distance.euclidean(position, next_point)
+    w = delta_turn * new_rotation_direction
+    return np.array((v,w/10))
