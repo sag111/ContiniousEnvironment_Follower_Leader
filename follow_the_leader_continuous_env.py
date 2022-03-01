@@ -23,6 +23,7 @@ from utils.misc import rotateVector, angle_to_point, distance_to_rect
 from warnings import warn
 
 
+
 class Game(gym.Env):
     def __init__(self, game_width=1500,
                  game_height=1000,
@@ -51,7 +52,7 @@ class Game(gym.Env):
                  early_stopping={},
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
-                 follower_sensors = {},
+                 follower_sensors={},
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -170,10 +171,10 @@ class Game(gym.Env):
         self.add_obstacles = add_obstacles
         self.obstacles = list()
         self.obstacle_number = obstacle_number
-        
+
         if not self.add_obstacles:
             self.obstacle_number = 0
-          
+
         self.follower_sensors = follower_sensors
         self.reset()
         self.action_space = Box(
@@ -238,8 +239,8 @@ class Game(gym.Env):
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
         leader_start_position = (
-        random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
-        random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
+            random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+            random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
 
         leader_start_direction = angle_to_point(leader_start_position,
                                                 np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
@@ -419,19 +420,19 @@ class Game(gym.Env):
 
         if pygame.time.get_ticks() % 5 == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
-        
+
         if self.leader_finished and self.is_in_box:
             self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
-                #print("LOW REWARD")
+                # print("LOW REWARD")
                 self.crash = True
                 self.done = True
 
             if "max_distance_coef" in self.early_stopping and np.linalg.norm(
                     self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
                 "max_distance_coef"]:
-                #print("FOLLOWER IS TOO FAR")
+                # print("FOLLOWER IS TOO FAR")
                 self.crash = True
                 self.done = True
 
@@ -553,7 +554,7 @@ class Game(gym.Env):
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render(str(self.overall_reward), False, (0, 0, 0))
+        reward_text = self.font.render("Суммарная нагрда:{}, скорость:{}, скорость поворота:{}".format(self.overall_reward, self.follower.speed, self.follower.rotation_speed), False, (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 0))
 
     def generate_trajectory(self,
@@ -822,7 +823,21 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
-                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
+                         follower_sensors={
+                             'LeaderPositionsTracker': {
+                                 'sensor_name': 'LeaderPositionsTracker',
+                                 'eat_close_points': True,
+                                 'saving_period': 8},
+                             'LeaderTrackDetector_vector': {
+                                 'sensor_name': 'LeaderTrackDetector_vector',
+                                 'position_sequence_length': 10},
+                             'LeaderTrackDetector_radar': {
+                                 'sensor_name': 'LeaderTrackDetector_radar',
+                                 'position_sequence_length': 100,
+                                 'radar_sectors_number': 7,
+                                 'detectable_positions': 'near'}
+                         }
                          )
 
 
