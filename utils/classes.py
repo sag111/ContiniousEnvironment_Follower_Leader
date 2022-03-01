@@ -225,12 +225,19 @@ class RobotWithSensors(AbstractRobot):
     def use_sensors(self, env):
         sensors_observes = dict()
         if 'LeaderPositionsTracker' in self.sensors.keys():
-            leader_positions_hist = self.sensors['LeaderPositionsTracker'].scan(env)
+            if self.sensors['LeaderPositionsTracker'].generate_corridor:
+                leader_positions_hist, leader_corridor = self.sensors['LeaderPositionsTracker'].scan(env)
+            else:
+                leader_positions_hist = self.sensors['LeaderPositionsTracker'].scan(env)
         for sensor_name, sensor in self.sensors.items():
             if sensor_name == 'LeaderPositionsTracker':
                 continue
             if sensor_name in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
+            elif sensor_name in ['LeaderCorridor_lasers']:
+                sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
             else:
                 sensors_observes[sensor_name] = sensor.scan(env)
+
+
         return sensors_observes

@@ -836,7 +836,10 @@ class TestGameManual(Game):
                                  'sensor_name': 'LeaderTrackDetector_radar',
                                  'position_sequence_length': 100,
                                  'radar_sectors_number': 7,
-                                 'detectable_positions': 'near'}
+                                 'detectable_positions': 'near'},
+                             "LeaderCorridor_lasers": {
+                                 'sensor_name': 'LeaderCorridor_lasers',
+                             }
                          }
                          )
 

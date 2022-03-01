@@ -133,37 +133,63 @@ class LeaderPositionsTracker:
     """
         Класс, отслеживающий наблюдаемые позиции лидера.
         не генерирует наблюдения, но хранит историю позиций лидера для других сенсоров.
+        TODO: Может имеет смысл переделать на относительные координаты, это же ведомый отслеживает относительно себя, но тогда другие сенсоры тоже надо фиксить.
     """
 
     def __init__(self,
                  host_object,
                  sensor_name,
-                 eat_close_points=False,
+                 eat_close_points=True,
                  max_point=5000,
-                 saving_period=4):
+                 saving_period=4,
+                 generate_corridor=True):
         self.sensor_name = sensor_name
         self.host_object = host_object
         self.max_point = max_point
-        self.eat_close_points = True
-        # TODO: попробовать реализовать как ndarray, может быстрее будет.
+        self.eat_close_points = eat_close_points
+        # TODO: попробовать реализовать как ndarray, может быстрее будет, потому что другие сенсоры это как ndarray используют
         self.leader_positions_hist = list()
         self.saving_period = saving_period
         self.saving_counter = 0
+        self.generate_corridor = generate_corridor
+        self.corridor = list()
+        self.right_border_dot = np.array([0, 0])
+        self.left_border_dot = np.array([0, 0])
 
     def scan(self, env):
         if self.saving_counter % self.saving_period == 0:
-            self.leader_positions_hist.append(env.leader.position.copy())
+            if len(self.leader_positions_hist) == 0 or not (
+                    self.leader_positions_hist[-1] == env.leader.position).all():
+                self.leader_positions_hist.append(env.leader.position.copy())
+                if self.generate_corridor and len(self.leader_positions_hist) > 1:
+                    last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
+                    last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                    right_border_dot = rotateVector(last_2points_vec, 90)
+                    right_border_dot += self.leader_positions_hist[-2]
+                    left_border_dot = rotateVector(last_2points_vec, -90)
+                    left_border_dot += self.leader_positions_hist[-2]
+                    self.corridor.append([right_border_dot, left_border_dot])
+
         self.saving_counter += 1
-        norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
-        indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
-        for index in sorted(indexes, reverse=True):
-            del self.leader_positions_hist[index]
-        return self.leader_positions_hist
+
+        if self.eat_close_points:
+            norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
+            indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
+            for index in sorted(indexes, reverse=True):
+                del self.leader_positions_hist[index]
+
+        if self.generate_corridor:
+            return self.leader_positions_hist, self.corridor
+        else:
+            return self.leader_positions_hist
 
     def reset(self):
         self.leader_positions_hist = list()
 
     def show(self, env):
+        if len(self.corridor) > 1:
+            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
+            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
         pass
 
 
@@ -294,10 +320,102 @@ class LeaderTrackDetector_radar:
                     continue
                 followerRightVec = rotateVector(np.array([self.radar_values[i], 0]), followerRightDir)
                 relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i) - (
-                            self.sectorsAngle_deg / 2))
+                        self.sectorsAngle_deg / 2))
                 absDot = self.host_object.position - relativeDot
                 pygame.draw.line(env.gameDisplay, (255, 80, 180), self.host_object.position, absDot)
                 # pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
+
+
+def perp(a):
+    # https://stackoverflow.com/a/3252222/4807259
+    b = np.empty_like(a)
+    b[:, 0] = -a[:, 1]
+    b[:, 1] = a[:, 0]
+    return b
+
+
+# line segment a given by endpoints a1, a2
+# line segment b given by endpoints b1, b2
+# return
+def seg_intersect(a1, a2, b1, b2):
+    # https://stackoverflow.com/a/3252222/4807259
+    # ДОБАВИТЬ ДЛЯ КОЛЛИНЕАРНОСТИ  УСЛОВИЕ, ЧТОБ УКАЗЫВАТЬ БЛИЖАЙШИЙ КОНЕЦ КАК ТОЧКУ ПЕРЕСЕЧЕНИЯ
+    da = a2 - a1
+    db = b2 - b1
+    dp = a1 - b1
+    dap = perp(da)
+    denom = np.dot(dap, db.transpose())
+
+    # num = np.zeros(dp.shape[0])
+    # а можно ли как-то без цикла?
+    # for i in range(dp.shape[0]):
+    # num[i] = dot( dap[i,:], dp[i,:] )
+    num = np.sum(np.multiply(dap, dp), axis=1)
+    return (num[:, np.newaxis] / denom) * db + b1
+
+
+class LeaderCorridor_lasers:
+    def __init__(self,
+                 host_object,
+                 sensor_name):
+        self.host_object = host_object
+        self.sensor_name = sensor_name
+        # TODO: сделать гибкуб настройку лазеров
+        self.lasers_count = 3
+        self.laser_length = 100
+        self.lasers_end_points = []
+        self.lasers_collides = []
+
+    def ccw(A, B, C):
+        return (C[:, 1] - A[:, 1]) * (B[:, 0] - A[:, 0]) > (B[:, 1] - A[:, 1]) * (C[:, 0] - A[:, 0])
+
+    # Return true if line segments AB and CD intersect
+    def intersect(A, B, C, D):
+        return np.logical_and(LeaderCorridor_lasers.ccw(A, C, D) != LeaderCorridor_lasers.ccw(B, C, D),
+                              LeaderCorridor_lasers.ccw(A, B, C) != LeaderCorridor_lasers.ccw(A, B, D))
+
+    def scan(self, env, corridor):
+        self.lasers_collides = []
+        self.lasers_end_points = []
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction - 40))
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction))
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction + 40))
+        if len(corridor) > 1:
+            corridor_lines = list()
+            for i in range(len(corridor) - 1):
+                corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
+                corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
+            corridor_lines = np.array(corridor_lines, dtype=np.float32)
+            lasers_values = []
+            self.lasers_collides = []
+            for laser_end_point in self.lasers_end_points:
+                # эта функция не работает с коллинеарными
+                # есть вариант лучше, но я пока не смог привести его к матричному виду
+                # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :], np.array([self.host_object.position]),
+                                  np.array([laser_end_point]))
+                intersected_line = corridor_lines[rez]
+                if len(intersected_line) > 0:
+                    x = seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
+                                      np.array([self.host_object.position]),
+                                      np.array([laser_end_point]))
+
+                    norms = np.linalg.norm(x - self.host_object.position, axis=1)
+                    lasers_values.append(np.min(norms))
+                    closest_dot_idx = np.argmin(np.linalg.norm(x - self.host_object.position, axis=1))
+                    self.lasers_collides.append(x[closest_dot_idx])
+                else:
+                    self.lasers_collides.append(laser_end_point)
+
+    def show(self, env):
+        for laser_end_point in self.lasers_end_points:
+            pygame.draw.line(env.gameDisplay, (200, 0, 100), self.host_object.position, laser_end_point)
+
+        for laser_collide in self.lasers_collides:
+            pygame.draw.circle(env.gameDisplay, (200, 0, 100), laser_collide, 5)
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
@@ -305,5 +423,6 @@ SENSOR_NAME_TO_CLASS = {
     "LaserSensor": LaserSensor,
     "LeaderPositionsTracker": LeaderPositionsTracker,
     "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
-    "LeaderTrackDetector_radar": LeaderTrackDetector_radar
+    "LeaderTrackDetector_radar": LeaderTrackDetector_radar,
+    "LeaderCorridor_lasers": LeaderCorridor_lasers
 }
