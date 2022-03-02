@@ -165,8 +165,14 @@ class AbstractRobot(GameObject):
                                 dtype=np.float32)
         self.position += movement_vec
 
-    def move_to_the_point(self, next_point):
+    def move_to_the_point(self, next_point, speed=None):
         """Функция автоматического управления движением к точке"""
+        
+        if speed is not None:
+            new_speed = speed
+        else:
+            new_speed = distance.euclidean(self.position, next_point)
+        
         desirable_angle = int(angle_to_point(self.position, next_point))
 
         cur_direction = int(self.direction)
@@ -188,7 +194,7 @@ class AbstractRobot(GameObject):
                 delta_turn = cur_direction - desirable_angle
 
         self.command_turn(delta_turn, new_rotation_direction)
-        self.command_forward(distance.euclidean(self.position, next_point))
+        self.command_forward(new_speed)
 
         self.move()
 

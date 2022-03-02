@@ -53,6 +53,7 @@ class Game(gym.Env):
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
+                 slow_threshold_steps=2000,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -180,7 +181,9 @@ class Game(gym.Env):
         self.action_space = Box(
             np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
             np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
-
+        
+        self.slow_threshold_steps = slow_threshold_steps
+        
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
 
@@ -428,7 +431,11 @@ class Game(gym.Env):
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
         if not self.leader_finished:
-            self.leader.move_to_the_point(self.cur_target_point)
+            if self.step_count >= self.slow_threshold_steps:
+                speed = self.leader.max_speed/2
+            else:
+                speed = None
+            self.leader.move_to_the_point(self.cur_target_point, speed=speed)
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
