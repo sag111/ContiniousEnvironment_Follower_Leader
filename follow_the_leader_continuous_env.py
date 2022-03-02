@@ -43,7 +43,7 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=1.0,  # в секундах
+                 warm_start=0.0,  # в секундах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
@@ -132,6 +132,11 @@ class Game(gym.Env):
         self.PIXELS_TO_METER = pixels_to_meter
         self.framerate = framerate
         self.frames_per_step = frames_per_step
+        # если частота сохранения точек пути совпадает с частотой обсёрвов,
+        # сенсор фолловера может брать траекторию прямо из среды, иначе нет
+        # пока что он сохраняет траекторию сам, по обсёрвам. Надо подумать,
+        # могут ли отличаться частота сохранения и частота обсёрвов.
+        self.trajectory_saving_period = 5
 
         self.leader_pos_epsilon = leader_pos_epsilon
 
@@ -217,7 +222,7 @@ class Game(gym.Env):
         self.overall_reward = 0
 
         self.cur_target_id = 1  # индекс целевой точки из маршрута
-        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
+
         self.leader_finished = False  # флаг, показывает, закончил ли лидер маршрут, т.е. достиг ли последней точки
         if len(self.trajectory) == 0:
             self.done = True
@@ -237,7 +242,12 @@ class Game(gym.Env):
         # располагаем ведомого с учётом того, куда направлен лидер
         self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
         self._pos_follower_behind_leader()
-        
+        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
+        # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
+        first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (self.trajectory_saving_period*self.leader.max_speed))
+        self.leader_factual_trajectory.extend(zip(np.linspace(self.follower.position[0], self.leader.position[0], first_dots_for_follower_count),
+            np.linspace(self.follower.position[1], self.leader.position[1], first_dots_for_follower_count)))
+
         
         self.follower_scan_dict = self.follower.use_sensors(self)
 
@@ -264,8 +274,8 @@ class Game(gym.Env):
                                     max_rotation_speed_change=20 / 100,
                                     start_position= leader_start_position,
                                     start_direction = leader_start_direction)
-        
-        
+
+        # !!! вся эта процедура повторяется после создания в резете при вызове _pos_follower_behind_leader
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
@@ -441,7 +451,7 @@ class Game(gym.Env):
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # show: сделать параметром;
         
-        if pygame.time.get_ticks() % 5 == 0:
+        if pygame.time.get_ticks() % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
         if self.leader_finished and self.is_in_box:
