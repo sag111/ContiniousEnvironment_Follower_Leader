@@ -52,7 +52,7 @@ class Game(gym.Env):
                  early_stopping={},
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
-                 constant_follower_speed=True,
+                 constant_follower_speed=False,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -185,8 +185,8 @@ class Game(gym.Env):
         self.reset()
         if self.constant_follower_speed:
             self.action_space = Box(
-                np.array((-self.follower.max_rotation_speed), dtype=np.float32),
-                np.array((self.follower.max_rotation_speed), dtype=np.float32))
+                low=-self.follower.max_rotation_speed, high=self.follower.max_rotation_speed, shape=(1,), dtype=np.float32
+            )
         else:
             self.action_space = Box(
                 np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
@@ -898,9 +898,7 @@ class Game(gym.Env):
 
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
-        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
-                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
-                         )
+        super().__init__(**kwargs)
 
 
 class TestGameManual(Game):

@@ -158,7 +158,10 @@ class LeaderPositionsTracker:
         # если сам сенсор отслеживает перемещение
         if self.saving_counter % self.saving_period == 0:
             if len(self.leader_positions_hist) > 0 and (self.leader_positions_hist[-1] == env.leader.position).all():
-                return
+                if self.generate_corridor:
+                    return self.leader_positions_hist, self.corridor
+                else:
+                    return self.leader_positions_hist
             if len(self.leader_positions_hist) == 0:
                 self.leader_positions_hist.append(self.host_object.position.copy())
             self.leader_positions_hist.append(env.leader.position.copy())
@@ -183,7 +186,6 @@ class LeaderPositionsTracker:
             indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
             for index in sorted(indexes, reverse=True):
                 del self.leader_positions_hist[index]
-
         if self.generate_corridor:
             return self.leader_positions_hist, self.corridor
         else:
@@ -191,6 +193,7 @@ class LeaderPositionsTracker:
 
     def reset(self):
         self.leader_positions_hist = list()
+        self.corridor = list()
 
     def show(self, env):
         if len(self.corridor) > 1:
@@ -496,6 +499,10 @@ class LeaderCorridor_lasers:
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
+        obs = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+        for i, collide in enumerate(self.lasers_collides):
+            obs[i] = np.linalg.norm(collide - self.host_object.position)
+        return obs
 
     def show(self, env):
         for laser_end_point in self.lasers_end_points:

@@ -66,17 +66,34 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def __init__(self, env, lz4_compress=False):
         super().__init__(env)
-        self.observation_space = Box(-np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
-                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number),
-                                     np.ones(self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2 + 
-                                              self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number))
+        features_number = 0
+        # этот должен быть -1:1
+        if 'LeaderTrackDetector_vector' in self.follower.sensors:
+            features_number += self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2
+        # этот должен быть 0:1
+        if 'LeaderTrackDetector_radar' in self.follower.sensors:
+            features_number += self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number
+        # этот должен быть 0:1
+        if 'LeaderCorridor_lasers' in self.follower.sensors:
+            features_number += self.follower.sensors['LeaderCorridor_lasers'].lasers_count
+        self.observation_space = Box(-np.ones(features_number),
+                                     np.ones(features_number))
 
     def observation(self, obs):
-        history_vecs = obs['LeaderTrackDetector_vector'].flatten()
-        history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
-        history_radar = obs['LeaderTrackDetector_radar']
-        history_radar = np.clip(history_radar / self.max_distance, -1, 1)
-        return np.concatenate([history_vecs, history_radar])
+        features_list = []
+        if 'LeaderTrackDetector_vector' in self.follower.sensors:
+            history_vecs = obs['LeaderTrackDetector_vector'].flatten()
+            history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
+            features_list.append(history_vecs)
+        if 'LeaderTrackDetector_radar' in self.follower.sensors:
+            history_radar = obs['LeaderTrackDetector_radar']
+            history_radar = np.clip(history_radar / self.max_distance, 0, 1)
+            features_list.append(history_radar)
+        if 'LeaderCorridor_lasers' in self.follower.sensors:
+            corridor_lasers = obs['LeaderCorridor_lasers']
+            corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers'].laser_length, 0, 1)
+            features_list.append(corridor_lasers)
+        return np.concatenate(features_list)
 
 
 class LeaderTrajectory_v0(ObservationWrapper):
