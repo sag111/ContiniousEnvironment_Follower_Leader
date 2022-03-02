@@ -50,9 +50,9 @@ class Game(gym.Env):
                  add_obstacles=True,
                  obstacle_number=15,
                  early_stopping={},
-                 end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
+                 constant_follower_speed=True,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -119,6 +119,7 @@ class Game(gym.Env):
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
                     "video.frames_per_second": framerate}  # "human" вроде не обязательно
+        self.constant_follower_speed = constant_follower_speed
 
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
@@ -182,9 +183,14 @@ class Game(gym.Env):
 
         self.follower_sensors = follower_sensors
         self.reset()
-        self.action_space = Box(
-            np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
-            np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
+        if self.constant_follower_speed:
+            self.action_space = Box(
+                np.array((-self.follower.max_rotation_speed), dtype=np.float32),
+                np.array((self.follower.max_rotation_speed), dtype=np.float32))
+        else:
+            self.action_space = Box(
+                np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
+                np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -387,10 +393,14 @@ class Game(gym.Env):
 
     def step(self, action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
+        if self.constant_follower_speed:
+            self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-        else:            
+        else:
+            if self.constant_follower_speed:
+                action = np.concatenate([[0.25], action])
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -715,11 +725,12 @@ class Game(gym.Env):
                 else:
                     follower.command_turn(follower.rotation_speed + 2, 1)
 
-            if event.key == pygame.K_UP:
-                follower.command_forward(follower.speed + self.PIXELS_TO_METER)
+            if not self.constant_follower_speed:
+                if event.key == pygame.K_UP:
+                    follower.command_forward(follower.speed + self.PIXELS_TO_METER)
 
-            if event.key == pygame.K_DOWN:
-                follower.command_forward(follower.speed - self.PIXELS_TO_METER)
+                if event.key == pygame.K_DOWN:
+                    follower.command_forward(follower.speed - self.PIXELS_TO_METER)
 
     def _get_obs(self):
         """Возвращает наблюдения (observations) среды каждый шаг (step)"""
@@ -895,6 +906,7 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
+                        constant_follower_speed=True,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
