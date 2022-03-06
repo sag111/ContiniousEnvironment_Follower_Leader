@@ -53,7 +53,8 @@ class Game(gym.Env):
                  end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
-                 slow_threshold_steps=2000,
+                 slow_threshold_steps=10000,
+                 discrete_action_space=False,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -124,7 +125,7 @@ class Game(gym.Env):
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
-
+        
         # номер симуляции
         self.simulation_number = 0
 
@@ -178,11 +179,26 @@ class Game(gym.Env):
 
         self.follower_sensors = follower_sensors
         self.reset()
-        self.action_space = Box(
-            np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
-            np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
+        
+        self.discrete_action_space = discrete_action_space
+        if discrete_action_space:
+            self.action_space = Discrete(5)
+            
+            self.discrete_rotation_speed_to_value = {0: -self.follower.max_rotation_speed,
+                                                     1: -self.follower.max_rotation_speed/2,
+                                                     2: 0,
+                                                     3: self.follower.max_rotation_speed/2,
+                                                     4: self.follower.max_rotation_speed} 
+            
+        else:
+            self.action_space = Box(
+                np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
+                np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
+        
+        self._create_observation_space()
         
         self.slow_threshold_steps = slow_threshold_steps
+        
         
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -383,7 +399,10 @@ class Game(gym.Env):
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-        else:            
+        else: 
+            if self.discrete_action_space:
+                action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
+            
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -731,10 +750,7 @@ class Game(gym.Env):
                                                    self.follower.position[1],
                                                    self.follower.speed,
                                                    self.follower.direction,
-                                                   self.follower.rotation_speed,
-                                                   self.min_distance,
-                                                   self.max_distance,
-                                                   self.max_dev], dtype=np.float32)
+                                                   self.follower.rotation_speed], dtype=np.float32)
         
         if self.cur_target_point==self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
@@ -744,6 +760,21 @@ class Game(gym.Env):
         obs_dict.update(self.follower_scan_dict)
 
         return obs_dict
+    
+    def _create_observation_space(self):
+        self.observation_space = Box(low=np.array((0,0,
+                                          0,0,
+                                          -self.leader.max_rotation_speed,
+                                          0,0,
+                                          0,0,
+                                          -self.follower.max_rotation_speed), dtype=np.float32),
+                                    high=np.array((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                          self.leader.max_speed,360,
+                                          self.leader.max_rotation_speed,
+                                          self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                          self.follower.max_speed,360,
+                                          self.follower.max_rotation_speed), dtype=np.float32))
+    
 
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
@@ -885,7 +916,24 @@ class Game(gym.Env):
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
         super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
-                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                         follower_sensors={
+                             'LeaderPositionsTracker': {
+                                 'sensor_name': 'LeaderPositionsTracker',
+                                 'eat_close_points': True,
+                                 'saving_period': 8},
+                             'LeaderTrackDetector_vector': {
+                                 'sensor_name': 'LeaderTrackDetector_vector',
+                                 'position_sequence_length': 10},
+                             'LeaderTrackDetector_radar': {
+                                 'sensor_name': 'LeaderTrackDetector_radar',
+                                 'position_sequence_length': 100,
+                                 'radar_sectors_number': 7,
+                                 'detectable_positions': 'near'},
+                             "LeaderCorridor_lasers": {
+                                 'sensor_name': 'LeaderCorridor_lasers',
+                             }
+                         }
                          )
 
 
@@ -925,6 +973,12 @@ class TestGameBaseAlgoObst(Game):
                              follower_sensors={"GreenBoxBorderSensor":{"sensor_range":2,
                                                                        "available_angle":180,
                                                                        "angle_step":45}})
+        
+class TestGameNEAT(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=False, 
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                         discrete_action_space=True)
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
@@ -945,3 +999,7 @@ gym_register(
 gym_register(
     id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
     entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoObst")
+
+gym_register(
+    id="Test-Game-Neat-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameNEAT")
