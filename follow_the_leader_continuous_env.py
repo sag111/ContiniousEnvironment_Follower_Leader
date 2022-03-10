@@ -691,6 +691,8 @@ class Game(gym.Env):
                                    end=end,
                                    max_iterations=max_iter,
                                    return_none_on_max_iter=False)
+            if path_continued is None:
+                return path
             return path + path_continued
         else:
             path = astar(maze=grid,

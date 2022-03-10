@@ -64,7 +64,7 @@ class MyFrameStack(ObservationWrapper):
 
 class ContinuousObserveModifier_v0(ObservationWrapper):
 
-    def __init__(self, env, lz4_compress=False):
+    def __init__(self, env, action_values_range=None, lz4_compress=False):
         super().__init__(env)
         features_number = 0
         # этот должен быть -1:1
@@ -78,6 +78,15 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_number += self.follower.sensors['LeaderCorridor_lasers'].lasers_count
         self.observation_space = Box(-np.ones(features_number),
                                      np.ones(features_number))
+        self.action_values_range = action_values_range
+        if self.action_values_range is not None:
+            low_bound, high_bound = self.action_values_range
+            self.scale = (high_bound - low_bound) / (env.action_space.high - env.action_space.low)
+            self.min = low_bound - env.action_space.low * self.scale
+            self.action_space = Box(low=-np.ones_like(env.action_space.low),
+                                    high=np.ones_like(env.action_space.high), 
+                                    shape=env.action_space.shape, 
+                                    dtype=env.action_space.dtype)
 
     def observation(self, obs):
         features_list = []
@@ -94,6 +103,20 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers'].laser_length, 0, 1)
             features_list.append(corridor_lasers)
         return np.concatenate(features_list)
+
+    def step(self, action):
+        if self.action_values_range is not None:
+            action -= self.min
+            action /= self.scale
+        obs, rews, dones, infos = self.env.step(action)
+        obs = self.observation(obs)
+        return obs, rews, dones, infos
+
+# сначала сделал нормализацию в отдельном классе, а не параметром action_values_range
+# просто для обратной совместимости оставил, чтоб старые конфиги работали. 
+class ContinuousObserveModifier_v1(ContinuousObserveModifier_v0):
+    def __init__(self, env, lz4_compress=False):
+        super().__init__(env, action_values_range=[-1, 1])
 
 
 class LeaderTrajectory_v0(ObservationWrapper):
