@@ -23,7 +23,9 @@ from utils.misc import rotateVector, angle_to_point, distance_to_rect
 from warnings import warn
 
 
-
+# TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
+# как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
+# совпадающие ключи перезаписываются
 class Game(gym.Env):
     def __init__(self, game_width=1500,
                  game_height=1000,
@@ -182,15 +184,21 @@ class Game(gym.Env):
             self.obstacle_number = 0
 
         self.follower_sensors = follower_sensors
-        self.reset()
+        # self.reset()
+        # TODO: вынести куда-то дефолтный конфиг, и загружать его
+        self.follower_config = {
+            'min_speed': 0,
+            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_rotation_speed': 57.296 / 100,
+        }
         if self.constant_follower_speed:
             self.action_space = Box(
-                low=-self.follower.max_rotation_speed, high=self.follower.max_rotation_speed, shape=(1,), dtype=np.float32
+                low=-self.follower_config['max_rotation_speed'], high=self.follower_config['max_rotation_speed'], shape=(1,), dtype=np.float32
             )
         else:
             self.action_space = Box(
-                np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
-                np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
+                np.array((self.follower_config['min_speed'], -self.follower_config['max_rotation_speed']), dtype=np.float32),
+                np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']), dtype=np.float32))
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -295,10 +303,10 @@ class Game(gym.Env):
                                          start_direction=follower_direction,
                                          height=0.5 * self.PIXELS_TO_METER,
                                          width=0.35 * self.PIXELS_TO_METER,
-                                         min_speed=0,
-                                         max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                         min_speed=self.follower_config["min_speed"],
+                                         max_speed=self.follower_config["max_speed"],
                                          max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                         max_rotation_speed=57.296 / 100,
+                                         max_rotation_speed=self.follower_config["max_rotation_speed"],
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
                                          sensors=self.follower_sensors)
@@ -905,8 +913,8 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
-                        constant_follower_speed=True,
+        super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
+                        constant_follower_speed=False,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {

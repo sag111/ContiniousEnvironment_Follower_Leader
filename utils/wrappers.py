@@ -68,14 +68,14 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         super().__init__(env)
         features_number = 0
         # этот должен быть -1:1
-        if 'LeaderTrackDetector_vector' in self.follower.sensors:
-            features_number += self.follower.sensors['LeaderTrackDetector_vector'].position_sequence_length * 2
+        if 'LeaderTrackDetector_vector' in self.follower_sensors:
+            features_number += env.follower_sensors['LeaderTrackDetector_vector']['position_sequence_length'] * 2
         # этот должен быть 0:1
-        if 'LeaderTrackDetector_radar' in self.follower.sensors:
-            features_number += self.follower.sensors['LeaderTrackDetector_radar'].radar_sectors_number
+        if 'LeaderTrackDetector_radar' in self.follower_sensors:
+            features_number += env.follower_sensors['LeaderTrackDetector_radar']['radar_sectors_number']
         # этот должен быть 0:1
-        if 'LeaderCorridor_lasers' in self.follower.sensors:
-            features_number += self.follower.sensors['LeaderCorridor_lasers'].lasers_count
+        if 'LeaderCorridor_lasers' in self.follower_sensors:
+            features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
         self.observation_space = Box(-np.ones(features_number),
                                      np.ones(features_number))
         self.action_values_range = action_values_range
