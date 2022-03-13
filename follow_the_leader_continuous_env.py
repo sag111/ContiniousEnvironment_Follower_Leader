@@ -184,7 +184,7 @@ class Game(gym.Env):
             self.obstacle_number = 0
 
         self.follower_sensors = follower_sensors
-        # self.reset()
+        self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
         self.follower_config = {
             'min_speed': 0,
@@ -264,7 +264,7 @@ class Game(gym.Env):
 
         
         self.follower_scan_dict = self.follower.use_sensors(self)
-
+        self.finish_position_framestimer = None
         return self._get_obs()
 
     def _create_robots(self):
@@ -471,7 +471,12 @@ class Game(gym.Env):
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
         if self.leader_finished and self.is_in_box:
-            self.done = True
+            if self.finish_position_framestimer is None:
+                self.finish_position_framestimer = 0
+            else:
+                self.finish_position_framestimer += 1
+                if self.finish_position_framestimer > self.frames_per_step * 100:
+                    self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
@@ -911,7 +916,7 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
+        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
                         constant_follower_speed=False,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
