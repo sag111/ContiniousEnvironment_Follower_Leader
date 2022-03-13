@@ -358,7 +358,10 @@ class Game(gym.Env):
         wall_end_x = self.obstacles1.rectangle.right
         
         obstacle_size = 50
-        
+        bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 3,
+                                       self.obstacles1.rectangle.bottom - self.leader.height,
+                                       self.obstacles1.rectangle.width + 6 * self.leader.width,
+                                       self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 2 * self.leader.height)
         for i in range(self.obstacle_number):
 
             is_free = False
@@ -366,11 +369,6 @@ class Game(gym.Env):
             while not is_free:
                 generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
                                       np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))
-
-                bridge_rectangle = pygame.Rect(wall_start_x - self.leader_pos_epsilon,
-                                               self.obstacles1.rectangle.bottom,
-                                               self.obstacles1.rectangle.width + 2 * self.leader_pos_epsilon,
-                                               self.obstacles1.rectangle.bottom - self.obstacles2.rectangle.top)
 
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
