@@ -43,18 +43,18 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=1.0,  # в секундах
+                 warm_start=0.0,  # в секундах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
                  obstacle_number=15,
                  early_stopping={},
-                 end_simulation_on_leader_finish=False,  # NotImplemented
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
                  slow_threshold_steps=10000,
                  discrete_action_space=False,
+                 constant_follower_speed=False,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -121,6 +121,7 @@ class Game(gym.Env):
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
                     "video.frames_per_second": framerate}  # "human" вроде не обязательно
+        self.constant_follower_speed = constant_follower_speed
 
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
@@ -134,6 +135,11 @@ class Game(gym.Env):
         self.PIXELS_TO_METER = pixels_to_meter
         self.framerate = framerate
         self.frames_per_step = frames_per_step
+        # если частота сохранения точек пути совпадает с частотой обсёрвов,
+        # сенсор фолловера может брать траекторию прямо из среды, иначе нет
+        # пока что он сохраняет траекторию сам, по обсёрвам. Надо подумать,
+        # могут ли отличаться частота сохранения и частота обсёрвов.
+        self.trajectory_saving_period = 5
 
         self.leader_pos_epsilon = leader_pos_epsilon
 
@@ -181,6 +187,8 @@ class Game(gym.Env):
         self.reset()
         
         self.discrete_action_space = discrete_action_space
+        
+        #TODO: переделать в нормальный вид из условий с двумя флагами
         if discrete_action_space:
             self.action_space = Discrete(5)
             
@@ -190,6 +198,11 @@ class Game(gym.Env):
                                                      3: self.follower.max_rotation_speed/2,
                                                      4: self.follower.max_rotation_speed} 
             
+
+        elif self.constant_follower_speed:
+            self.action_space = Box(
+                low=-self.follower.max_rotation_speed, high=self.follower.max_rotation_speed, shape=(1,), dtype=np.float32
+            )
         else:
             self.action_space = Box(
                 np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
@@ -236,7 +249,7 @@ class Game(gym.Env):
         self.overall_reward = 0
 
         self.cur_target_id = 1  # индекс целевой точки из маршрута
-        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
+
         self.leader_finished = False  # флаг, показывает, закончил ли лидер маршрут, т.е. достиг ли последней точки
         if len(self.trajectory) == 0:
             self.done = True
@@ -256,7 +269,12 @@ class Game(gym.Env):
         # располагаем ведомого с учётом того, куда направлен лидер
         self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
         self._pos_follower_behind_leader()
-        
+        self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
+        # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
+        first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (self.trajectory_saving_period*self.leader.max_speed))
+        self.leader_factual_trajectory.extend(zip(np.linspace(self.follower.position[0], self.leader.position[0], first_dots_for_follower_count),
+            np.linspace(self.follower.position[1], self.leader.position[1], first_dots_for_follower_count)))
+
         
         self.follower_scan_dict = self.follower.use_sensors(self)
 
@@ -283,8 +301,8 @@ class Game(gym.Env):
                                     max_rotation_speed_change=20 / 100,
                                     start_position= leader_start_position,
                                     start_direction = leader_start_direction)
-        
-        
+
+        # !!! вся эта процедура повторяется после создания в резете при вызове _pos_follower_behind_leader
         follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
@@ -396,13 +414,18 @@ class Game(gym.Env):
 
     def step(self, action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
+        if self.constant_follower_speed:
+            self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-        else: 
+                
             if self.discrete_action_space:
                 action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
             
+            if self.constant_follower_speed:
+                action = np.concatenate([[0.25], action])
+
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -467,7 +490,7 @@ class Game(gym.Env):
         # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
         # show: сделать параметром;
         
-        if pygame.time.get_ticks() % 5 == 0:
+        if pygame.time.get_ticks() % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
         if self.leader_finished and self.is_in_box:
@@ -697,6 +720,8 @@ class Game(gym.Env):
                                    end=end,
                                    max_iterations=max_iter,
                                    return_none_on_max_iter=False)
+            if path_continued is None:
+                return path
             return path + path_continued
         else:
             path = astar(maze=grid,
@@ -731,11 +756,12 @@ class Game(gym.Env):
                 else:
                     follower.command_turn(follower.rotation_speed + 2, 1)
 
-            if event.key == pygame.K_UP:
-                follower.command_forward(follower.speed + self.PIXELS_TO_METER)
+            if not self.constant_follower_speed:
+                if event.key == pygame.K_UP:
+                    follower.command_forward(follower.speed + self.PIXELS_TO_METER)
 
-            if event.key == pygame.K_DOWN:
-                follower.command_forward(follower.speed - self.PIXELS_TO_METER)
+                if event.key == pygame.K_DOWN:
+                    follower.command_forward(follower.speed - self.PIXELS_TO_METER)
 
     def _get_obs(self):
         """Возвращает наблюдения (observations) среды каждый шаг (step)"""
@@ -940,6 +966,7 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
+                        constant_follower_speed=True,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {

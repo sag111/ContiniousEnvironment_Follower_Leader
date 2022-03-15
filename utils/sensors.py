@@ -139,7 +139,7 @@ class LeaderPositionsTracker:
                  sensor_name,
                  eat_close_points=True,
                  max_point=5000,
-                 saving_period=4,
+                 saving_period=5,
                  generate_corridor=True):
         self.sensor_name = sensor_name
         self.host_object = host_object
@@ -155,18 +155,29 @@ class LeaderPositionsTracker:
         self.left_border_dot = np.array([0, 0])
 
     def scan(self, env):
+        # если сам сенсор отслеживает перемещение
         if self.saving_counter % self.saving_period == 0:
-            if len(self.leader_positions_hist) == 0 or not (
-                    self.leader_positions_hist[-1] == env.leader.position).all():
-                self.leader_positions_hist.append(env.leader.position.copy())
-                if self.generate_corridor and len(self.leader_positions_hist) > 1:
-                    last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
-                    last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
-                    right_border_dot = rotateVector(last_2points_vec, 90)
-                    right_border_dot += self.leader_positions_hist[-2]
-                    left_border_dot = rotateVector(last_2points_vec, -90)
-                    left_border_dot += self.leader_positions_hist[-2]
-                    self.corridor.append([right_border_dot, left_border_dot])
+            if len(self.leader_positions_hist) > 0 and (self.leader_positions_hist[-1] == env.leader.position).all():
+                if self.generate_corridor:
+                    return self.leader_positions_hist, self.corridor
+                else:
+                    return self.leader_positions_hist
+            if len(self.leader_positions_hist) == 0:
+                self.leader_positions_hist.append(self.host_object.position.copy())
+            self.leader_positions_hist.append(env.leader.position.copy())
+            if self.generate_corridor and len(self.leader_positions_hist) > 1:
+                last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
+                last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                right_border_dot = rotateVector(last_2points_vec, 90)
+                right_border_dot += self.leader_positions_hist[-2]
+                left_border_dot = rotateVector(last_2points_vec, -90)
+                left_border_dot += self.leader_positions_hist[-2]
+                self.corridor.append([right_border_dot, left_border_dot])
+        # Можно ещё брать из среды, но там частота сохранения другая
+        # self.leader_positions_hist = env.leader_factual_trajectory[::self.saving_period]
+        #assert env.frames_per_step % env.trajectory_saving_period == 0
+        #print(self.leader_positions_hist)
+        #print(env.leader_factual_trajectory[::self.saving_period*(int(env.frames_per_step / env.trajectory_saving_period))])
 
         self.saving_counter += 1
 
@@ -175,7 +186,6 @@ class LeaderPositionsTracker:
             indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
             for index in sorted(indexes, reverse=True):
                 del self.leader_positions_hist[index]
-
         if self.generate_corridor:
             return self.leader_positions_hist, self.corridor
         else:
@@ -183,6 +193,7 @@ class LeaderPositionsTracker:
 
     def reset(self):
         self.leader_positions_hist = list()
+        self.corridor = list()
 
     def show(self, env):
         if len(self.corridor) > 1:
@@ -403,32 +414,6 @@ class GreenBoxBorderSensor(LaserSensor):
     def show(self, env):
         for cur_point in self.sensed_points:
             pygame.draw.circle(env.gameDisplay, env.colours["blue"], cur_point, 2)
-def perp(a):
-    # https://stackoverflow.com/a/3252222/4807259
-    b = np.empty_like(a)
-    b[:, 0] = -a[:, 1]
-    b[:, 1] = a[:, 0]
-    return b
-
-
-# line segment a given by endpoints a1, a2
-# line segment b given by endpoints b1, b2
-# return
-def seg_intersect(a1, a2, b1, b2):
-    # https://stackoverflow.com/a/3252222/4807259
-    # ДОБАВИТЬ ДЛЯ КОЛЛИНЕАРНОСТИ  УСЛОВИЕ, ЧТОБ УКАЗЫВАТЬ БЛИЖАЙШИЙ КОНЕЦ КАК ТОЧКУ ПЕРЕСЕЧЕНИЯ
-    da = a2 - a1
-    db = b2 - b1
-    dp = a1 - b1
-    dap = perp(da)
-    denom = np.dot(dap, db.transpose())
-
-    # num = np.zeros(dp.shape[0])
-    # а можно ли как-то без цикла?
-    # for i in range(dp.shape[0]):
-    # num[i] = dot( dap[i,:], dp[i,:] )
-    num = np.sum(np.multiply(dap, dp), axis=1)
-    return (num[:, np.newaxis] / denom) * db + b1
 
 
 class LeaderCorridor_lasers:
@@ -450,6 +435,32 @@ class LeaderCorridor_lasers:
     def intersect(A, B, C, D):
         return np.logical_and(LeaderCorridor_lasers.ccw(A, C, D) != LeaderCorridor_lasers.ccw(B, C, D),
                               LeaderCorridor_lasers.ccw(A, B, C) != LeaderCorridor_lasers.ccw(A, B, D))
+
+    def perp(a):
+        # https://stackoverflow.com/a/3252222/4807259
+        b = np.empty_like(a)
+        b[:, 0] = -a[:, 1]
+        b[:, 1] = a[:, 0]
+        return b
+
+    # line segment a given by endpoints a1, a2
+    # line segment b given by endpoints b1, b2
+    # return
+    def seg_intersect(a1, a2, b1, b2):
+        # https://stackoverflow.com/a/3252222/4807259
+        # ДОБАВИТЬ ДЛЯ КОЛЛИНЕАРНОСТИ  УСЛОВИЕ, ЧТОБ УКАЗЫВАТЬ БЛИЖАЙШИЙ КОНЕЦ КАК ТОЧКУ ПЕРЕСЕЧЕНИЯ
+        da = a2 - a1
+        db = b2 - b1
+        dp = a1 - b1
+        dap = LeaderCorridor_lasers.perp(da)
+        denom = np.dot(dap, db.transpose())
+
+        # num = np.zeros(dp.shape[0])
+        # а можно ли как-то без цикла?
+        # for i in range(dp.shape[0]):
+        # num[i] = dot( dap[i,:], dp[i,:] )
+        num = np.sum(np.multiply(dap, dp), axis=1)
+        return (num[:, np.newaxis] / denom) * db + b1
 
     def scan(self, env, corridor):
         self.lasers_collides = []
@@ -476,16 +487,22 @@ class LeaderCorridor_lasers:
                                   np.array([laser_end_point]))
                 intersected_line = corridor_lines[rez]
                 if len(intersected_line) > 0:
-                    x = seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
+                    x = LeaderCorridor_lasers.seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
                                       np.array([self.host_object.position]),
                                       np.array([laser_end_point]))
-
+                    # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                    # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                    exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
                     norms = np.linalg.norm(x - self.host_object.position, axis=1)
                     lasers_values.append(np.min(norms))
                     closest_dot_idx = np.argmin(np.linalg.norm(x - self.host_object.position, axis=1))
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
+        obs = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+        for i, collide in enumerate(self.lasers_collides):
+            obs[i] = np.linalg.norm(collide - self.host_object.position)
+        return obs
 
     def show(self, env):
         for laser_end_point in self.lasers_end_points:
