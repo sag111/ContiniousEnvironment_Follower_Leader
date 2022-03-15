@@ -508,7 +508,7 @@ class Game(gym.Env):
         else:
             reward_to_return = res_reward
 
-        return obs, reward_to_return, self.done, {}
+        return obs, int(reward_to_return), self.done, {}
 
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
