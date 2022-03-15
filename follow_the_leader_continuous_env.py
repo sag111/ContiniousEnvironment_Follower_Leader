@@ -54,6 +54,8 @@ class Game(gym.Env):
                  early_stopping={},
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
+                 slow_threshold_steps=10000,
+                 discrete_action_space=False,
                  constant_follower_speed=False,
                  **kwargs
                  ):
@@ -191,7 +193,21 @@ class Game(gym.Env):
             'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
             'max_rotation_speed': 57.296 / 100,
         }
-        if self.constant_follower_speed:
+        self.leader_config = {
+            'min_speed': 0,
+            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_rotation_speed': 57.296 / 100,
+        }
+        self.discrete_action_space = discrete_action_space
+        if discrete_action_space:
+            self.action_space = Discrete(5)
+
+            self.discrete_rotation_speed_to_value = {0: -self.follower_config['max_rotation_speed'],
+                                                     1: -self.follower_config['max_rotation_speed'] / 2,
+                                                     2: 0,
+                                                     3: self.follower_config['max_rotation_speed'] / 2,
+                                                     4: self.follower_config['max_rotation_speed']}
+        elif self.constant_follower_speed:
             self.action_space = Box(
                 low=-self.follower_config['max_rotation_speed'], high=self.follower_config['max_rotation_speed'], shape=(1,), dtype=np.float32
             )
@@ -199,6 +215,11 @@ class Game(gym.Env):
             self.action_space = Box(
                 np.array((self.follower_config['min_speed'], -self.follower_config['max_rotation_speed']), dtype=np.float32),
                 np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']), dtype=np.float32))
+
+        self._create_observation_space()
+
+        self.slow_threshold_steps = slow_threshold_steps
+
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -281,10 +302,10 @@ class Game(gym.Env):
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
                                     width=0.52 * self.PIXELS_TO_METER,
-                                    min_speed=0,
-                                    max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                    min_speed=self.leader_config["min_speed"],
+                                    max_speed=self.leader_config["max_speed"],
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                    max_rotation_speed=57.296 / 100,
+                                    max_rotation_speed=self.leader_config["max_rotation_speed"],
                                     max_rotation_speed_change=20 / 100,
                                     start_position= leader_start_position,
                                     start_direction = leader_start_direction)
@@ -405,6 +426,9 @@ class Game(gym.Env):
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
         else:
+            if self.discrete_action_space:
+                action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
+
             if self.constant_follower_speed:
                 action = np.concatenate([[0.25], action])
             self.follower.command_forward(action[0])
@@ -454,7 +478,11 @@ class Game(gym.Env):
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
         if not self.leader_finished:
-            self.leader.move_to_the_point(self.cur_target_point)
+            if self.step_count >= self.slow_threshold_steps:
+                speed = self.leader.max_speed/2
+            else:
+                speed = None
+            self.leader.move_to_the_point(self.cur_target_point, speed=speed)
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
@@ -475,7 +503,7 @@ class Game(gym.Env):
                 self.finish_position_framestimer = 0
             else:
                 self.finish_position_framestimer += 1
-                if self.finish_position_framestimer > self.frames_per_step * 100:
+                if self.finish_position_framestimer > self.frames_per_step * 50:
                     self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
@@ -512,8 +540,8 @@ class Game(gym.Env):
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-
-        return obs, reward_to_return, self.done, {}
+        # Антон, почему инт? там же может быть 0.1 ревард
+        return obs, int(reward_to_return), self.done, {}
 
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
@@ -758,10 +786,7 @@ class Game(gym.Env):
                                                    self.follower.position[1],
                                                    self.follower.speed,
                                                    self.follower.direction,
-                                                   self.follower.rotation_speed,
-                                                   self.min_distance,
-                                                   self.max_distance,
-                                                   self.max_dev], dtype=np.float32)
+                                                   self.follower.rotation_speed], dtype=np.float32)
         
         if self.cur_target_point==self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
@@ -771,6 +796,21 @@ class Game(gym.Env):
         obs_dict.update(self.follower_scan_dict)
 
         return obs_dict
+
+    def _create_observation_space(self):
+        self.observation_space = Box(low=np.array((0,0,
+                                          0,0,
+                                          -self.leader_config['max_rotation_speed'],
+                                          0,0,
+                                          0,0,
+                                          -self.follower_config['max_rotation_speed']), dtype=np.float32),
+                                    high=np.array((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                          self.leader_config['max_speed'],360,
+                                          self.leader_config['max_rotation_speed'],
+                                          self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                          self.follower_config['max_speed'],360,
+                                          self.follower_config['max_rotation_speed']), dtype=np.float32))
+
 
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
@@ -911,7 +951,26 @@ class Game(gym.Env):
 
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                         follower_sensors={
+                             'LeaderPositionsTracker': {
+                                 'sensor_name': 'LeaderPositionsTracker',
+                                 'eat_close_points': True,
+                                 'saving_period': 8},
+                             'LeaderTrackDetector_vector': {
+                                 'sensor_name': 'LeaderTrackDetector_vector',
+                                 'position_sequence_length': 10},
+                             'LeaderTrackDetector_radar': {
+                                 'sensor_name': 'LeaderTrackDetector_radar',
+                                 'position_sequence_length': 100,
+                                 'radar_sectors_number': 7,
+                                 'detectable_positions': 'near'},
+                             "LeaderCorridor_lasers": {
+                                 'sensor_name': 'LeaderCorridor_lasers',
+                             }
+                         }
+                         )
 
 
 class TestGameManual(Game):
@@ -952,6 +1011,12 @@ class TestGameBaseAlgoObst(Game):
                                                                        "available_angle":180,
                                                                        "angle_step":45}})
 
+class TestGameNEAT(Game):
+    def __init__(self):
+        super().__init__(manual_control=False, add_obstacles=False,
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                         discrete_action_space=True)
+
 gym_register(
     id="Test-Cont-Env-Auto-v0",
     entry_point="follow_the_leader_continuous_env:TestGameAuto",
@@ -971,3 +1036,7 @@ gym_register(
 gym_register(
     id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
     entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoObst")
+
+gym_register(
+    id="Test-Game-Neat-v0",
+    entry_point="follow_the_leader_continuous_env:TestGameNEAT")
