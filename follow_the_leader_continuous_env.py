@@ -496,7 +496,9 @@ class Game(gym.Env):
                         if abs(self.step_count-cur_key) < min_step_distance:
                             self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
                         del self.leader_speed_regime[cur_key]
-                            
+                
+                if type(self.cur_speed_multiplier) in (tuple,list):
+                    self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0],self.cur_speed_multiplier[1])
                 speed = self.leader.max_speed * self.cur_speed_multiplier
                 
                 
@@ -1002,12 +1004,13 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
                         constant_follower_speed=False,
-                        leader_speed_regime={0:1,
-                                             2000:0.75,
-                                             5000:0.9,
-                                             6000:1,
-                                             6100:0,
-                                             8000:1},
+                        leader_speed_regime={0:(0.2,1),
+                                             200:1,
+                                             1000:0.75,
+                                             2000:0.9,
+                                             3000:1,
+                                             3100:0,
+                                             4000:(0.5,1)},
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
