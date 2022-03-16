@@ -55,6 +55,7 @@ class Game(gym.Env):
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
                  slow_threshold_steps=10000,
+                 leader_speed_regime=None,
                  discrete_action_space=False,
                  constant_follower_speed=False,
                  **kwargs
@@ -102,6 +103,8 @@ class Game(gym.Env):
             если True, step будет давать акумулированную награду;
         obstacle_number (int):
             число случайно генерируемых препятствий.
+        leader_speed_regime (dict):
+            словарь - ключ - число степов, значение - скорость лидера.
         """
 
         # нужно для сохранения видео
@@ -218,7 +221,10 @@ class Game(gym.Env):
 
         self._create_observation_space()
 
+        # Скорость лидера
         self.slow_threshold_steps = slow_threshold_steps
+        self.leader_speed_regime = leader_speed_regime
+        
 
 
     def reset(self):
@@ -283,7 +289,7 @@ class Game(gym.Env):
         self.leader_factual_trajectory.extend(zip(np.linspace(self.follower.position[0], self.leader.position[0], first_dots_for_follower_count),
             np.linspace(self.follower.position[1], self.leader.position[1], first_dots_for_follower_count)))
 
-        
+            
         self.follower_scan_dict = self.follower.use_sensors(self)
         self.finish_position_framestimer = None
         return self._get_obs()
@@ -482,7 +488,20 @@ class Game(gym.Env):
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
         if not self.leader_finished:
-            if self.step_count >= self.slow_threshold_steps:
+            if self.leader_speed_regime is not None:
+                # пишу ужасный код, по-другому голова не работает, простите
+                
+                min_step_distance = np.inf
+                
+                for cur_key in list(self.leader_speed_regime.keys()):
+                    if cur_key <= self.step_count:
+                        if abs(self.step_count-cur_key) < min_step_distance:
+                            self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
+                        del self.leader_speed_regime[cur_key]
+                            
+                speed = self.leader.max_speed * self.cur_speed_multiplier
+                
+            elif self.step_count >= self.slow_threshold_steps:
                 speed = self.leader.max_speed/2
             else:
                 speed = None
@@ -495,9 +514,6 @@ class Game(gym.Env):
         if self._collision_check(self.leader):
             print("Лидер столкнулся с препятствием!")
             self.done = True
-
-        # чтобы не грузить записью КАЖДОЙ точки, записываем точку раз в 5 миллисекунд;
-        # show: сделать параметром;
         
         if pygame.time.get_ticks() % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
@@ -544,8 +560,8 @@ class Game(gym.Env):
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-        # Антон, почему инт? там же может быть 0.1 ревард
-        return obs, int(reward_to_return), self.done, {}
+            
+        return obs, reward_to_return, self.done, {}
 
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
@@ -646,9 +662,17 @@ class Game(gym.Env):
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render("Суммарная нагрда:{}, скорость:{}, скорость поворота:{}".format(self.overall_reward, self.follower.speed, self.follower.rotation_speed), False, (0, 0, 0))
+        reward_text = self.font.render("Step: {}, Суммарная нагрда:{}, скорость:{}, скорость поворота:{}".format(self.step_count,
+                                                                                                                 self.overall_reward, 
+                                                                                                                 self.follower.speed, 
+                                                                                                                 self.follower.rotation_speed), 
+                                       False, 
+                                       (0, 0, 0))
+        
         self.gameDisplay.blit(reward_text, (0, 0))
 
+        
+        
     def generate_trajectory(self,
                             max_iter=None):  # n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
@@ -981,6 +1005,12 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
                         constant_follower_speed=False,
+                        leader_speed_regime={0:1,
+                                             2000:0.75,
+                                             5000:0.9,
+                                             6000:1,
+                                             6100:0,
+                                             8000:1},
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
