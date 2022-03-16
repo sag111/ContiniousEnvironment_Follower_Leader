@@ -23,7 +23,9 @@ from utils.misc import rotateVector, angle_to_point, distance_to_rect
 from warnings import warn
 
 
-
+# TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
+# как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
+# совпадающие ключи перезаписываются
 class Game(gym.Env):
     def __init__(self, game_width=1500,
                  game_height=1000,
@@ -126,7 +128,7 @@ class Game(gym.Env):
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
-        
+
         # номер симуляции
         self.simulation_number = 0
 
@@ -184,35 +186,41 @@ class Game(gym.Env):
             self.obstacle_number = 0
 
         self.follower_sensors = follower_sensors
-        self.reset()
-        
+        self.finish_position_framestimer = None
+        # TODO: вынести куда-то дефолтный конфиг, и загружать его
+        self.follower_config = {
+            'min_speed': 0,
+            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_rotation_speed': 57.296 / 100,
+        }
+        self.leader_config = {
+            'min_speed': 0,
+            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_rotation_speed': 57.296 / 100,
+        }
         self.discrete_action_space = discrete_action_space
-        
-        #TODO: переделать в нормальный вид из условий с двумя флагами
         if discrete_action_space:
             self.action_space = Discrete(5)
-            
-            self.discrete_rotation_speed_to_value = {0: -self.follower.max_rotation_speed,
-                                                     1: -self.follower.max_rotation_speed/2,
-                                                     2: 0,
-                                                     3: self.follower.max_rotation_speed/2,
-                                                     4: self.follower.max_rotation_speed} 
-            
 
+            self.discrete_rotation_speed_to_value = {0: -self.follower_config['max_rotation_speed'],
+                                                     1: -self.follower_config['max_rotation_speed'] / 2,
+                                                     2: 0,
+                                                     3: self.follower_config['max_rotation_speed'] / 2,
+                                                     4: self.follower_config['max_rotation_speed']}
         elif self.constant_follower_speed:
             self.action_space = Box(
-                low=-self.follower.max_rotation_speed, high=self.follower.max_rotation_speed, shape=(1,), dtype=np.float32
+                low=-self.follower_config['max_rotation_speed'], high=self.follower_config['max_rotation_speed'], shape=(1,), dtype=np.float32
             )
         else:
             self.action_space = Box(
-                np.array((self.follower.min_speed, -self.follower.max_rotation_speed), dtype=np.float32),
-                np.array((self.follower.max_speed, self.follower.max_rotation_speed), dtype=np.float32))
-        
+                np.array((self.follower_config['min_speed'], -self.follower_config['max_rotation_speed']), dtype=np.float32),
+                np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']), dtype=np.float32))
+
         self._create_observation_space()
-        
+
         self.slow_threshold_steps = slow_threshold_steps
-        
-        
+
+
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
 
@@ -277,7 +285,7 @@ class Game(gym.Env):
 
         
         self.follower_scan_dict = self.follower.use_sensors(self)
-
+        self.finish_position_framestimer = None
         return self._get_obs()
 
     def _create_robots(self):
@@ -294,10 +302,10 @@ class Game(gym.Env):
                                     image=self.leader_img,
                                     height=0.38 * self.PIXELS_TO_METER,
                                     width=0.52 * self.PIXELS_TO_METER,
-                                    min_speed=0,
-                                    max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                    min_speed=self.leader_config["min_speed"],
+                                    max_speed=self.leader_config["max_speed"],
                                     max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                    max_rotation_speed=57.296 / 100,
+                                    max_rotation_speed=self.leader_config["max_rotation_speed"],
                                     max_rotation_speed_change=20 / 100,
                                     start_position= leader_start_position,
                                     start_direction = leader_start_direction)
@@ -316,10 +324,10 @@ class Game(gym.Env):
                                          start_direction=follower_direction,
                                          height=0.5 * self.PIXELS_TO_METER,
                                          width=0.35 * self.PIXELS_TO_METER,
-                                         min_speed=0,
-                                         max_speed=0.5 * self.PIXELS_TO_METER / 100,
+                                         min_speed=self.follower_config["min_speed"],
+                                         max_speed=self.follower_config["max_speed"],
                                          max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
-                                         max_rotation_speed=57.296 / 100,
+                                         max_rotation_speed=self.follower_config["max_rotation_speed"],
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
                                          sensors=self.follower_sensors)
@@ -371,7 +379,10 @@ class Game(gym.Env):
         wall_end_x = self.obstacles1.rectangle.right
         
         obstacle_size = 50
-        
+        bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 3,
+                                       self.obstacles1.rectangle.bottom - self.leader.height,
+                                       self.obstacles1.rectangle.width + 6 * self.leader.width,
+                                       self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 2 * self.leader.height)
         for i in range(self.obstacle_number):
 
             is_free = False
@@ -379,11 +390,6 @@ class Game(gym.Env):
             while not is_free:
                 generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
                                       np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))
-
-                bridge_rectangle = pygame.Rect(wall_start_x - self.leader_pos_epsilon,
-                                               self.obstacles1.rectangle.bottom,
-                                               self.obstacles1.rectangle.width + 2 * self.leader_pos_epsilon,
-                                               self.obstacles1.rectangle.bottom - self.obstacles2.rectangle.top)
 
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
@@ -420,15 +426,15 @@ class Game(gym.Env):
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
-                
+
         else:
             if self.discrete_action_space:
                 action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
-            
+
             if self.constant_follower_speed:
                 action = np.concatenate([[0.25], action])
 
-            
+                
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -497,7 +503,12 @@ class Game(gym.Env):
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
         if self.leader_finished and self.is_in_box:
-            self.done = True
+            if self.finish_position_framestimer is None:
+                self.finish_position_framestimer = 0
+            else:
+                self.finish_position_framestimer += 1
+                if self.finish_position_framestimer > self.frames_per_step * 50:
+                    self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
@@ -533,7 +544,7 @@ class Game(gym.Env):
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-
+        # Антон, почему инт? там же может быть 0.1 ревард
         return obs, int(reward_to_return), self.done, {}
 
     def _collision_check(self, target_object):
@@ -789,21 +800,21 @@ class Game(gym.Env):
         obs_dict.update(self.follower_scan_dict)
 
         return obs_dict
-    
+
     def _create_observation_space(self):
         self.observation_space = Box(low=np.array((0,0,
                                           0,0,
-                                          -self.leader.max_rotation_speed,
+                                          -self.leader_config['max_rotation_speed'],
                                           0,0,
                                           0,0,
-                                          -self.follower.max_rotation_speed), dtype=np.float32),
+                                          -self.follower_config['max_rotation_speed']), dtype=np.float32),
                                     high=np.array((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
-                                          self.leader.max_speed,360,
-                                          self.leader.max_rotation_speed,
+                                          self.leader_config['max_speed'],360,
+                                          self.leader_config['max_rotation_speed'],
                                           self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
-                                          self.follower.max_speed,360,
-                                          self.follower.max_rotation_speed), dtype=np.float32))
-    
+                                          self.follower_config['max_speed'],360,
+                                          self.follower_config['max_rotation_speed']), dtype=np.float32))
+
 
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
@@ -969,7 +980,7 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
-                        constant_follower_speed=True,
+                        constant_follower_speed=False,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
@@ -1003,10 +1014,10 @@ class TestGameBaseAlgoObst(Game):
                              follower_sensors={"GreenBoxBorderSensor":{"sensor_range":2,
                                                                        "available_angle":180,
                                                                        "angle_step":45}})
-        
+
 class TestGameNEAT(Game):
     def __init__(self):
-        super().__init__(manual_control=False, add_obstacles=False, 
+        super().__init__(manual_control=False, add_obstacles=False,
                          early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
                          discrete_action_space=True)
 

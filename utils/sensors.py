@@ -175,13 +175,13 @@ class LeaderPositionsTracker:
                 self.corridor.append([right_border_dot, left_border_dot])
         # Можно ещё брать из среды, но там частота сохранения другая
         # self.leader_positions_hist = env.leader_factual_trajectory[::self.saving_period]
-        #assert env.frames_per_step % env.trajectory_saving_period == 0
-        #print(self.leader_positions_hist)
-        #print(env.leader_factual_trajectory[::self.saving_period*(int(env.frames_per_step / env.trajectory_saving_period))])
+        # assert env.frames_per_step % env.trajectory_saving_period == 0
+        # print(self.leader_positions_hist)
+        # print(env.leader_factual_trajectory[::self.saving_period*(int(env.frames_per_step / env.trajectory_saving_period))])
 
         self.saving_counter += 1
 
-        if self.eat_close_points:
+        if self.eat_close_points and len(self.leader_positions_hist) > 0:
             norms = np.linalg.norm(np.array(self.leader_positions_hist) - self.host_object.position, axis=1)
             indexes = np.nonzero(norms <= max(self.host_object.width, self.host_object.height))[0]
             for index in sorted(indexes, reverse=True):
