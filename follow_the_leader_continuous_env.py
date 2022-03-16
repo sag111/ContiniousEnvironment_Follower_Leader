@@ -416,16 +416,19 @@ class Game(gym.Env):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
             self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
+            
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
                 
+        else:
             if self.discrete_action_space:
                 action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
             
             if self.constant_follower_speed:
                 action = np.concatenate([[0.25], action])
 
+            
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
