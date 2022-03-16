@@ -54,7 +54,6 @@ class Game(gym.Env):
                  early_stopping={},
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
-                 slow_threshold_steps=10000,
                  leader_speed_regime=None,
                  discrete_action_space=False,
                  constant_follower_speed=False,
@@ -222,7 +221,6 @@ class Game(gym.Env):
         self._create_observation_space()
 
         # Скорость лидера
-        self.slow_threshold_steps = slow_threshold_steps
         self.leader_speed_regime = leader_speed_regime
         
 
@@ -501,8 +499,7 @@ class Game(gym.Env):
                             
                 speed = self.leader.max_speed * self.cur_speed_multiplier
                 
-            elif self.step_count >= self.slow_threshold_steps:
-                speed = self.leader.max_speed/2
+                
             else:
                 speed = None
             self.leader.move_to_the_point(self.cur_target_point, speed=speed)
