@@ -465,7 +465,8 @@ class Game(gym.Env):
             obs, reward, done, _ = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
-        self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
+        if self.random_frames_per_step is not None:
+            self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         return obs, reward, done, {}
 
     def frame_step(self, action):
@@ -536,7 +537,7 @@ class Game(gym.Env):
                 self.finish_position_framestimer = 0
             else:
                 self.finish_position_framestimer += 1
-                if self.finish_position_framestimer > self.frames_per_step * 50:
+                if self.finish_position_framestimer > self.frames_per_step * 20:
                     self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
@@ -992,26 +993,7 @@ class Game(gym.Env):
 
 class TestGameAuto(Game):
     def __init__(self, **kwargs):
-        super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
-                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
-                         follower_sensors={
-                             'LeaderPositionsTracker': {
-                                 'sensor_name': 'LeaderPositionsTracker',
-                                 'eat_close_points': True,
-                                 'saving_period': 8},
-                             'LeaderTrackDetector_vector': {
-                                 'sensor_name': 'LeaderTrackDetector_vector',
-                                 'position_sequence_length': 10},
-                             'LeaderTrackDetector_radar': {
-                                 'sensor_name': 'LeaderTrackDetector_radar',
-                                 'position_sequence_length': 100,
-                                 'radar_sectors_number': 7,
-                                 'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
-                             }
-                         }
-                         )
+        super().__init__(**kwargs)
 
 
 class TestGameManual(Game):

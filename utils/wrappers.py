@@ -4,6 +4,7 @@ import numpy as np
 from gym import ObservationWrapper
 from gym.spaces import Box
 from utils.misc import rotateVector, calculateAngle
+from warnings import warn
 
 
 class MyFrameStack(ObservationWrapper):
@@ -117,6 +118,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 class ContinuousObserveModifier_v1(ContinuousObserveModifier_v0):
     def __init__(self, env, lz4_compress=False):
         super().__init__(env, action_values_range=[-1, 1])
+        warn("ContinuousObserveModifier_v1 is deprecated and will be removed", DeprecationWarning)
 
 
 class LeaderTrajectory_v0(ObservationWrapper):
