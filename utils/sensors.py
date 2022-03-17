@@ -157,11 +157,13 @@ class LeaderPositionsTracker:
     def scan(self, env):
         # если сам сенсор отслеживает перемещение
         if self.saving_counter % self.saving_period == 0:
+            # Если позиция лидера не изменилась с последнего обсерва, просто возвращаем, что есть, ничего не обновляем
             if len(self.leader_positions_hist) > 0 and (self.leader_positions_hist[-1] == env.leader.position).all():
                 if self.generate_corridor:
                     return self.leader_positions_hist, self.corridor
                 else:
                     return self.leader_positions_hist
+            # Если симуляция только началась, сохраняем текущую ведомого, чтоб начать от неё строить коридор
             if len(self.leader_positions_hist) == 0:
                 self.leader_positions_hist.append(self.host_object.position.copy())
             self.leader_positions_hist.append(env.leader.position.copy())

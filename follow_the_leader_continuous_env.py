@@ -21,6 +21,7 @@ from utils.astar import Node, astar
 from utils.misc import rotateVector, angle_to_point, distance_to_rect
 
 from warnings import warn
+import random
 
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
@@ -31,6 +32,7 @@ class Game(gym.Env):
                  game_height=1000,
                  framerate=500,
                  frames_per_step=10,
+                 random_frames_per_step=None,
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
                  leader_pos_epsilon=25,
@@ -104,6 +106,10 @@ class Game(gym.Env):
             число случайно генерируемых препятствий.
         leader_speed_regime (dict):
             словарь - ключ - число степов, значение - скорость лидера.
+        constant_follower_speed (bool):
+            флаг - если True - корость ведомого всегда будет максимальной, и будет использован только один экшн - поворот
+        random_frames_per_step (tuple/list):
+            диапазон из которого будет сэмплироваться frames_per_step
         """
 
         # нужно для сохранения видео
@@ -139,6 +145,7 @@ class Game(gym.Env):
         self.PIXELS_TO_METER = pixels_to_meter
         self.framerate = framerate
         self.frames_per_step = frames_per_step
+        self.random_frames_per_step = random_frames_per_step
         # если частота сохранения точек пути совпадает с частотой обсёрвов,
         # сенсор фолловера может брать траекторию прямо из среды, иначе нет
         # пока что он сохраняет траекторию сам, по обсёрвам. Надо подумать,
@@ -222,8 +229,14 @@ class Game(gym.Env):
 
         # Скорость лидера
         self.leader_speed_regime = leader_speed_regime
-        
+        if random_frames_per_step is not None and frames_per_step is not None:
+            warn("Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
+            assert len(random_frames_per_step) == 2
+            self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
 
+    def seed(self, seed_value):
+        random.seed(seed_value)
+        np.random.seed(seed_value)
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -452,6 +465,7 @@ class Game(gym.Env):
             obs, reward, done, _ = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
+        self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         return obs, reward, done, {}
 
     def frame_step(self, action):
