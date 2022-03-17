@@ -228,7 +228,11 @@ class Game(gym.Env):
         self._create_observation_space()
 
         # Скорость лидера
-        self.leader_speed_regime = leader_speed_regime
+        self.leader_speed_regime = None
+        if type(leader_speed_regime) == dict:
+            self.leader_speed_regime = {}
+            for k,v in leader_speed_regime.items():
+                self.leader_speed_regime[int(k)] = v
         if random_frames_per_step is not None and frames_per_step is not None:
             warn("Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
             assert len(random_frames_per_step) == 2
