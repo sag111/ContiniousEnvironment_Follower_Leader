@@ -226,7 +226,6 @@ class Game(gym.Env):
                 np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']), dtype=np.float32))
 
         self._create_observation_space()
-
         # Скорость лидера
         self.leader_speed_regime = None
         if type(leader_speed_regime) == dict:
@@ -466,17 +465,22 @@ class Game(gym.Env):
                 
         
         for cur_ministep_nb in range(self.frames_per_step):
-            obs, reward, done, _ = self.frame_step(action)
+            obs, reward, done, info = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
-        return obs, reward, done, {}
+        return obs, reward, done, info
 
     def frame_step(self, action):
         """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
         self.is_in_box = False
         self.is_on_trace = False
+        info = {
+            "mission_status": "in_progress",
+            "agent_status": "moving",
+            "leader_status": "moving"            
+        }
 
         self.follower.move()
 
@@ -484,6 +488,8 @@ class Game(gym.Env):
         if self._collision_check(self.follower):
             self.crash = True
             self.done = True
+            info["mission_status"] = "fail"
+            info["agent_status"] = "crash"
 
         # Определение коробки и агента в ней
         # определение текущих точек маршрута, которые являются подходящими для Агента
@@ -519,19 +525,20 @@ class Game(gym.Env):
                 if type(self.cur_speed_multiplier) in (tuple,list):
                     self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0],self.cur_speed_multiplier[1])
                 speed = self.leader.max_speed * self.cur_speed_multiplier
-                
-                
             else:
                 speed = None
             self.leader.move_to_the_point(self.cur_target_point, speed=speed)
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
+            info["leader_status"] = "finished"
 
         # обработка столкновений лидера
         if self._collision_check(self.leader):
             print("Лидер столкнулся с препятствием!")
             self.done = True
+            info["mission_status"] = "fail"
+            info["leader_status"] = "crash"
         
         if pygame.time.get_ticks() % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
@@ -542,10 +549,16 @@ class Game(gym.Env):
             else:
                 self.finish_position_framestimer += 1
                 if self.finish_position_framestimer > self.frames_per_step * 20:
+                    info["mission_status"] = "success"
+                    info["leader_status"] = "finished"
+                    info["agent_status"] = "finished"
                     self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
+                info["mission_status"] = "fail"
+                info["leader_status"] = "moving"
+                info["agent_status"] = "low_reward"
                 self.crash = True
                 self.done = True
 
@@ -553,6 +566,9 @@ class Game(gym.Env):
                     self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
                 "max_distance_coef"]:
                 # print("FOLLOWER IS TOO FAR")
+                info["mission_status"] = "fail"
+                info["leader_status"] = "moving"
+                info["agent_status"] = "too_far_from_leader"
                 self.crash = True
                 self.done = True
 
@@ -572,14 +588,17 @@ class Game(gym.Env):
         self.step_count += 1
 
         if self.step_count > self.max_steps:
+            info["mission_status"] = "finished_by_time"
+            info["leader_status"] = "moving"
+            info["agent_status"] = "moving"
             self.done = True
 
         if self.aggregate_reward:
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-            
-        return obs, reward_to_return, self.done, {}
+        
+        return obs, reward_to_return, self.done, info
 
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
