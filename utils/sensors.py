@@ -421,14 +421,27 @@ class GreenBoxBorderSensor(LaserSensor):
 class LeaderCorridor_lasers:
     def __init__(self,
                  host_object,
-                 sensor_name):
+                 sensor_name,
+                 react_to_obstacles=False,
+                 react_to_leader_zone=False):
+        """
+
+        :param host_object: робот, на котором висит сенсор
+        :param sensor_name: название сенсора. Важно, если  несколько одинаковых
+        :param react_to_obstacles: должны ли лазеры реагировать на препятствия
+        :param react_to_leader_zone: должны ли лазеры реагировать на круг минимальной дистанции вокруг лидера
+        """
         self.host_object = host_object
         self.sensor_name = sensor_name
-        # TODO: сделать гибкуб настройку лазеров
+        # TODO: сделать гибкую настройку лазеров
         self.lasers_count = 3
         self.laser_length = 100
         self.lasers_end_points = []
         self.lasers_collides = []
+        self.react_to_obstacles = react_to_obstacles
+        self.react_to_leader_zone = react_to_leader_zone
+        if react_to_leader_zone:
+            raise NotImplementedError("Опция react_to_leader_zone не имплементирована")
 
     def ccw(A, B, C):
         return (C[:, 1] - A[:, 1]) * (B[:, 0] - A[:, 0]) > (B[:, 1] - A[:, 1]) * (C[:, 0] - A[:, 0])
@@ -478,12 +491,21 @@ class LeaderCorridor_lasers:
             for i in range(len(corridor) - 1):
                 corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
                 corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
+            if self.react_to_obstacles:
+                for cur_object in env.game_object_list:
+                    if cur_object is env.follower:
+                        continue
+                    if cur_object.blocks_vision:
+                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
+                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
+                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
+                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
             corridor_lines = np.array(corridor_lines, dtype=np.float32)
             lasers_values = []
             self.lasers_collides = []
             for laser_end_point in self.lasers_end_points:
                 # эта функция не работает с коллинеарными
-                # есть вариант лучше, но я пока не смог привести его к матричному виду
+                # есть вариант лучше, но медленней
                 # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
                 rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :], np.array([self.host_object.position]),
                                   np.array([laser_end_point]))

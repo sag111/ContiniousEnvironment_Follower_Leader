@@ -1021,7 +1021,7 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=False, game_width=1500, game_height=1000,
+        super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                         constant_follower_speed=False,
                         leader_speed_regime={0:(0.2,1),
                                              200:1,
@@ -1046,6 +1046,7 @@ class TestGameManual(Game):
                                  'detectable_positions': 'near'},
                              "LeaderCorridor_lasers": {
                                  'sensor_name': 'LeaderCorridor_lasers',
+                                 "react_to_obstacles": True,
                              }
                          }
                          )
