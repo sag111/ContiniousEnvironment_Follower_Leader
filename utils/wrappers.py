@@ -77,6 +77,11 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         # этот должен быть 0:1
         if 'LeaderCorridor_lasers' in self.follower_sensors:
             features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
+        if 'LaserSensor' in self.follower_sensors:
+            if self.follower_sensors['LaserSensor']['return_all_points']:
+                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step']) * self.follower_sensors['LaserSensor']['points_number']
+            else:
+                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])
         self.observation_space = Box(-np.ones(features_number),
                                      np.ones(features_number))
         self.action_values_range = action_values_range
@@ -103,6 +108,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             corridor_lasers = obs['LeaderCorridor_lasers']
             corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers'].laser_length, 0, 1)
             features_list.append(corridor_lasers)
+        if 'LaserSensor' in self.follower_sensors:
+            lidar_sensed_points = obs['LaserSensor']
+            # переход к относительным координатам лучше делать в сенсоре            
+            lidar_sensed_points -= self.follower.position
+            lidar_sensed_points = np.concatenate(lidar_sensed_points)
+            lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors["LaserSensor"].range * self.PIXELS_TO_METER), -1, 1)
+            features_list.append(lidar_sensed_points)
         return np.concatenate(features_list)
 
     def step(self, action):
