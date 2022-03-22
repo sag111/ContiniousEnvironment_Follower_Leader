@@ -79,9 +79,9 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
         if 'LaserSensor' in self.follower_sensors:
             if self.follower_sensors['LaserSensor']['return_all_points']:
-                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step']) * self.follower_sensors['LaserSensor']['points_number']
+                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step']) * self.follower_sensors['LaserSensor']['points_number'] * 2
             else:
-                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])
+                features_number += int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step']) *2
         self.observation_space = Box(-np.ones(features_number),
                                      np.ones(features_number))
         self.action_values_range = action_values_range
