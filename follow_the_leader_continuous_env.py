@@ -5,20 +5,26 @@ from math import pi, degrees, radians, cos, sin
 import numpy as np
 from scipy.spatial import distance
 
-from utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
-from utils.sensors import LaserSensor
-from utils.misc import angle_correction, distance_to_rect
+try:
+    from utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
+    from utils.sensors import LaserSensor
+    from utils.reward_constructor import Reward
+    from utils import astar
+    from utils.astar import Node, astar
+    from utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
+except:
+    from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
+    from continuous_grid_arctic.utils.sensors import LaserSensor
+    from continuous_grid_arctic.utils.reward_constructor import Reward
+    from continuous_grid_arctic.utils import astar
+    from continuous_grid_arctic.utils.astar import Node, astar
+    from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
 
-from utils.reward_constructor import Reward
 import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
 import random
-
-from utils import astar
-from utils.astar import Node, astar
-from utils.misc import rotateVector, angle_to_point, distance_to_rect
 
 from warnings import warn
 import random
@@ -449,6 +455,9 @@ class Game(gym.Env):
 
         else:
             if self.discrete_action_space:
+                if type(action) is np.ndarray:
+                    assert action.shape[0]==1 and action.shape[1]==1
+                    action = action[0,0]
                 action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
 
             if self.constant_follower_speed:
@@ -1073,24 +1082,24 @@ class TestGameNEAT(Game):
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameAuto",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameAuto",
     reward_threshold=10000
 )
 
 gym_register(
     id="Test-Cont-Env-Manual-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameManual",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
 
 gym_register(
     id="Test-Cont-Env-Auto-Follow-no-obstacles-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
 
 gym_register(
     id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameBaseAlgoObst")
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoObst")
 
 gym_register(
     id="Test-Game-Neat-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameNEAT")
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameNEAT")
