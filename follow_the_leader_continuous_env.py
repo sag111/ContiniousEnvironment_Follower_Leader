@@ -53,7 +53,7 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=0.0,  # в секундах
+                 warm_start=500,  # в секундах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
@@ -63,6 +63,7 @@ class Game(gym.Env):
                  discretization_factor=5,  # NotImplemented
                  follower_sensors={},
                  leader_speed_regime=None,
+                 leader_acceleration_regime=None,
                  discrete_action_space=False,
                  constant_follower_speed=False,
                  **kwargs
@@ -101,7 +102,7 @@ class Game(gym.Env):
         max_dev (int): 
             максимальная дистанция (в метрах), в пределах которой Ведомый может отклониться от маршрута;
         warm_start (int): 
-            число секунд, в пределах которого Ведомый не будет получать штраф (сейчас не реализовано полноценно);
+            число шагов, в пределах которого Ведомый не будет получать штраф (сейчас не реализовано полноценно);
         manual_control (bool): 
             использовать ручное управление Ведомым;
         max_steps (int): 
@@ -111,7 +112,8 @@ class Game(gym.Env):
         obstacle_number (int):
             число случайно генерируемых препятствий.
         leader_speed_regime (dict):
-            словарь - ключ - число степов, значение - скорость лидера.
+            словарь - ключ - число степов, значение - скорость лидера;
+        leader_
         constant_follower_speed (bool):
             флаг - если True - корость ведомого всегда будет максимальной, и будет использован только один экшн - поворот
         random_frames_per_step (tuple/list):
@@ -176,10 +178,11 @@ class Game(gym.Env):
 
         self.overall_reward = 0
 
-        self.min_distance = min_distance * self.PIXELS_TO_METER
-        self.max_distance = max_distance * self.PIXELS_TO_METER
-        self.max_dev = max_dev * self.PIXELS_TO_METER
-
+        self.min_distance = self._to_pixels(min_distance)
+        self.max_distance = self._to_pixels(max_distance)
+        self.max_dev = self._to_pixels(max_dev)
+        
+        # что за волшебная тысяча тут возникла? Это как-то связано с framerate?
         self.warm_start = warm_start * 1000
 
         self.leader_img = pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
@@ -203,14 +206,16 @@ class Game(gym.Env):
         self.follower_sensors = follower_sensors
         self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
+        
+        # Почему тут делится на 100? Может надо делить на фреймрейт?
         self.follower_config = {
             'min_speed': 0,
-            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_speed': self._to_pixels(0.5) / 100,
             'max_rotation_speed': 57.296 / 100,
         }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': 0.5 * self.PIXELS_TO_METER / 100,
+            'max_speed': self._to_pixels(0.5) / 100,
             'max_rotation_speed': 57.296 / 100,
         }
         self.discrete_action_space = discrete_action_space
@@ -238,9 +243,20 @@ class Game(gym.Env):
             self.leader_speed_regime = {}
             for k,v in leader_speed_regime.items():
                 self.leader_speed_regime[int(k)] = v
+        elif leader_speed_regime is not None:
+            warn("leader_speed_regime должен быть dict, получено: {}, будет проигнорировано".format(type(leader_speed_regime)))
+        
+        self.leader_acceleration_regime = None
+        if type(leader_acceleration_regime) == dict:
+            self.leader_acceleration_regime = {}
+            for k,v in leader_acceleration_regime.items():
+                self.leader_acceleration_regime[int(k)] = v
+        elif leader_acceleration_regime is not None:
+            warn("leader_acceleration_regime должен быть dict, получено: {}, будет проигнорировано".format(type(leader_acceleration_regime)))
+                
         if random_frames_per_step is not None and frames_per_step is not None:
             warn("Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
-            assert len(random_frames_per_step) == 2
+            assert len(random_frames_per_step) == 2, "raondom frames per step должен быть задан в виде границ для генерации случайных значений. Задано: {}".format(random_frames_per_step)
             self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
 
     def seed(self, seed_value):
@@ -326,11 +342,11 @@ class Game(gym.Env):
 
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
-                                    height=0.38 * self.PIXELS_TO_METER,
-                                    width=0.52 * self.PIXELS_TO_METER,
+                                    height=self._to_pixels(0.38),
+                                    width=self._to_pixels(0.52),
                                     min_speed=self.leader_config["min_speed"],
                                     max_speed=self.leader_config["max_speed"],
-                                    max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
+                                    max_speed_change=self._to_pixels(0.005),# / 100,
                                     max_rotation_speed=self.leader_config["max_rotation_speed"],
                                     max_rotation_speed_change=20 / 100,
                                     start_position= leader_start_position,
@@ -343,20 +359,24 @@ class Game(gym.Env):
                                             follower_start_distance_from_leader * sin(
                                                 follower_start_position_theta))) + leader_start_position
 
+        
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
 
         self.follower = RobotWithSensors("follower",
                                          image=self.follower_img,
                                          start_direction=follower_direction,
-                                         height=0.5 * self.PIXELS_TO_METER,
-                                         width=0.35 * self.PIXELS_TO_METER,
+                                         height=self._to_pixels(0.5),
+                                         width=self._to_pixels(0.35),
                                          min_speed=self.follower_config["min_speed"],
                                          max_speed=self.follower_config["max_speed"],
-                                         max_speed_change=0.005 * self.PIXELS_TO_METER / 100,
+                                         max_speed_change=self._to_pixels(0.005) / 100,
                                          max_rotation_speed=self.follower_config["max_rotation_speed"],
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
                                          sensors=self.follower_sensors)
+        
+        self.cur_leader_acceleration = 0
+        self.cur_leader_cumulative_speed = 0
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
@@ -521,22 +541,15 @@ class Game(gym.Env):
 
         if not self.leader_finished:
             if self.leader_speed_regime is not None:
-                # пишу ужасный код, по-другому голова не работает, простите
-                
-                min_step_distance = np.inf
-                
-                for cur_key in list(self.leader_speed_regime.keys()):
-                    if cur_key <= self.step_count:
-                        if abs(self.step_count-cur_key) < min_step_distance:
-                            self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
-                        del self.leader_speed_regime[cur_key]
-                
-                if type(self.cur_speed_multiplier) in (tuple,list):
-                    self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0],self.cur_speed_multiplier[1])
-                speed = self.leader.max_speed * self.cur_speed_multiplier
+                speed = self._process_leader_speed_regime()
             else:
-                speed = None
-            self.leader.move_to_the_point(self.cur_target_point, speed=speed)
+                speed = self.leader.max_speed
+            
+            if self.leader_acceleration_regime is not None:
+                acceleration = self._process_leader_acceleration_regime()/self.frames_per_step
+            else:
+                acceleration = 0
+            self.leader.move_to_the_point(self.cur_target_point, speed=speed+acceleration)
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
@@ -608,7 +621,40 @@ class Game(gym.Env):
             reward_to_return = res_reward
         
         return obs, reward_to_return, self.done, info
+    
+    def _process_leader_speed_regime(self):
+        """Функция обрабатывает словарь скорости движения лидера."""
+        min_step_distance = np.inf
+                
+        for cur_key in list(self.leader_speed_regime.keys()):
+            if cur_key <= self.step_count:
+                if abs(self.step_count-cur_key) < min_step_distance:
+                    self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
+                del self.leader_speed_regime[cur_key]
 
+        if type(self.cur_speed_multiplier) in (tuple,list):
+            self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0],self.cur_speed_multiplier[1])
+        return self.leader.max_speed * self.cur_speed_multiplier
+    
+    def _process_leader_acceleration_regime(self):
+        """Функция обрабатывает словарь ускорения движения лидера."""
+        min_step_distance = np.inf
+        
+        acceleration = 0
+        for cur_key in list(self.leader_acceleration_regime.keys()):
+            if cur_key <= self.step_count:
+                if abs(self.step_count-cur_key) < min_step_distance:
+                    self.cur_leader_acceleration = self.leader_acceleration_regime[cur_key]
+                    self.cur_leader_cumulative_speed = self.cur_leader_acceleration
+                    
+                del self.leader_acceleration_regime[cur_key]
+        
+        self.cur_leader_cumulative_speed += self.cur_leader_acceleration
+        
+        return self.cur_leader_cumulative_speed * self.leader.max_speed
+        
+        
+    
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
         objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
@@ -913,7 +959,7 @@ class Game(gym.Env):
         
         for cur_point, prev_point in zip(green_zone_points_list[1::2], green_zone_points_list[:-1:2]):
             move_direction = angle_to_point(prev_point,cur_point)
-            point_distance = distance.euclidean(prev_point,cur_point) * self.PIXELS_TO_METER
+            point_distance = self._to_pixels(distance.euclidean(prev_point,cur_point))
             
             right_border_angle = angle_correction(move_direction+90)
             left_border_angle = angle_correction(move_direction-90)
@@ -1000,16 +1046,16 @@ class Game(gym.Env):
             self.follower_too_close = False
 
     def _to_meters(self, pixels):
-        pass
+        return pixels/self.PIXELS_TO_METER
 
     def _to_pixels(self, meters):
-        pass
+        return meters*self.PIXELS_TO_METER
 
     def _to_seconds(self, frames):
-        pass
+        return frames/self.framerate
 
     def _to_frames(self, seconds):
-        pass
+        return seconds*self.framerate
 
     @staticmethod
     def closest_point(point, points, return_id=True):
@@ -1035,10 +1081,13 @@ class TestGameManual(Game):
                         leader_speed_regime={0:(0.2,1),
                                              200:1,
                                              1000:0.75,
-                                             2000:0.9,
+                                             2000:0.3,
                                              3000:1,
                                              3100:0,
-                                             4000:(0.5,1)},
+                                             5000:(0.5,1)},
+                         leader_acceleration_regime={0:0,
+                                                     3100:0.03,
+                                                     4500:0},
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
