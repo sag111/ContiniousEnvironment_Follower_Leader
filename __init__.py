@@ -1,5 +1,6 @@
 try:
     import follow_the_leader_continuous_env
+    import utils
 except:
-    import continuous_grid_arctic.utils as utils
-    import continuous_grid_arctic.follow_the_leader_continuous_env
+    from continuous_grid_arctic import utils
+    from continuous_grid_arctic import follow_the_leader_continuous_env

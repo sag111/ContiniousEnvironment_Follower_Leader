@@ -57,6 +57,7 @@ class AbstractRobot(GameObject):
     def __init__(self,
                  name,
                  image=None,
+                 start_position=None,
                  height=None,  # в метрах
                  width=None,  # в метрах
                  min_speed=0.,  # в метрах в секунду

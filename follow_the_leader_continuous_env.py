@@ -70,10 +70,6 @@ class Game(gym.Env):
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
                  step_grid=10,
-                 obstacle_number=15,
-                 end_simulation_on_leader_finish=False,#NotImplemented
-                 discretization_factor=5,#NotImplemented
-                 step_grid=10,
                  early_stopping={},
                  follower_sensors={},
                  leader_speed_regime=None,
@@ -299,7 +295,7 @@ class Game(gym.Env):
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.trajectory = self.generate_trajectory_dstar(max_iter=None)
+            self.trajectory = self.generate_trajectory_dstar()
 #             self.trajectory = self.generate_trajectory(max_iter=None)
             self.trajectory_generated = True
         
@@ -769,9 +765,9 @@ class Game(gym.Env):
                 cur_sensor.show(self)
                 
                 pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
-        if self.add_obstacles:
-            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
-            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
+#         if self.add_obstacles:
+#             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
+#             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
         reward_text = self.font.render("Step: {}, Суммарная награда:{}, скорость:{}, скорость поворота:{}".format(self.step_count,
                                                                                                                  self.overall_reward, 
                                                                                                                  self.follower.speed, 
@@ -1349,7 +1345,7 @@ gym_register(
 
 gym_register(
     id="Test-Cont-Env-Manual-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
+    entry_point="follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
 
