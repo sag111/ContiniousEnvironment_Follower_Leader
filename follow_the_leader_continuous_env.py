@@ -176,8 +176,7 @@ class Game(gym.Env):
         self.max_distance = self._to_pixels(max_distance)
         self.max_dev = self._to_pixels(max_dev)
         
-        # что за волшебная тысяча тут возникла? Это как-то связано с framerate?
-        self.warm_start = warm_start * 1000
+        self.warm_start = warm_start
 
         self.leader_img = pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.follower_img = pygame.image.load(
@@ -200,8 +199,6 @@ class Game(gym.Env):
         self.follower_sensors = follower_sensors
         self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
-        
-        # Почему тут делится на 100? Может надо делить на фреймрейт?
         self.follower_config = {
             'min_speed': 0,
             'max_speed': self._to_pixels(0.5) / 100,
@@ -209,11 +206,10 @@ class Game(gym.Env):
         }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': self._to_pixels(0.5) / 100,
-            'max_rotation_speed': 57.296 / 100,
+            'max_speed': self._to_pixels(0.5)/100 ,
+            'max_rotation_speed': 57.296/100 ,
         }
         self.discrete_action_space = discrete_action_space
-        if discrete_action_space:
             self.action_space = Discrete(5)
 
             self.discrete_rotation_speed_to_value = {0: -self.follower_config['max_rotation_speed'],
