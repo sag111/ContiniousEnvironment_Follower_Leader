@@ -66,6 +66,10 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
+                 obstacle_number=35,
+                 end_simulation_on_leader_finish=False,#NotImplemented
+                 discretization_factor=5,#NotImplemented
+                 step_grid=10,
                  obstacle_number=15,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
@@ -836,6 +840,7 @@ class Game(gym.Env):
 #         print(trajectory)
 #         print(self.obstacles)
         
+
 #         return trajectory
 
     
