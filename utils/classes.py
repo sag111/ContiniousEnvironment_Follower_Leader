@@ -57,7 +57,6 @@ class AbstractRobot(GameObject):
     def __init__(self,
                  name,
                  image=None,
-                 start_position=None,
                  height=None,  # в метрах
                  width=None,  # в метрах
                  min_speed=0.,  # в метрах в секунду
@@ -124,7 +123,7 @@ class AbstractRobot(GameObject):
         self.desirable_speed = desirable_speed
 
     def _controller_call(self):
-        """Изменение скорости в зависимости от установленных желаемых скоростей на основе управеения"""
+        """Изменение скорости в зависимости от установленных желаемых скоростей на основе управления"""
         self._turn_processing()
         self._speed_processing()
 
