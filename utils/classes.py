@@ -2,8 +2,13 @@ import pygame
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
-from utils.misc import angle_correction, angle_to_point
-from utils.sensors import SENSOR_NAME_TO_CLASS
+try:
+    from utils.misc import angle_correction, angle_to_point
+    from utils.sensors import SENSOR_NAME_TO_CLASS
+except:
+    from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
+    from continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
+    
 import json
 
 

@@ -3,7 +3,11 @@ import numpy as np
 import pygame
 from scipy.spatial import distance
 
-from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+try:
+    from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+except:
+    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    
 
 
 class LaserSensor():
