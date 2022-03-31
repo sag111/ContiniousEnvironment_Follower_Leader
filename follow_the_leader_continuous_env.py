@@ -26,6 +26,14 @@ from gym.spaces import Discrete, Box, Dict, Tuple
 
 import random
 
+from utils import astar
+from utils.astar import Node
+from utils.astar import astar
+from utils.rrt import RRT
+from utils.rrt_star import RRTStar
+from utils.lqr_rrt_star import LQRRRTStar
+from utils.dstar import Map,State, Dstar
+
 from warnings import warn
 import random
 
@@ -58,9 +66,14 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
+                 obstacle_number=35,
+                 end_simulation_on_leader_finish=False,#NotImplemented
+                 discretization_factor=5,#NotImplemented
+                 step_grid=10,
                  obstacle_number=15,
                  early_stopping={},
                  discretization_factor=5,  # NotImplemented
+                 step_grid=10,
                  follower_sensors={},
                  leader_speed_regime=None,
                  leader_acceleration_regime=None,
@@ -144,6 +157,10 @@ class Game(gym.Env):
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
+
+        self.step_grid = step_grid
+        #Генерация финишной точки
+        self.finish_point = np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
 
         # номер симуляции
         self.simulation_number = 0
@@ -279,7 +296,8 @@ class Game(gym.Env):
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.trajectory = self.generate_trajectory(max_iter=None)
+            self.trajectory = self.generate_trajectory_dstar(max_iter=None)
+#             self.trajectory = self.generate_trajectory(max_iter=None)
             self.trajectory_generated = True
         
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
@@ -430,9 +448,10 @@ class Game(gym.Env):
             is_free = False
 
             while not is_free:
-                generated_position = (np.random.randint(20, high=self.DISPLAY_WIDTH - 20),
-                                      np.random.randint(20, high=self.DISPLAY_HEIGHT - 20))
-
+                generated_position = (random.randrange(130,self.DISPLAY_WIDTH - 120, self.step_grid),
+                                      random.randrange(20,self.DISPLAY_HEIGHT - 20, self.step_grid))
+                
+                
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
                         ((generated_position[0] >= wall_start_x) and (generated_position[0] <= wall_end_x)) or \
@@ -745,24 +764,217 @@ class Game(gym.Env):
         if self.show_sensors:
             for sensor_name, cur_sensor in self.follower.sensors.items():
                 cur_sensor.show(self)
-
-        pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
+                
+                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render("Step: {}, Суммарная нагрда:{}, скорость:{}, скорость поворота:{}".format(self.step_count,
+        reward_text = self.font.render("Step: {}, Суммарная награда:{}, скорость:{}, скорость поворота:{}".format(self.step_count,
                                                                                                                  self.overall_reward, 
                                                                                                                  self.follower.speed, 
                                                                                                                  self.follower.rotation_speed), 
-                                       False, 
-                                       (0, 0, 0))
+                                                                                                                   False, 
+                                                                                                                   (0, 0, 0))
         
         self.gameDisplay.blit(reward_text, (0, 0))
 
+        #  генерация финишной точки
+        #self.finish_point = np.float64((random.randrange(20, 500,10),random.randrange(20, 500,10)))
+
+        #шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
+        #self.step_grid
+        #step_grid = 10
         
+        # Код Славы, который я закомментировал, аак как при мерже он всплыл посреди нигде. Подозреваю, что он от astar'а;
+#         step_obs = 70/self.step_grid
+
+#         print(self.leader.start_position)
+#         print(self.finish_point)
+
+#         self.wid = self.DISPLAY_WIDTH
+#         self.hit = self.DISPLAY_HEIGHT
+
+#         start = (int(self.leader.start_position[0]/self.step_grid),int(self.leader.start_position[1]/self.step_grid))
+#         #int(start)
+#         #start.tolist(start)
+#         print(start)
+#         end = (int(self.finish_point[0]/self.step_grid),int(self.finish_point[1]/self.step_grid))
+#         #int(end)
+#         print(end)
+
+#         wid = int(self.wid/self.step_grid)
+#         print(wid)
+#         hit = int(self.hit/self.step_grid)
+#         print(hit)
+
+#         #print(self.start)
+#         #print(self.end)
+
+#         grid = []
+#         for i in range(wid):
+#             grid.append([0] * hit)
+
+#         for i in range(wid):
+#             for j in range(hit):
+#                 for k in range(self.obstacle_number):
+#                     ob = (self.obstacles[k].start_position/self.step_grid)
+#                     ob = ob.astype(int)
+#                     #print(ob)
+#                     if distance.euclidean((i, j), ob) < step_obs:
+#                         grid[i][j] = 1
+#                     if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 0 and j <= 480/self.step_grid:
+#                         grid[i][j] = 1
+#                     if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 530/self.step_grid \
+#                             and j <= 1000/self.step_grid:
+#                         grid[i][j] = 1
+
+#         print(grid)
+#         path = astar(maze=grid, start=start, end=end)
+#         #print(path)
+#         #print(grid)
+#         trajectory = []
+#         trajectory = path
+#         print(trajectory)
+#         print(self.obstacles)
         
-    def generate_trajectory(self,
-                            max_iter=None):  # n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):
+#         return trajectory
+
+    
+    def generate_trajectory_rrtstar(self):
+
+        obstacle_list = []  # [x,y,size(radius)]
+
+        print(self.leader.start_position)
+        print(self.finish_point)
+
+        for i in range(self.obstacle_number):
+            obst = (self.obstacles[i].start_position[0]/self.step_grid,
+                    self.obstacles[i].start_position[1]/self.step_grid,
+                    (80/self.step_grid)/2)
+            obstacle_list.append(obst)
+        #print(obstacle_list)
+
+        for k in range(20,460,40):
+            most1 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+            obstacle_list.append(most1)
+
+        for k in range(560,1000,40):
+            most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+            obstacle_list.append(most2)
+
+        print(obstacle_list)
+
+        # Set Initial parameters
+        rrt_star = RRTStar(
+            start=self.leader.start_position/self.step_grid,
+            goal= self.finish_point/self.step_grid,
+            #(50,50),#((self.leader.start_position[0]+200)/self.step_grid,
+            # (self.leader.start_position[1]-200)/self.step_grid),
+            rand_area=[0,150],
+            obstacle_list=obstacle_list,
+            expand_dis=20, goal_sample_rate=20, path_resolution=1, connect_circle_dist=50)
+
+        path = rrt_star.planning(animation = False)
+
+        trajectory = []
+        trajectory = path[::-1]
+        trajectory.pop(0)
+        print(trajectory)
+
+        return trajectory
+
+    # Алгоритм поиска LQR RRTstar
+    def generate_trajectory_lqr_rrtstar(self):
+
+        obstacle_list = []  # [x,y,size(radius)]
+
+        print(self.leader.start_position)
+        print(self.finish_point)
+
+        for i in range(self.obstacle_number):
+            obst = (self.obstacles[i].start_position[0]/self.step_grid,
+                    self.obstacles[i].start_position[1]/self.step_grid,
+                    (80/self.step_grid)/2)
+            obstacle_list.append(obst)
+        #print(obstacle_list)
+
+        for k in range(20,460,40):
+            most1 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+            obstacle_list.append(most1)
+
+        for k in range(560,1000,40):
+            most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+            obstacle_list.append(most2)
+
+        print(obstacle_list)
+
+        lqr_rrt_star = LQRRRTStar(self.leader.start_position/self.step_grid, (90,90),#self.finish_point/self.step_grid,
+                                  obstacle_list,
+                                  [0, 100.0])
+        path = lqr_rrt_star.planning(animation=False)
+
+        trajectory = []
+        trajectory = path[::-1]
+        trajectory.pop(0)
+        print(trajectory)
+
+        return trajectory
+
+
+    # Алгоритм поиска Dstar (еще не настроен)
+    def generate_trajectory_dstar(self):
+
+        print(self.leader.start_position)
+        print(self.finish_point)
+
+
+        m = Map(150, 100)
+        ox, oy = [], []
+
+        for ob in range(self.obstacle_number):
+            for i in range(-50,50,10):
+                for j in range(-50,50,10):
+                    ox.append(int((self.obstacles[ob].start_position[0]+i)/self.step_grid))
+                    oy.append(int((self.obstacles[ob].start_position[1]+j)/self.step_grid))
+
+
+        for k in range(0,490,10):
+            for i in range(-40,40,10):
+                #for j in range(-30,30,10):
+                ox.append(int((750+i)/self.step_grid))
+                oy.append(int((k)/self.step_grid))
+
+
+        for k in range(520,1000,10):
+            for i in range(-40,40,10):
+                #for j in range(-30,30,10):
+                ox.append(int((750+i)/self.step_grid))
+                oy.append(int((k)/self.step_grid))
+
+
+        print([(i, j) for i, j in zip(ox, oy)])
+        m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+
+        start = [int(self.leader.start_position[0]/self.step_grid),
+                 int(self.leader.start_position[1]/self.step_grid)]
+        goal = [int(self.finish_point[0]/self.step_grid),
+                int(self.finish_point[1]/self.step_grid)]
+
+        start = m.map[start[0]][start[1]]
+        end = m.map[goal[0]][goal[1]]
+        dstar = Dstar(m)
+        rx, ry = dstar.run(start, end)
+        trajectory = []
+        #trajectory = path[::-1]
+        for i in range(len(rx)):
+            trajectory.append((rx[i],ry[i]))
+        print(trajectory)
+        return trajectory
+
+
+        
+    def generate_trajectory_astar(self,
+                            max_iter=None):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
 
         #  генерация финишной точки
