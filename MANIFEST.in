@@ -1,0 +1,2 @@
+include Configs/*.txt
+include imgs/*.png
