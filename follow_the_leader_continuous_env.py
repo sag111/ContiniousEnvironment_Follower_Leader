@@ -66,14 +66,11 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
-                 obstacle_number=35,
+                 obstacle_number=15,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
                  step_grid=10,
-                 obstacle_number=15,
                  early_stopping={},
-                 discretization_factor=5,  # NotImplemented
-                 step_grid=10,
                  follower_sensors={},
                  leader_speed_regime=None,
                  leader_acceleration_regime=None,
@@ -233,6 +230,8 @@ class Game(gym.Env):
             'max_rotation_speed': 57.296/100 ,
         }
         self.discrete_action_space = discrete_action_space
+        
+        if self.discrete_action_space:
             self.action_space = Discrete(5)
 
             self.discrete_rotation_speed_to_value = {0: -self.follower_config['max_rotation_speed'],
