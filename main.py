@@ -1,6 +1,6 @@
 import gym
 
-import follow_the_leader_continuous_env
+from continuous_grid_arctic import follow_the_leader_continuous_env
 
 from gym.envs.registration import register as gym_register
 from gym.wrappers.monitoring.video_recorder import VideoRecorder

@@ -10,6 +10,7 @@ from sys import maxsize
 import matplotlib.pyplot as plt
 
 show_animation = False
+clear_if_path_not_found = False
 
 
 class State:
@@ -169,20 +170,21 @@ class Dstar:
 
             if start.t == "close":
                 break
-
         start.set_state("s")
         s = start
         s = s.parent
         s.set_state("e")
         tmp = start
-
+        found_targed_point = True
         while tmp != end:
             # Реализовал прерывание таким образом
             iterat += 1
             #print(iterat)
             if iterat > max_iterat:
-                rx.clear()
-                ry.clear()
+                found_targed_point = False
+                if clear_if_path_not_found:
+                    rx.clear()
+                    ry.clear()
                 break
 
             tmp.set_state("*")
@@ -198,7 +200,7 @@ class Dstar:
         tmp.set_state("e")
         #print(iterat)
 
-        return rx, ry
+        return rx, ry, found_targed_point
 
     def modify(self, state):
         self.modify_cost(state)

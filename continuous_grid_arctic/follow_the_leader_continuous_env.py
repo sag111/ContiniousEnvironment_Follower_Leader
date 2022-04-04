@@ -1,41 +1,24 @@
-import random
-import pygame
 import os
+import random
+from warnings import warn
+import pygame
 from math import pi, degrees, radians, cos, sin
 import numpy as np
 from scipy.spatial import distance
-
-try:
-    from utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
-    from utils.sensors import LaserSensor
-    from utils.reward_constructor import Reward
-    from utils import astar
-    from utils.astar import Node, astar
-    from utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
-except:
-    from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors, angle_to_point
-    from continuous_grid_arctic.utils.sensors import LaserSensor
-    from continuous_grid_arctic.utils.reward_constructor import Reward
-    from continuous_grid_arctic.utils import astar
-    from continuous_grid_arctic.utils.astar import Node, astar
-    from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
-
 import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
-import random
 
-from utils import astar
-from utils.astar import Node
-from utils.astar import astar
-from utils.rrt import RRT
-from utils.rrt_star import RRTStar
-from utils.lqr_rrt_star import LQRRRTStar
-from utils.dstar import Map,State, Dstar
+from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
+from continuous_grid_arctic.utils.sensors import LaserSensor
+from continuous_grid_arctic.utils.reward_constructor import Reward
+from continuous_grid_arctic.utils.astar import astar
+from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
+from continuous_grid_arctic.utils.rrt_star import RRTStar
+from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
+from continuous_grid_arctic.utils.dstar import Map,State, Dstar
 
-from warnings import warn
-import random
 
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
@@ -66,7 +49,7 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
-                 obstacle_number=35,
+                 obstacle_number=15,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
                  step_grid=10,
@@ -128,6 +111,8 @@ class Game(gym.Env):
             флаг - если True - корость ведомого всегда будет максимальной, и будет использован только один экшн - поворот
         random_frames_per_step (tuple/list):
             диапазон из которого будет сэмплироваться frames_per_step
+        number_of_target_points (int):
+            количество точек через которые будет строится маршрут. По умолчанию одна целевая.
         """
 
         # нужно для сохранения видео
@@ -156,8 +141,6 @@ class Game(gym.Env):
         self.trajectory_generated = False
 
         self.step_grid = step_grid
-        #Генерация финишной точки
-        self.finish_point = np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
 
         # номер симуляции
         self.simulation_number = 0
@@ -292,6 +275,8 @@ class Game(gym.Env):
         # Создание препятствий
         if self.add_obstacles:
             self._create_obstacles()
+        #Генерация финишной точки
+        self.finish_point = np.float64((random.randrange(20, int(self.DISPLAY_WIDTH / 2)-50, 10), random.randrange(20, self.DISPLAY_HEIGHT-20, 10)))
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
@@ -347,7 +332,7 @@ class Game(gym.Env):
         # TODO: сторонние конфигурации для создания роботов
         leader_start_position = (
             random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
-            random.randrange(110, self.DISPLAY_HEIGHT - 110, 10))
+            random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
 
         leader_start_direction = angle_to_point(leader_start_position,
                                                 np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
@@ -366,7 +351,7 @@ class Game(gym.Env):
                                     start_direction = leader_start_direction)
 
         # !!! вся эта процедура повторяется после создания в резете при вызове _pos_follower_behind_leader
-        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance*1.1), int(self.max_distance*0.9), 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
                                             follower_start_distance_from_leader * sin(
@@ -395,7 +380,7 @@ class Game(gym.Env):
         self.game_object_list.append(self.follower)
         
     def _pos_follower_behind_leader(self):
-        follower_start_distance_from_leader = random.randrange(self.min_distance, self.max_distance, 1)
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance*1.1), int(self.max_distance*0.9), 1)
         follower_start_position_theta = angle_correction(self.leader.direction+180)
         
         follower_start_position = np.array((follower_start_distance_from_leader*cos(radians(follower_start_position_theta)),
@@ -722,7 +707,8 @@ class Game(gym.Env):
 
         # отображение полного маршрута Ведущего
         if self.show_leader_path:
-            pygame.draw.aalines(self.gameDisplay, self.colours["red"], False, self.trajectory)
+            if len(self.trajectory) > 2:
+                pygame.draw.aalines(self.gameDisplay, self.colours["red"], False, self.trajectory)
 
         # отображение зоны, в которой нужно находиться Ведомому
         if self.show_box:
@@ -844,8 +830,8 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0]/self.step_grid,
@@ -862,7 +848,7 @@ class Game(gym.Env):
             most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
             obstacle_list.append(most2)
 
-        print(obstacle_list)
+        #print(obstacle_list)
 
         # Set Initial parameters
         rrt_star = RRTStar(
@@ -879,7 +865,7 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        print(trajectory)
+        #print(trajectory)
 
         return trajectory
 
@@ -888,8 +874,8 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0]/self.step_grid,
@@ -906,7 +892,7 @@ class Game(gym.Env):
             most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
             obstacle_list.append(most2)
 
-        print(obstacle_list)
+        #print(obstacle_list)
 
         lqr_rrt_star = LQRRRTStar(self.leader.start_position/self.step_grid, (90,90),#self.finish_point/self.step_grid,
                                   obstacle_list,
@@ -916,7 +902,7 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        print(trajectory)
+        #print(trajectory)
 
         return trajectory
 
@@ -924,8 +910,8 @@ class Game(gym.Env):
     # Алгоритм поиска Dstar (еще не настроен)
     def generate_trajectory_dstar(self):
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
 
         m = Map(150, 100)
@@ -952,7 +938,7 @@ class Game(gym.Env):
                 oy.append(int((k)/self.step_grid))
 
 
-        print([(i, j) for i, j in zip(ox, oy)])
+        #print([(i, j) for i, j in zip(ox, oy)])
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
         start = [int(self.leader.start_position[0]/self.step_grid),
@@ -963,12 +949,11 @@ class Game(gym.Env):
         start = m.map[start[0]][start[1]]
         end = m.map[goal[0]][goal[1]]
         dstar = Dstar(m)
-        rx, ry = dstar.run(start, end)
+        rx, ry, found_target_point = dstar.run(start, end)
         trajectory = []
         #trajectory = path[::-1]
         for i in range(len(rx)):
             trajectory.append((rx[i],ry[i]))
-        print(trajectory)
         return trajectory
 
 
@@ -1115,7 +1100,6 @@ class Game(gym.Env):
                                                    self.follower.speed,
                                                    self.follower.direction,
                                                    self.follower.rotation_speed], dtype=np.float32)
-        
         if self.cur_target_point==self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
         else:
