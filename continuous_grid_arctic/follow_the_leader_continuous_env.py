@@ -59,6 +59,7 @@ class Game(gym.Env):
                  leader_acceleration_regime=None,
                  discrete_action_space=False,
                  constant_follower_speed=False,
+                 path_finding_algorythm="dstar",
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -113,6 +114,8 @@ class Game(gym.Env):
             диапазон из которого будет сэмплироваться frames_per_step
         number_of_target_points (int):
             количество точек через которые будет строится маршрут. По умолчанию одна целевая.
+        path_finding_algorythm (str):
+            какой алгоритм поиска пути использовать для лидера. astar, dstar
         """
 
         # нужно для сохранения видео
@@ -135,6 +138,7 @@ class Game(gym.Env):
         metadata = {"render.modes": ["human", "rgb_array"],
                     "video.frames_per_second": framerate}  # "human" вроде не обязательно
         self.constant_follower_speed = constant_follower_speed
+        self.path_finding_algorythm = path_finding_algorythm
 
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
@@ -253,6 +257,14 @@ class Game(gym.Env):
             warn("Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
             assert len(random_frames_per_step) == 2, "raondom frames per step должен быть задан в виде границ для генерации случайных значений. Задано: {}".format(random_frames_per_step)
             self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
+        self.check_parameters()
+    
+    def check_parameters(self):
+        """
+        Проверка параметров на допустимые значения.
+        """
+        if self.path_finding_algorythm not in ["astar", "dstar"]:
+            raise ValueError("path_finding_algorythm {} not in list:{}".format(self.path_finding_algorythm, ["astar", "dstar"]))
 
     def seed(self, seed_value):
         random.seed(seed_value)
@@ -275,13 +287,14 @@ class Game(gym.Env):
         # Создание препятствий
         if self.add_obstacles:
             self._create_obstacles()
-        #Генерация финишной точки
-        self.finish_point = np.float64((random.randrange(20, int(self.DISPLAY_WIDTH / 2)-50, 10), random.randrange(20, self.DISPLAY_HEIGHT-20, 10)))
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.trajectory = self.generate_trajectory_dstar()
-#             self.trajectory = self.generate_trajectory(max_iter=None)
+            self.generate_finish_point()
+            if self.path_finding_algorythm=="dstar":
+                self.trajectory = self.generate_trajectory_dstar()
+            elif self.path_finding_algorythm=="astar":
+                self.trajectory = self.generate_trajectory_astar(max_iter=None)
             self.trajectory_generated = True
         
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
@@ -956,15 +969,9 @@ class Game(gym.Env):
             trajectory.append((rx[i],ry[i]))
         return trajectory
 
-
-        
-    def generate_trajectory_astar(self,
-                            max_iter=None):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
-
+    def generate_finish_point(self):
         #  генерация финишной точки
         correct_point_position = False
-
         while not correct_point_position:
 
             correct_point_position = True
@@ -977,6 +984,11 @@ class Game(gym.Env):
                     correct_point_position = False
 
         self.finish_point = generated_finish_point
+        
+    def generate_trajectory_astar(self,
+                            max_iter=None):
+        """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
+
         # шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
         step_grid = 20
 
