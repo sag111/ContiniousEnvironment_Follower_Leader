@@ -169,6 +169,9 @@ class AbstractRobot(GameObject):
         movement_vec = np.array((cos(radians(self.direction)) * self.speed, sin(radians(self.direction)) * self.speed),
                                 dtype=np.float32)
         self.position += movement_vec
+        position_diff = self.position - self.rectangle.center
+        if np.linalg.norm(position_diff) > 0:
+            self.rectangle.move_ip(position_diff)
 
     def move_to_the_point(self, next_point, speed=None):
         """Функция автоматического управления движением к точке"""

@@ -1,6 +1,7 @@
 import os
 import random
 from warnings import warn
+from collections import OrderedDict
 import pygame
 from math import pi, degrees, radians, cos, sin
 import numpy as np
@@ -238,15 +239,14 @@ class Game(gym.Env):
         self._create_observation_space()
         # Скорость лидера
         self.leader_speed_regime = None
-        if type(leader_speed_regime) == dict:
+        if type(leader_speed_regime) in [dict, OrderedDict]:
             self.leader_speed_regime = {}
             for k,v in leader_speed_regime.items():
                 self.leader_speed_regime[int(k)] = v
         elif leader_speed_regime is not None:
-            warn("leader_speed_regime должен быть dict, получено: {}, будет проигнорировано".format(type(leader_speed_regime)))
-        
+            warn("leader_speed_regime должен быть dict или OrderedDict, получено: {}, будет проигнорировано".format(type(leader_speed_regime)))
         self.leader_acceleration_regime = None
-        if type(leader_acceleration_regime) == dict:
+        if type(leader_acceleration_regime) in [dict, OrderedDict]:
             self.leader_acceleration_regime = {}
             for k,v in leader_acceleration_regime.items():
                 self.leader_acceleration_regime[int(k)] = v
@@ -702,11 +702,9 @@ class Game(gym.Env):
         cur_image = object_to_show.image
         if hasattr(object_to_show, "direction"):
             cur_image = self.rotate_object(object_to_show)
-
         self.gameDisplay.blit(cur_image, (
             object_to_show.position[0] - object_to_show.width / 2,
             object_to_show.position[1] - object_to_show.height / 2))
-        object_to_show.rectangle = cur_image.get_rect(center=object_to_show.position)
 
         if self.show_rectangles:
             pygame.draw.rect(self.gameDisplay, self.colours["red"], object_to_show.rectangle, width=1)
@@ -767,15 +765,21 @@ class Game(gym.Env):
 #         if self.add_obstacles:
 #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
 #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render("Step: {}, Суммарная награда:{}, скорость:{}, скорость поворота:{}".format(self.step_count,
-                                                                                                                 self.overall_reward, 
-                                                                                                                 self.follower.speed, 
-                                                                                                                 self.follower.rotation_speed), 
-                                                                                                                   False, 
-                                                                                                                   (0, 0, 0))
-        
+        reward_text = self.font.render("Step: {}, Суммарная награда:{}".format(self.step_count,
+                                                                               self.overall_reward), 
+                                                                               False, 
+                                                                               (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 0))
-
+        reward_text = self.font.render("Фолловер. скорость:{}, скорость поворота:{}".format(self.follower.speed, 
+                                                                                            self.follower.rotation_speed), 
+                                                                                            False, 
+                                                                                            (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 50))
+        reward_text = self.font.render("Лидер. скорость:{}, скорость поворота:{}".format(self.leader.speed, 
+                                                                                         self.leader.rotation_speed), 
+                                                                                         False, 
+                                                                                         (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 100))
         #  генерация финишной точки
         #self.finish_point = np.float64((random.randrange(20, 500,10),random.randrange(20, 500,10)))
 
