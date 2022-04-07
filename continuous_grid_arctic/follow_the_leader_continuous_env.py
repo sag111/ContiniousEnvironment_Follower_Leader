@@ -729,7 +729,7 @@ class Game(gym.Env):
                                                self.colours["green"],
                                                False,
                                                self.green_zone_trajectory_points[::4],
-                                               width=self.max_dev * 2)
+                                               width=int(self.max_dev * 2))
                 
                 
                 #for cur_point in self.left_border_points_list:

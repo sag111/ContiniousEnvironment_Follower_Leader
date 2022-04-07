@@ -24,11 +24,13 @@ class LaserSensor():
                  angle_variance=0,
                  sensor_speed=0.1,
                  return_all_points=False,
-                 add_noise=False
+                 add_noise=False,
+                 return_only_distances=False
                  ):  # в секундах? Пока не используется
 
         self.host_object = host_object
         self.sensor_name = sensor_name
+        self.return_only_distances = return_only_distances
 
         self.available_angle = min(360, available_angle)
         self.angle_step = angle_step
@@ -120,7 +122,10 @@ class LaserSensor():
             if not self.return_all_points:
                 self.sensed_points.append(point_to_add)
 
-        return self.sensed_points
+        if self.return_only_distances:
+            return np.linalg.norm(self.sensed_points - self.host_object.position , axis=1)
+        else:
+            return self.sensed_points - self.host_object.position
 
     def show(self, env):
         for cur_point in self.sensed_points:

@@ -83,9 +83,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
         if 'LaserSensor' in self.follower_sensors:
             if self.follower_sensors['LaserSensor']['return_all_points']:
-                features_number += (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1) * self.follower_sensors['LaserSensor']['points_number'] * 2
+                lidar_points_number = (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1) * self.follower_sensors['LaserSensor']['points_number']
             else:
-                features_number += (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1) *2
+                lidar_points_number = (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1)
+            if self.follower_sensors['LaserSensor']["return_only_distances"]:
+                features_number += lidar_points_number
+            else:
+                features_number += lidar_points_number * 2
         self.observation_space = Box(-np.ones(features_number),
                                      np.ones(features_number))
         self.action_values_range = action_values_range
@@ -114,9 +118,9 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_list.append(corridor_lasers)
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
-            # переход к относительным координатам лучше делать в сенсоре            
-            lidar_sensed_points -= self.follower.position
-            lidar_sensed_points = np.concatenate(lidar_sensed_points)
+            # переход к относительным координатам лучше делать в сенсоре
+            if len(lidar_sensed_points.shape)==2:
+                lidar_sensed_points = np.concatenate(lidar_sensed_points)
             lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors["LaserSensor"].range * self.PIXELS_TO_METER), -1, 1)
             features_list.append(lidar_sensed_points)
         return np.concatenate(features_list)
@@ -135,7 +139,6 @@ class ContinuousObserveModifier_v1(ContinuousObserveModifier_v0):
     def __init__(self, env, lz4_compress=False):
         super().__init__(env, action_values_range=[-1, 1])
         warn("ContinuousObserveModifier_v1 is deprecated and will be removed", DeprecationWarning)
-
 
 class LeaderTrajectory_v0(ObservationWrapper):
     """
