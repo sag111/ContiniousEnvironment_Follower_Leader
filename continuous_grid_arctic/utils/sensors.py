@@ -431,6 +431,7 @@ class LeaderCorridor_lasers:
     def __init__(self,
                  host_object,
                  sensor_name,
+                 react_to_safe_corridor=True,
                  react_to_obstacles=False,
                  react_to_leader_zone=False):
         """
@@ -447,6 +448,7 @@ class LeaderCorridor_lasers:
         self.laser_length = 100
         self.lasers_end_points = []
         self.lasers_collides = []
+        self.react_to_safe_corridor = react_to_safe_corridor
         self.react_to_obstacles = react_to_obstacles
         self.react_to_leader_zone = react_to_leader_zone
         if react_to_leader_zone:
@@ -497,9 +499,10 @@ class LeaderCorridor_lasers:
             self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction + 40))
         if len(corridor) > 1:
             corridor_lines = list()
-            for i in range(len(corridor) - 1):
-                corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
-                corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
+            if self.react_to_safe_corridor:
+                for i in range(len(corridor) - 1):
+                    corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
+                    corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
             if self.react_to_obstacles:
                 for cur_object in env.game_object_list:
                     if cur_object is env.follower:
