@@ -1,8 +1,11 @@
 import random
+import time
+
 import pygame
 import os
 from math import pi, degrees, radians, cos, sin
 import numpy as np
+import pandas as pd
 from scipy.spatial import distance
 
 from utils.classes import AbstractRobot, GameObject, LaserSensor
@@ -124,7 +127,10 @@ class Game(gym.Env):
 
         self.step_grid = step_grid
         #Генерация финишной точки
-        self.finish_point = np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
+        self.finish_point = (10,10) #np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
+
+        self.finish_point2 = (1490, 990) #np.float64((random.randrange(20, 100, 10), random.randrange(50, 1000, 10)))
+        self.finish_point3 = (0,990) #np.float64((random.randrange(520, 100, 10), random.randrange(720, 1000, 10)))
 
         # номер симуляции
         self.simulation_number = 0
@@ -244,7 +250,14 @@ class Game(gym.Env):
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.trajectory = self.generate_trajectory_dstar()
+            # self.trajectory = self.generate_trajectory()
+
+            self.trajectory1 = self.generate_trajectory_dstar()
+
+            # self.trajectory2 = self.generate_trajectory_rrt()
+            # self.trajectory3 = self.generate_trajectory_rrtstar()
+            #
+            self.trajectory = self.trajectory1
             self.trajectory_generated = True
 
         self.trajectory = self.trajectory
@@ -287,7 +300,7 @@ class Game(gym.Env):
                                     max_rotation_speed=57.296 / 100,
                                     max_rotation_speed_change=20 / 100,
                                     start_position= (random.randrange(self.DISPLAY_WIDTH/2+650, self.DISPLAY_WIDTH-70,10),
-                                                               random.randrange(20, self.DISPLAY_HEIGHT-100,10)))
+                                                               random.randrange(520, self.DISPLAY_HEIGHT,10)))
                                     
         self.follower = AbstractRobot("follower",
                                       image=self.follower_img,
@@ -575,7 +588,9 @@ class Game(gym.Env):
         #шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
         #self.step_grid
         #step_grid = 10
-        step_obs = 70/self.step_grid
+        t_astar = time.time()
+
+        step_obs = 60/self.step_grid
 
         print(self.leader.start_position)
         print(self.finish_point)
@@ -617,54 +632,100 @@ class Game(gym.Env):
                             and j <= 1000/self.step_grid:
                         grid[i][j] = 1
 
-        print(grid)
+        # print(grid)
         path = astar(maze=grid, start=start, end=end)
         #print(path)
         #print(grid)
         trajectory = []
         trajectory = path
-        print(trajectory)
-        print(self.obstacles)
+        timeAstar = time.time() - t_astar
+
+
+        # # print(trajectory)
+        # # print(self.obstacles)
+        # len_tr = len(trajectory)
+        # # print('Astr: ', len_tr)
+        # # print('Aend =', timeAstar)
+        # path_tab_astar = '~/Desktop/lentrAstar.xlsx'
+        # astar_table = pd.read_excel(path_tab_astar, index_col=False)
+        # # print(astar_table)
+        # # print(len_tr)
+        # # print(timeAstar)
+        # new_data = {'Time':timeAstar, 'Len':len_tr}
+        # new_astar_table = astar_table.append(new_data, ignore_index=True)
+        # # print(new_astar_table)
+        # #astar_table.loc[len(astar_table.index)] = ['timeAstar', 'len_tr']
+        # # pdc = pd.DataFrame(new_astar_table, index=False)
+        # new_astar_table.to_excel(path_tab_astar, index=False)
         
         return trajectory
 
     # Алгоритм поиска RRT
-    # def generate_trajectory_rrt(self):
-    #
-    #     obstacle_list = []  # [x,y,size(radius)]
-    #
-    #     print(self.leader.start_position)
-    #     print(self.finish_point)
-    #
-    #     for i in range(self.obstacle_number):
-    #         obst = (self.obstacles[i].start_position[0]/self.step_grid,
-    #                 self.obstacles[i].start_position[1]/self.step_grid,
-    #                 (80/self.step_grid)/2)
-    #         obstacle_list.append(obst)
-    #     print(obstacle_list)
-    #
-    #
-    #
-    #     # Set Initial parameters
-    #     rrt = RRT(
-    #         start=self.leader.start_position/self.step_grid,
-    #         goal= ((self.leader.start_position[0]-50)/self.step_grid,
-    #                (self.leader.start_position[1]-50)/self.step_grid), #self.finish_point,
-    #         rand_area=[-2, 15],
-    #         obstacle_list=obstacle_list,
-    #         expand_dis=1)
-    #
-    #     path = rrt.planning(animation = False)
-    #     #print(path)
-    #     #trajectory = rrt_star.planning(animation=False)
-    #
-    #     trajectory = []
-    #     trajectory = path[::-1]
-    #     trajectory.pop(0)
-    #     print(trajectory)
-    #     #print(grid[75][23])
-    #
-    #     return trajectory
+    def generate_trajectory_rrt(self):
+
+        obstacle_list = []  # [x,y,size(radius)]
+
+        print(self.leader.start_position)
+        print(self.finish_point)
+
+        for i in range(self.obstacle_number):
+            obst = (self.obstacles[i].start_position[0]/self.step_grid,
+                    self.obstacles[i].start_position[1]/self.step_grid,
+                    (100/self.step_grid)/2)
+            obstacle_list.append(obst)
+        print(obstacle_list)
+
+
+        t_rrt = time.time()
+
+        # Set Initial parameters
+        # rrt = RRT(
+        #     start=self.leader.start_position/self.step_grid,
+        #     goal= ((self.finish_point[0])/self.step_grid,
+        #            (self.finish_point[1])/self.step_grid), #self.finish_point,
+        #     rand_area=[0, 110],
+        #     expand_dis=1.5,
+        #     path_resolution=2,
+        #     goal_sample_rate=1,
+        #     max_iter=1500,
+        #     obstacle_list=obstacle_list)
+
+        rrt = RRT(
+            start=self.leader.start_position/self.step_grid,
+            goal= ((self.finish_point[0])/self.step_grid,
+                   (self.finish_point[1])/self.step_grid), #self.finish_point,
+            rand_area=[0, 110],
+            expand_dis=2.5,
+            path_resolution=2,
+            goal_sample_rate=1,
+            max_iter=1500,
+            obstacle_list=obstacle_list)
+
+        path = rrt.planning(animation = False)
+        #print(path)
+        #trajectory = rrt_star.planning(animation=False)
+
+        trajectory = []
+        trajectory = path[::-1]
+        trajectory.pop(0)
+
+        time_rrt = time.time() - t_rrt
+        len_rrt = len(trajectory)
+        # print('Dstr: ', len_rrt)
+        # print('Dend =', time_rrt)
+        path_tab_rrt = '~/Desktop/lentRRT.xlsx'
+        rrt_table = pd.read_excel(path_tab_rrt, index_col=False)
+        # print(rrtstar_table)
+        # print(len_rrtstar)
+        # print(time_rrtstar)
+        new_data = {'Time': time_rrt, 'Len': len_rrt}
+        new_dstar_table = rrt_table.append(new_data, ignore_index=True)
+        new_dstar_table.to_excel(path_tab_rrt, index=False)
+
+        # print(trajectory)
+        #print(grid[75][23])
+
+        return trajectory
 
     # Алгоритм поиска RRTstar
     def generate_trajectory_rrtstar(self):
@@ -681,25 +742,25 @@ class Game(gym.Env):
             obstacle_list.append(obst)
         #print(obstacle_list)
 
-        for k in range(20,460,40):
-            most1 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(20,490,40):
+            most1 = (750/self.step_grid, k/self.step_grid, 30/self.step_grid)
             obstacle_list.append(most1)
 
-        for k in range(560,1000,40):
-            most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(520,1000,40):
+            most2 = (750/self.step_grid, k/self.step_grid, 30/self.step_grid)
             obstacle_list.append(most2)
 
-        print(obstacle_list)
-
+        # print(obstacle_list)
+        t_rrtstar = time.time()
         # Set Initial parameters
         rrt_star = RRTStar(
             start=self.leader.start_position/self.step_grid,
             goal= self.finish_point/self.step_grid,
             #(50,50),#((self.leader.start_position[0]+200)/self.step_grid,
             # (self.leader.start_position[1]-200)/self.step_grid),
-            rand_area=[0,150],
+            rand_area=[0,110],
             obstacle_list=obstacle_list,
-            expand_dis=20, goal_sample_rate=20, path_resolution=1, connect_circle_dist=50)
+            expand_dis=1, goal_sample_rate=1, path_resolution=1, connect_circle_dist=0.5)
 
         # for i in range(self.obstacle_number):
         #     obst = (self.obstacles[i].start_position[0],
@@ -735,8 +796,21 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        print(trajectory)
+        # print(trajectory)
         #print(grid[75][23])
+
+        time_rrtstar = time.time() - t_rrtstar
+        len_rrtstar = len(trajectory)
+        # print('Dstr: ', len_rrtstar)
+        # print('Dend =', time_rrtstar)
+        path_tab_rrtstar = '~/Desktop/lentRRTstar.xlsx'
+        rrtstar_table = pd.read_excel(path_tab_rrtstar, index_col=False)
+        # print(rrtstar_table)
+        # print(len_rrtstar)
+        # print(time_rrtstar)
+        new_data = {'Time': time_rrtstar, 'Len': len_rrtstar}
+        new_dstar_table = rrtstar_table.append(new_data, ignore_index=True)
+        new_dstar_table.to_excel(path_tab_rrtstar, index=False)
 
         return trajectory
 
@@ -763,7 +837,7 @@ class Game(gym.Env):
             most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
             obstacle_list.append(most2)
 
-        print(obstacle_list)
+        # print(obstacle_list)
 
         lqr_rrt_star = LQRRRTStar(self.leader.start_position/self.step_grid, (90,90),#self.finish_point/self.step_grid,
                                   obstacle_list,
@@ -773,7 +847,7 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        print(trajectory)
+        # print(trajectory)
         #print(grid[75][23])
 
         return trajectory
@@ -782,11 +856,17 @@ class Game(gym.Env):
     # Алгоритм поиска Dstar (еще не настроен)
     def generate_trajectory_dstar(self):
 
+        t_dstar = time.time()
+        # print('D0 =', time.time()-t_astar)
         print(self.leader.start_position)
         print(self.finish_point)
-
+        print(self.finish_point2)
+        print(self.finish_point3)
 
         m = Map(150, 100)
+        m2 = Map(150, 100)
+        m3 = Map(150, 100)
+
         ox, oy = [], []
 
         for ob in range(self.obstacle_number):
@@ -810,9 +890,13 @@ class Game(gym.Env):
                 oy.append(int((k)/self.step_grid))
 
 
-        print([(i, j) for i, j in zip(ox, oy)])
+        # print([(i, j) for i, j in zip(ox, oy)])
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
+        m2.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+        m3.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+
+        ########### работа dstar 1
         start = [int(self.leader.start_position[0]/self.step_grid),
                  int(self.leader.start_position[1]/self.step_grid)]
         goal = [int(self.finish_point[0]/self.step_grid),
@@ -827,7 +911,86 @@ class Game(gym.Env):
         for i in range(len(rx)):
             trajectory.append((rx[i],ry[i]))
         print(trajectory)
+
+        # TODO : работа дстар в 3 захода (костыль)
+        # ##############################################################
+        # работа dstar 2
+        start2 = [int(self.leader.start_position[0]/self.step_grid),
+                 int(self.leader.start_position[1]/self.step_grid)]
+
+        start2 = goal
+        goal2 = [int(self.finish_point2[0]/self.step_grid),
+                int(self.finish_point2[1]/self.step_grid)]
+
+        start2 = m2.map[start2[0]][start2[1]]
+        end2 = m2.map[goal2[0]][goal2[1]]
+        dstar2 = Dstar(m2)
+        rx2, ry2 = dstar2.run(start2, end2)
+        trajectory2 = []
+        #trajectory = path[::-1]
+        for i in range(len(rx2)):
+            trajectory2.append((rx2[i],ry2[i]))
+        print(trajectory2)
+
+        # работа dstar 3
+        # start3 = [int(self.leader.start_position[0]/self.step_grid),
+        #          int(self.leader.start_position[1]/self.step_grid)]
+
+        start3 = goal2
+        goal3 = [int(self.finish_point3[0]/self.step_grid),
+                int(self.finish_point3[1]/self.step_grid)]
+
+        start3 = m3.map[start3[0]][start3[1]]
+        end3 = m3.map[goal3[0]][goal3[1]]
+        dstar3 = Dstar(m3)
+        rx3, ry3 = dstar3.run(start3, end3)
+        trajectory3 = []
+        #trajectory = path[::-1]
+        for i in range(len(rx3)):
+            trajectory3.append((rx3[i],ry3[i]))
+        print(trajectory3)
+        trajectory = trajectory + trajectory2 + trajectory3
+
+
+
+
+        # print(trajectory)
+        # len_dstar = len(trajectory)
+        # print("Dstar: ", len_dstar)
+        # print('Dend =', time.time() - t_dstar)
+
+
+        #############################
+        # time_dstar = time.time() - t_dstar
+        # len_dstar = len(trajectory)
+        # if len_dstar>200:
+        #     # print('Dstr: ', len_dstar)
+        #     # print('Dend =', time_dstar)
+        #     path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
+        #     dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
+        #     # print(dstar_table)
+        #     # print(len_dstar)
+        #     # print(time_dstar)
+        #     new_data = {'Time50': time_dstar, 'Len50': len_dstar}
+        #     # new_data = {'Time15': time_dstar, 'Len15': len_dstar}
+        #     new_dstar_table = dstar_table.append(new_data, ignore_index=True)
+        #     new_dstar_table.to_excel(path_tab_dstar, index=False)
+        # else:
+        #     return "PUSTO"
+        # # print('Dstr: ', len_dstar)
+        # # print('Dend =', time_dstar)
+        # path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
+        # dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
+        # # print(dstar_table)
+        # # print(len_dstar)
+        # # print(time_dstar)
+        # # new_data = {'Time': time_dstar, 'Len': len_dstar}
+        # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
+        # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
+        # new_dstar_table.to_excel(path_tab_dstar, index=False)
+
         return trajectory
+
 
 
     def generate_trajectory_old(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit = 10000):

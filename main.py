@@ -20,12 +20,12 @@ if __name__ == "__main__":
     
     parser.add_argument('--n_steps',
                         type=int,
-                        default=5000,
+                        default=15000,
                         help="Число шагов, в течение которых работает проверочная симуляция")
     
     parser.add_argument('--training_steps',
                     type=int,
-                    default=10000,
+                    default=50000,
                     help="Число шагов, в течение которых происходит обучение модели (только для режима управления автоматом)")
     
     parser.add_argument('--video_name',
@@ -87,4 +87,3 @@ if __name__ == "__main__":
 
 
         
-         
