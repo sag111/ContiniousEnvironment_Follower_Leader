@@ -12,15 +12,15 @@ import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box, Dict, Tuple
 
-
 from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
 from continuous_grid_arctic.utils.sensors import LaserSensor
 from continuous_grid_arctic.utils.reward_constructor import Reward
 from continuous_grid_arctic.utils.astar import astar
-from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, distance_to_rect
+from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, \
+    distance_to_rect
 from continuous_grid_arctic.utils.rrt_star import RRTStar
 from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
-from continuous_grid_arctic.utils.dstar import Map,State, Dstar
+from continuous_grid_arctic.utils.dstar import Map, State, Dstar
 from continuous_grid_arctic.utils.rrt import RRT
 
 
@@ -53,8 +53,8 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  obstacle_number=35,
-                 end_simulation_on_leader_finish=False,#NotImplemented
-                 discretization_factor=5,#NotImplemented
+                 end_simulation_on_leader_finish=False,  # NotImplemented
+                 discretization_factor=5,  # NotImplemented
                  step_grid=10,
                  early_stopping={},
                  follower_sensors={},
@@ -151,16 +151,18 @@ class Game(gym.Env):
         self.trajectory_generated = False
 
         self.step_grid = step_grid
-        #Генерация финишной точки
-        self.finish_point = (10,10) #np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
+        # Генерация финишной точки
+        self.finish_point = (10, 10)  # np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
         self.multiple_end_points = multiple_end_points
         if multiple_end_points:
-            if path_finding_algorythm!="dstar":
+            if path_finding_algorythm != "dstar":
                 raise NotImplementedError("Only dstar pathfinding function supports multiple end points. "
                                           "multiple_end_points must be False or diggerent path_finding_algorythm "
                                           "must be chosen")
-            self.finish_point2 = (1490, 990) #np.float64((random.randrange(20, 100, 10), random.randrange(50, 1000, 10)))
-            self.finish_point3 = (0,990) #np.float64((random.randrange(520, 100, 10), random.randrange(720, 1000, 10)))
+            # np.float64((random.randrange(20, 100, 10), random.randrange(50, 1000, 10)))
+            self.finish_point2 = (1490, 990)
+            # np.float64((random.randrange(520, 100, 10), random.randrange(720, 1000, 10)))
+            self.finish_point3 = (0, 990)
 
         # номер симуляции
         self.simulation_number = 0
@@ -198,7 +200,7 @@ class Game(gym.Env):
         self.min_distance = self._to_pixels(min_distance)
         self.max_distance = self._to_pixels(max_distance)
         self.max_dev = self._to_pixels(max_dev)
-        
+
         self.warm_start = warm_start
 
         self.leader_img = pygame.image.load("{}/imgs/car_yellow.png".format(os.path.dirname(os.path.abspath(__file__))))
@@ -229,11 +231,11 @@ class Game(gym.Env):
         }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': self._to_pixels(0.5)/100 ,
-            'max_rotation_speed': 57.296/100 ,
+            'max_speed': self._to_pixels(0.5) / 100,
+            'max_rotation_speed': 57.296 / 100,
         }
         self.discrete_action_space = discrete_action_space
-        
+
         if self.discrete_action_space:
             self.action_space = Discrete(5)
 
@@ -259,7 +261,7 @@ class Game(gym.Env):
         self.leader_speed_regime = None
         if type(leader_speed_regime) in [dict, OrderedDict]:
             self.leader_speed_regime = {}
-            for k,v in leader_speed_regime.items():
+            for k, v in leader_speed_regime.items():
                 self.leader_speed_regime[int(k)] = v
         elif leader_speed_regime is not None:
             warn("leader_speed_regime должен быть dict или OrderedDict, получено: {}, будет проигнорировано".format(
@@ -267,12 +269,12 @@ class Game(gym.Env):
         self.leader_acceleration_regime = None
         if type(leader_acceleration_regime) in [dict, OrderedDict]:
             self.leader_acceleration_regime = {}
-            for k,v in leader_acceleration_regime.items():
+            for k, v in leader_acceleration_regime.items():
                 self.leader_acceleration_regime[int(k)] = v
         elif leader_acceleration_regime is not None:
             warn("leader_acceleration_regime должен быть dict, получено: {}, будет проигнорировано".format(
                 type(leader_acceleration_regime)))
-                
+
         if random_frames_per_step is not None and frames_per_step is not None:
             warn(
                 "Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
@@ -281,7 +283,7 @@ class Game(gym.Env):
                 random_frames_per_step)
             self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
         self.check_parameters()
-    
+
     def check_parameters(self):
         """
         Проверка параметров на допустимые значения.
@@ -300,7 +302,7 @@ class Game(gym.Env):
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
 
-#         valid_trajectory = False
+        #         valid_trajectory = False
 
         # Список всех игровых объектов
         self.game_object_list = list()
@@ -314,21 +316,29 @@ class Game(gym.Env):
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.finish_point = self.generate_finish_point()
+            self.finish_point = self.generate_finish_point([20, 20], [int(self.DISPLAY_WIDTH/2), self.DISPLAY_HEIGHT - 20])
             if self.multiple_end_points:
-                self.finish_point2 = self.generate_finish_point()
-                self.finish_point3 = self.generate_finish_point()
-            if self.path_finding_algorythm=="dstar":
+                if self.finish_point[1] >= (self.DISPLAY_HEIGHT / 2):
+                    self.finish_point2 = self.generate_finish_point([20, 20], [self.DISPLAY_WIDTH-20, int(self.DISPLAY_HEIGHT / 2)])
+                else:
+                    self.finish_point2 = self.generate_finish_point([20, int(self.DISPLAY_HEIGHT / 2)],  [self.DISPLAY_WIDTH-20, self.DISPLAY_HEIGHT - 20])
+                if self.finish_point2[1] >= (self.DISPLAY_HEIGHT / 2):
+                    self.finish_point3 = self.generate_finish_point([20, 20], [self.DISPLAY_WIDTH - 20,
+                                                                               int(self.DISPLAY_HEIGHT / 2)])
+                else:
+                    self.finish_point3 = self.generate_finish_point([20, int(self.DISPLAY_HEIGHT / 2)],
+                                                                    [self.DISPLAY_WIDTH - 20, self.DISPLAY_HEIGHT - 20])
+            if self.path_finding_algorythm == "dstar":
                 self.trajectory = self.generate_trajectory_dstar()
-            elif self.path_finding_algorythm=="astar":
+            elif self.path_finding_algorythm == "astar":
                 self.trajectory = self.generate_trajectory_astar(max_iter=None)
             self.trajectory_generated = True
-        
+
         # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
         self.green_zone_trajectory_points = list()
         self.left_border_points_list = list()
         self.right_border_points_list = list()
-        
+
         # Флаг конца симуляции
         self.done = False
 
@@ -353,17 +363,18 @@ class Game(gym.Env):
         self.clock = pygame.time.Clock()
 
         self.simulation_number += 1
-        
+
         # располагаем ведомого с учётом того, куда направлен лидер
-        self.leader.direction = angle_to_point(self.leader.position,self.cur_target_point)
+        self.leader.direction = angle_to_point(self.leader.position, self.cur_target_point)
         self._pos_follower_behind_leader()
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
         # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
-        first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (self.trajectory_saving_period*self.leader.max_speed))
-        self.leader_factual_trajectory.extend(zip(np.linspace(self.follower.position[0], self.leader.position[0], first_dots_for_follower_count),
-            np.linspace(self.follower.position[1], self.leader.position[1], first_dots_for_follower_count)))
+        first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (
+                self.trajectory_saving_period * self.leader.max_speed))
+        self.leader_factual_trajectory.extend(
+            zip(np.linspace(self.follower.position[0], self.leader.position[0], first_dots_for_follower_count),
+                np.linspace(self.follower.position[1], self.leader.position[1], first_dots_for_follower_count)))
 
-            
         self.follower_scan_dict = self.follower.use_sensors(self)
         self.finish_position_framestimer = None
         return self._get_obs()
@@ -384,20 +395,20 @@ class Game(gym.Env):
                                     width=self._to_pixels(0.52),
                                     min_speed=self.leader_config["min_speed"],
                                     max_speed=self.leader_config["max_speed"],
-                                    max_speed_change=self._to_pixels(0.005),# / 100,
+                                    max_speed_change=self._to_pixels(0.005),  # / 100,
                                     max_rotation_speed=self.leader_config["max_rotation_speed"],
                                     max_rotation_speed_change=20 / 100,
-                                    start_position= leader_start_position,
-                                    start_direction = leader_start_direction)
+                                    start_position=leader_start_position,
+                                    start_direction=leader_start_direction)
 
         # !!! вся эта процедура повторяется после создания в резете при вызове _pos_follower_behind_leader
-        follower_start_distance_from_leader = random.randrange(int(self.min_distance*1.1), int(self.max_distance*0.9), 1)
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
+                                                               int(self.max_distance * 0.9), 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
                                             follower_start_distance_from_leader * sin(
                                                 follower_start_position_theta))) + leader_start_position
 
-        
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
 
         self.follower = RobotWithSensors("follower",
@@ -412,32 +423,32 @@ class Game(gym.Env):
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
                                          sensors=self.follower_sensors)
-        
+
         self.cur_leader_acceleration = 0
         self.cur_leader_cumulative_speed = 0
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
-        
+
     def _pos_follower_behind_leader(self):
-        follower_start_distance_from_leader = random.randrange(int(self.min_distance*1.1), int(self.max_distance*0.9), 1)
-        follower_start_position_theta = angle_correction(self.leader.direction+180)
-        
-        follower_start_position = np.array((follower_start_distance_from_leader*cos(radians(follower_start_position_theta)),
-                                           follower_start_distance_from_leader*sin(radians(follower_start_position_theta)))) + self.leader.position
-        
-        
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
+                                                               int(self.max_distance * 0.9), 1)
+        follower_start_position_theta = angle_correction(self.leader.direction + 180)
+
+        follower_start_position = np.array(
+            (follower_start_distance_from_leader * cos(radians(follower_start_position_theta)),
+             follower_start_distance_from_leader * sin(radians(follower_start_position_theta)))) + self.leader.position
+
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
-        
+
         self.follower.position = follower_start_position
         self.follower.direction = follower_direction
         self.follower.start_direction = follower_direction
-        
 
     def _create_obstacles(self):
 
         #####################################
-        #TODO: отсутствие абсолютных чисел!
+        # TODO: отсутствие абсолютных чисел!
         self.most_point1 = (self.DISPLAY_WIDTH / 2, 230)
         self.most_point2 = (self.DISPLAY_WIDTH / 2, 770)
 
@@ -462,7 +473,7 @@ class Game(gym.Env):
 
         wall_start_x = self.obstacles1.rectangle.left
         wall_end_x = self.obstacles1.rectangle.right
-        
+
         obstacle_size = 50
         bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 3,
                                        self.obstacles1.rectangle.bottom - self.leader.height,
@@ -473,16 +484,16 @@ class Game(gym.Env):
             is_free = False
 
             while not is_free:
-                generated_position = (random.randrange(130,self.DISPLAY_WIDTH - 120, self.step_grid),
-                                      random.randrange(20,self.DISPLAY_HEIGHT - 20, self.step_grid))
-                
-                
+                generated_position = (random.randrange(130, self.DISPLAY_WIDTH - 120, self.step_grid),
+                                      random.randrange(20, self.DISPLAY_HEIGHT - 20, self.step_grid))
+
                 if self.leader.rectangle.collidepoint(generated_position) or \
                         self.follower.rectangle.collidepoint(generated_position) or \
                         ((generated_position[0] >= wall_start_x) and (generated_position[0] <= wall_end_x)) or \
                         bridge_rectangle.collidepoint(generated_position) or \
-                        (distance.euclidean(self.leader.position,generated_position) <= (self.max_distance)+obstacle_size/2):
-                        # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генрировать ведомого за ним)
+                        (distance.euclidean(self.leader.position, generated_position) <= (
+                                self.max_distance) + obstacle_size / 2):
+                    # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генрировать ведомого за ним)
                     is_free = False
                 else:
                     is_free = True
@@ -508,7 +519,7 @@ class Game(gym.Env):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
             self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
-            
+
         if self.manual_control:
             for event in pygame.event.get():
                 self.manual_game_contol(event, self.follower)
@@ -516,14 +527,13 @@ class Game(gym.Env):
         else:
             if self.discrete_action_space:
                 if type(action) is np.ndarray:
-                    assert action.shape[0]==1 and action.shape[1]==1
-                    action = action[0,0]
-                action=(self.follower.max_speed,self.discrete_rotation_speed_to_value[action])
+                    assert action.shape[0] == 1 and action.shape[1] == 1
+                    action = action[0, 0]
+                action = (self.follower.max_speed, self.discrete_rotation_speed_to_value[action])
 
             if self.constant_follower_speed:
                 action = np.concatenate([[0.25], action])
 
-                
             self.follower.command_forward(action[0])
             if action[1] < 0:
                 self.follower.command_turn(abs(action[1]), -1)
@@ -531,8 +541,7 @@ class Game(gym.Env):
                 self.follower.command_turn(action[1], 1)
             else:
                 self.follower.command_turn(0, 0)
-                
-        
+
         for cur_ministep_nb in range(self.frames_per_step):
             obs, reward, done, info = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
@@ -548,7 +557,7 @@ class Game(gym.Env):
         info = {
             "mission_status": "in_progress",
             "agent_status": "moving",
-            "leader_status": "moving"            
+            "leader_status": "moving"
         }
 
         self.follower.move()
@@ -564,7 +573,7 @@ class Game(gym.Env):
         # определение текущих точек маршрута, которые являются подходящими для Агента
         self.green_zone_trajectory_points = list()
         self._trajectory_in_box()
-        #self._get_green_zone_border_points()
+        # self._get_green_zone_border_points()
 
         # определяем положение Агента относительно маршрута и коробки
         self._check_agent_position()
@@ -584,12 +593,12 @@ class Game(gym.Env):
                 speed = self._process_leader_speed_regime()
             else:
                 speed = self.leader.max_speed
-            
+
             if self.leader_acceleration_regime is not None:
-                acceleration = self._process_leader_acceleration_regime()/self.frames_per_step
+                acceleration = self._process_leader_acceleration_regime() / self.frames_per_step
             else:
                 acceleration = 0
-            self.leader.move_to_the_point(self.cur_target_point, speed=speed+acceleration)
+            self.leader.move_to_the_point(self.cur_target_point, speed=speed + acceleration)
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
@@ -601,7 +610,7 @@ class Game(gym.Env):
             self.done = True
             info["mission_status"] = "fail"
             info["leader_status"] = "crash"
-        
+
         if pygame.time.get_ticks() % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(self.leader.position.copy())
 
@@ -635,7 +644,7 @@ class Game(gym.Env):
                 self.done = True
 
         res_reward = self._reward_computation()
-        
+
         self.overall_reward += res_reward
 
         self.clock.tick(self.framerate)
@@ -659,42 +668,40 @@ class Game(gym.Env):
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-        
+
         return obs, reward_to_return, self.done, info
-    
+
     def _process_leader_speed_regime(self):
         """Функция обрабатывает словарь скорости движения лидера."""
         min_step_distance = np.inf
-                
+
         for cur_key in list(self.leader_speed_regime.keys()):
             if cur_key <= self.step_count:
-                if abs(self.step_count-cur_key) < min_step_distance:
+                if abs(self.step_count - cur_key) < min_step_distance:
                     self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
                 del self.leader_speed_regime[cur_key]
 
-        if type(self.cur_speed_multiplier) in (tuple,list):
-            self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0],self.cur_speed_multiplier[1])
+        if type(self.cur_speed_multiplier) in (tuple, list):
+            self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0], self.cur_speed_multiplier[1])
         return self.leader.max_speed * self.cur_speed_multiplier
-    
+
     def _process_leader_acceleration_regime(self):
         """Функция обрабатывает словарь ускорения движения лидера."""
         min_step_distance = np.inf
-        
+
         acceleration = 0
         for cur_key in list(self.leader_acceleration_regime.keys()):
             if cur_key <= self.step_count:
-                if abs(self.step_count-cur_key) < min_step_distance:
+                if abs(self.step_count - cur_key) < min_step_distance:
                     self.cur_leader_acceleration = self.leader_acceleration_regime[cur_key]
                     self.cur_leader_cumulative_speed = self.cur_leader_acceleration
-                    
+
                 del self.leader_acceleration_regime[cur_key]
-        
+
         self.cur_leader_cumulative_speed += self.cur_leader_acceleration
-        
+
         return self.cur_leader_cumulative_speed * self.leader.max_speed
-        
-        
-    
+
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
         objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
@@ -760,14 +767,12 @@ class Game(gym.Env):
                                                False,
                                                self.green_zone_trajectory_points[::4],
                                                width=int(self.max_dev * 2))
-                
-                
-                #for cur_point in self.left_border_points_list:
+
+                # for cur_point in self.left_border_points_list:
                 #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
-                    
-                #for cur_point in self.right_border_points_list:
+
+                # for cur_point in self.right_border_points_list:
                 #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
-                
 
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
@@ -791,27 +796,26 @@ class Game(gym.Env):
         if self.show_sensors:
             for sensor_name, cur_sensor in self.follower.sensors.items():
                 cur_sensor.show(self)
-                
-                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
-#         if self.add_obstacles:
-#             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
-#             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render("Step: {}, Суммарная награда:{}".format(self.step_count,
-                                                                               self.overall_reward), 
-                                                                               False, 
-                                                                               (0, 0, 0))
-        self.gameDisplay.blit(reward_text, (0, 0))
-        reward_text = self.font.render("Фолловер. скорость:{}, скорость поворота:{}".format(self.follower.speed, 
-                                                                                            self.follower.rotation_speed), 
-                                                                                            False, 
-                                                                                            (0, 0, 0))
-        self.gameDisplay.blit(reward_text, (0, 50))
-        reward_text = self.font.render("Лидер. скорость:{}, скорость поворота:{}".format(self.leader.speed, 
-                                                                                         self.leader.rotation_speed), 
-                                                                                         False, 
-                                                                                         (0, 0, 0))
-        self.gameDisplay.blit(reward_text, (0, 100))
 
+                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
+        #         if self.add_obstacles:
+        #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
+        #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
+        reward_text = self.font.render("Step: {}, Суммарная награда:{}".format(self.step_count,
+                                                                               self.overall_reward),
+                                       False,
+                                       (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 0))
+        reward_text = self.font.render("Фолловер. скорость:{}, скорость поворота:{}".format(self.follower.speed,
+                                                                                            self.follower.rotation_speed),
+                                       False,
+                                       (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 50))
+        reward_text = self.font.render("Лидер. скорость:{}, скорость поворота:{}".format(self.leader.speed,
+                                                                                         self.leader.rotation_speed),
+                                       False,
+                                       (0, 0, 0))
+        self.gameDisplay.blit(reward_text, (0, 100))
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
@@ -832,7 +836,7 @@ class Game(gym.Env):
         # step_grid = 10
         t_astar = time.time()
 
-        step_obs = 60/self.step_grid
+        step_obs = 60 / self.step_grid
 
         print(self.leader.start_position)
         print(self.finish_point)
@@ -840,21 +844,22 @@ class Game(gym.Env):
         self.wid = self.DISPLAY_WIDTH
         self.hit = self.DISPLAY_HEIGHT
 
-        start = (int(self.leader.start_position[0]/self.step_grid),int(self.leader.start_position[1]/self.step_grid))
-        #int(start)
-        #start.tolist(start)
+        start = (
+            int(self.leader.start_position[0] / self.step_grid), int(self.leader.start_position[1] / self.step_grid))
+        # int(start)
+        # start.tolist(start)
         print(start)
-        end = (int(self.finish_point[0]/self.step_grid),int(self.finish_point[1]/self.step_grid))
-        #int(end)
+        end = (int(self.finish_point[0] / self.step_grid), int(self.finish_point[1] / self.step_grid))
+        # int(end)
         print(end)
 
-        wid = int(self.wid/self.step_grid)
+        wid = int(self.wid / self.step_grid)
         print(wid)
-        hit = int(self.hit/self.step_grid)
+        hit = int(self.hit / self.step_grid)
         print(hit)
 
-        #print(self.start)
-        #print(self.end)
+        # print(self.start)
+        # print(self.end)
 
         grid = []
         for i in range(wid):
@@ -863,25 +868,24 @@ class Game(gym.Env):
         for i in range(wid):
             for j in range(hit):
                 for k in range(self.obstacle_number):
-                    ob = (self.obstacles[k].start_position/self.step_grid)
+                    ob = (self.obstacles[k].start_position / self.step_grid)
                     ob = ob.astype(int)
-                    #print(ob)
+                    # print(ob)
                     if distance.euclidean((i, j), ob) < step_obs:
                         grid[i][j] = 1
-                    if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 0 and j <= 480/self.step_grid:
+                    if i >= 700 / self.step_grid and i <= 800 / self.step_grid and j >= 0 and j <= 480 / self.step_grid:
                         grid[i][j] = 1
-                    if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 530/self.step_grid \
-                            and j <= 1000/self.step_grid:
+                    if i >= 700 / self.step_grid and i <= 800 / self.step_grid and j >= 530 / self.step_grid \
+                            and j <= 1000 / self.step_grid:
                         grid[i][j] = 1
 
         # print(grid)
         path = astar(maze=grid, start=start, end=end)
-        #print(path)
-#         print(grid)
+        # print(path)
+        #         print(grid)
         trajectory = []
         trajectory = path
         timeAstar = time.time() - t_astar
-
 
         # # print(trajectory)
         # # print(self.obstacles)
@@ -911,12 +915,11 @@ class Game(gym.Env):
         print(self.finish_point)
 
         for i in range(self.obstacle_number):
-            obst = (self.obstacles[i].start_position[0]/self.step_grid,
-                    self.obstacles[i].start_position[1]/self.step_grid,
-                    (100/self.step_grid)/2)
+            obst = (self.obstacles[i].start_position[0] / self.step_grid,
+                    self.obstacles[i].start_position[1] / self.step_grid,
+                    (100 / self.step_grid) / 2)
             obstacle_list.append(obst)
         print(obstacle_list)
-
 
         t_rrt = time.time()
 
@@ -933,9 +936,9 @@ class Game(gym.Env):
         #     obstacle_list=obstacle_list)
 
         rrt = RRT(
-            start=self.leader.start_position/self.step_grid,
-            goal= ((self.finish_point[0])/self.step_grid,
-                   (self.finish_point[1])/self.step_grid), #self.finish_point,
+            start=self.leader.start_position / self.step_grid,
+            goal=((self.finish_point[0]) / self.step_grid,
+                  (self.finish_point[1]) / self.step_grid),  # self.finish_point,
             rand_area=[0, 110],
             expand_dis=2.5,
             path_resolution=2,
@@ -943,9 +946,9 @@ class Game(gym.Env):
             max_iter=1500,
             obstacle_list=obstacle_list)
 
-        path = rrt.planning(animation = False)
-        #print(path)
-        #trajectory = rrt_star.planning(animation=False)
+        path = rrt.planning(animation=False)
+        # print(path)
+        # trajectory = rrt_star.planning(animation=False)
 
         trajectory = []
         trajectory = path[::-1]
@@ -964,8 +967,8 @@ class Game(gym.Env):
         new_dstar_table = rrt_table.append(new_data, ignore_index=True)
         new_dstar_table.to_excel(path_tab_rrt, index=False)
 
-#         print(trajectory)
-        #print(grid[75][23])
+        #         print(trajectory)
+        # print(grid[75][23])
 
         return trajectory
 
@@ -974,43 +977,43 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        #print(self.leader.start_position)
-        #print(self.finish_point)
+        # print(self.leader.start_position)
+        # print(self.finish_point)
 
         for i in range(self.obstacle_number):
-            obst = (self.obstacles[i].start_position[0]/self.step_grid,
-                    self.obstacles[i].start_position[1]/self.step_grid,
-                    (80/self.step_grid)/2)
+            obst = (self.obstacles[i].start_position[0] / self.step_grid,
+                    self.obstacles[i].start_position[1] / self.step_grid,
+                    (80 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        #print(obstacle_list)
+        # print(obstacle_list)
 
-        for k in range(20,460,40):
-            most1 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(20, 460, 40):
+            most1 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most1)
 
-        for k in range(560,1000,40):
-            most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(560, 1000, 40):
+            most2 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most2)
 
-        #print(obstacle_list)
+        # print(obstacle_list)
         t_rrtstar = time.time()
         # Set Initial parameters
         rrt_star = RRTStar(
-            start=self.leader.start_position/self.step_grid,
-            goal= self.finish_point/self.step_grid,
-            #(50,50),#((self.leader.start_position[0]+200)/self.step_grid,
+            start=self.leader.start_position / self.step_grid,
+            goal=self.finish_point / self.step_grid,
+            # (50,50),#((self.leader.start_position[0]+200)/self.step_grid,
             # (self.leader.start_position[1]-200)/self.step_grid),
-            rand_area=[0,150],
+            rand_area=[0, 150],
             obstacle_list=obstacle_list,
             expand_dis=20, goal_sample_rate=20, path_resolution=1, connect_circle_dist=50)
 
-        path = rrt_star.planning(animation = False)
+        path = rrt_star.planning(animation=False)
 
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        #print(trajectory)
-        #print(grid[75][23])
+        # print(trajectory)
+        # print(grid[75][23])
 
         time_rrtstar = time.time() - t_rrtstar
         len_rrtstar = len(trajectory)
@@ -1032,27 +1035,28 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        #print(self.leader.start_position)
-        #print(self.finish_point)
+        # print(self.leader.start_position)
+        # print(self.finish_point)
 
         for i in range(self.obstacle_number):
-            obst = (self.obstacles[i].start_position[0]/self.step_grid,
-                    self.obstacles[i].start_position[1]/self.step_grid,
-                    (80/self.step_grid)/2)
+            obst = (self.obstacles[i].start_position[0] / self.step_grid,
+                    self.obstacles[i].start_position[1] / self.step_grid,
+                    (80 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        #print(obstacle_list)
+        # print(obstacle_list)
 
-        for k in range(20,460,40):
-            most1 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(20, 460, 40):
+            most1 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most1)
 
-        for k in range(560,1000,40):
-            most2 = (750/self.step_grid, k/self.step_grid, 20/self.step_grid)
+        for k in range(560, 1000, 40):
+            most2 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most2)
 
-        #print(obstacle_list)
+        # print(obstacle_list)
 
-        lqr_rrt_star = LQRRRTStar(self.leader.start_position/self.step_grid, (90,90),#self.finish_point/self.step_grid,
+        lqr_rrt_star = LQRRRTStar(self.leader.start_position / self.step_grid, (90, 90),
+                                  # self.finish_point/self.step_grid,
                                   obstacle_list,
                                   [0, 100.0])
         path = lqr_rrt_star.planning(animation=False)
@@ -1060,20 +1064,19 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        #print(trajectory)
+        # print(trajectory)
 
         return trajectory
-
 
     # Алгоритм поиска Dstar (еще не настроен)
     def generate_trajectory_dstar(self):
 
         # t_dstar = time.time()
         # print('D0 =', time.time()-t_astar)
-        #print(self.leader.start_position)
-        #print(self.finish_point)
-        #print(self.finish_point2)
-        #print(self.finish_point3)
+        # print(self.leader.start_position)
+        # print(self.finish_point)
+        # print(self.finish_point2)
+        # print(self.finish_point3)
 
         m = Map(150, 100)
         m2 = Map(150, 100)
@@ -1082,67 +1085,64 @@ class Game(gym.Env):
         ox, oy = [], []
 
         for ob in range(self.obstacle_number):
-            for i in range(-50,50,10):
-                for j in range(-50,50,10):
-                    ox.append(int((self.obstacles[ob].start_position[0]+i)/self.step_grid))
-                    oy.append(int((self.obstacles[ob].start_position[1]+j)/self.step_grid))
+            for i in range(-50, 50, 10):
+                for j in range(-50, 50, 10):
+                    ox.append(int((self.obstacles[ob].start_position[0] + i) / self.step_grid))
+                    oy.append(int((self.obstacles[ob].start_position[1] + j) / self.step_grid))
 
+        for k in range(0, 490, 10):
+            for i in range(-40, 40, 10):
+                # for j in range(-30,30,10):
+                ox.append(int((750 + i) / self.step_grid))
+                oy.append(int((k) / self.step_grid))
 
-        for k in range(0,490,10):
-            for i in range(-40,40,10):
-                #for j in range(-30,30,10):
-                ox.append(int((750+i)/self.step_grid))
-                oy.append(int((k)/self.step_grid))
+        for k in range(520, 1000, 10):
+            for i in range(-40, 40, 10):
+                # for j in range(-30,30,10):
+                ox.append(int((750 + i) / self.step_grid))
+                oy.append(int((k) / self.step_grid))
 
-
-        for k in range(520,1000,10):
-            for i in range(-40,40,10):
-                #for j in range(-30,30,10):
-                ox.append(int((750+i)/self.step_grid))
-                oy.append(int((k)/self.step_grid))
-
-
-        #print([(i, j) for i, j in zip(ox, oy)])
+        # print([(i, j) for i, j in zip(ox, oy)])
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
         m2.set_obstacle([(i, j) for i, j in zip(ox, oy)])
         m3.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
         ########### работа dstar 1
-        start = [int(self.leader.start_position[0]/self.step_grid),
-                 int(self.leader.start_position[1]/self.step_grid)]
-        goal = [int(self.finish_point[0]/self.step_grid),
-                int(self.finish_point[1]/self.step_grid)]
+        start = [int(self.leader.start_position[0] / self.step_grid),
+                 int(self.leader.start_position[1] / self.step_grid)]
+        goal = [int(self.finish_point[0] / self.step_grid),
+                int(self.finish_point[1] / self.step_grid)]
 
         start = m.map[start[0]][start[1]]
         end = m.map[goal[0]][goal[1]]
         dstar = Dstar(m)
         rx, ry, found_target_point = dstar.run(start, end)
         trajectory = []
-        #trajectory = path[::-1]
+        # trajectory = path[::-1]
         for i in range(len(rx)):
-            trajectory.append((rx[i],ry[i]))
-        #print(trajectory)
+            trajectory.append((rx[i], ry[i]))
+        # print(trajectory)
 
         if self.multiple_end_points:
             # TODO : работа дстар в 3 захода (костыль)
             # ##############################################################
             # работа dstar 2
-            #start2 = [int(self.leader.start_position[0]/self.step_grid),
+            # start2 = [int(self.leader.start_position[0]/self.step_grid),
             #         int(self.leader.start_position[1]/self.step_grid)]
 
             start2 = goal
-            goal2 = [int(self.finish_point2[0]/self.step_grid),
-                    int(self.finish_point2[1]/self.step_grid)]
+            goal2 = [int(self.finish_point2[0] / self.step_grid),
+                     int(self.finish_point2[1] / self.step_grid)]
 
             start2 = m2.map[start2[0]][start2[1]]
             end2 = m2.map[goal2[0]][goal2[1]]
             dstar2 = Dstar(m2)
             rx2, ry2, found_target_point = dstar2.run(start2, end2)
             trajectory2 = []
-            #trajectory = path[::-1]
+            # trajectory = path[::-1]
             for i in range(len(rx2)):
-                trajectory2.append((rx2[i],ry2[i]))
+                trajectory2.append((rx2[i], ry2[i]))
             print(trajectory2)
 
             # работа dstar 3
@@ -1150,28 +1150,24 @@ class Game(gym.Env):
             #          int(self.leader.start_position[1]/self.step_grid)]
 
             start3 = goal2
-            goal3 = [int(self.finish_point3[0]/self.step_grid),
-                    int(self.finish_point3[1]/self.step_grid)]
+            goal3 = [int(self.finish_point3[0] / self.step_grid),
+                     int(self.finish_point3[1] / self.step_grid)]
 
             start3 = m3.map[start3[0]][start3[1]]
             end3 = m3.map[goal3[0]][goal3[1]]
             dstar3 = Dstar(m3)
             rx3, ry3, found_target_point = dstar3.run(start3, end3)
             trajectory3 = []
-            #trajectory = path[::-1]
+            # trajectory = path[::-1]
             for i in range(len(rx3)):
-                trajectory3.append((rx3[i],ry3[i]))
+                trajectory3.append((rx3[i], ry3[i]))
             print(trajectory3)
             trajectory = trajectory + trajectory2 + trajectory3
-
-
-
 
             # print(trajectory)
             # len_dstar = len(trajectory)
             # print("Dstar: ", len_dstar)
             # print('Dend =', time.time() - t_dstar)
-
 
             #############################
             # time_dstar = time.time() - t_dstar
@@ -1204,14 +1200,16 @@ class Game(gym.Env):
 
         return trajectory
 
-    def generate_finish_point(self):
+    def generate_finish_point(self, left_top_border=[20, 20], right_bottom_border=None):
+        if right_bottom_border is None:
+            right_bottom_border = [int(self.DISPLAY_HEIGHT / 2), int(self.DISPLAY_WIDTH / 2)]
         #  генерация финишной точки
         correct_point_position = False
         while not correct_point_position:
 
             correct_point_position = True
-            generated_finish_point = (random.randrange(20, int(self.DISPLAY_WIDTH / 2), 10),
-                                      random.randrange(20, int(self.DISPLAY_HEIGHT / 2), 10))
+            generated_finish_point = (random.randrange(left_top_border[0], right_bottom_border[0], 10),
+                                      random.randrange(left_top_border[1], right_bottom_border[1], 10))
 
             for cur_object in self.game_object_list:
                 if (cur_object.rectangle.collidepoint(generated_finish_point)) or \
@@ -1219,9 +1217,9 @@ class Game(gym.Env):
                     correct_point_position = False
 
         return generated_finish_point
-        
+
     def generate_trajectory_astar(self,
-                            max_iter=None):
+                                  max_iter=None):
         """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
 
         # шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
@@ -1375,7 +1373,7 @@ class Game(gym.Env):
                                                    self.follower.speed,
                                                    self.follower.direction,
                                                    self.follower.rotation_speed], dtype=np.float32)
-        if self.cur_target_point==self.trajectory[-1]:
+        if self.cur_target_point == self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
         else:
             obs_dict["leader_target_point"] = self.cur_target_point
@@ -1385,19 +1383,18 @@ class Game(gym.Env):
         return obs_dict
 
     def _create_observation_space(self):
-        self.observation_space = Box(low=np.array((0,0,
-                                          0,0,
-                                          -self.leader_config['max_rotation_speed'],
-                                          0,0,
-                                          0,0,
-                                          -self.follower_config['max_rotation_speed']), dtype=np.float32),
-                                    high=np.array((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
-                                          self.leader_config['max_speed'],360,
-                                          self.leader_config['max_rotation_speed'],
-                                          self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
-                                          self.follower_config['max_speed'],360,
-                                          self.follower_config['max_rotation_speed']), dtype=np.float32))
-
+        self.observation_space = Box(low=np.array((0, 0,
+                                                   0, 0,
+                                                   -self.leader_config['max_rotation_speed'],
+                                                   0, 0,
+                                                   0, 0,
+                                                   -self.follower_config['max_rotation_speed']), dtype=np.float32),
+                                     high=np.array((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                                    self.leader_config['max_speed'], 360,
+                                                    self.leader_config['max_rotation_speed'],
+                                                    self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT,
+                                                    self.follower_config['max_speed'], 360,
+                                                    self.follower_config['max_rotation_speed']), dtype=np.float32))
 
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
@@ -1415,32 +1412,30 @@ class Game(gym.Env):
                 self.green_zone_trajectory_points.append(cur_point)
             else:
                 break
-                
-                
+
     def _get_green_zone_border_points(self):
-        
+
         green_zone_points_list = self.green_zone_trajectory_points
-        
+
         self.left_border_points_list = list()
         self.right_border_points_list = list()
-        
+
         for cur_point, prev_point in zip(green_zone_points_list[1::2], green_zone_points_list[:-1:2]):
-            move_direction = angle_to_point(prev_point,cur_point)
-            point_distance = self._to_pixels(distance.euclidean(prev_point,cur_point))
-            
-            right_border_angle = angle_correction(move_direction+90)
-            left_border_angle = angle_correction(move_direction-90)
-            
-            res_point = np.divide((cur_point+prev_point),2)
-            
-            right_border_vec = np.array((self.max_dev*cos(radians(right_border_angle)),
-                                        self.max_dev*sin(radians(right_border_angle))))
-            left_border_vec = np.array((self.max_dev*cos(radians(left_border_angle)),
-                                        self.max_dev*sin(radians(left_border_angle))))
-            
+            move_direction = angle_to_point(prev_point, cur_point)
+            point_distance = self._to_pixels(distance.euclidean(prev_point, cur_point))
+
+            right_border_angle = angle_correction(move_direction + 90)
+            left_border_angle = angle_correction(move_direction - 90)
+
+            res_point = np.divide((cur_point + prev_point), 2)
+
+            right_border_vec = np.array((self.max_dev * cos(radians(right_border_angle)),
+                                         self.max_dev * sin(radians(right_border_angle))))
+            left_border_vec = np.array((self.max_dev * cos(radians(left_border_angle)),
+                                        self.max_dev * sin(radians(left_border_angle))))
+
             self.right_border_points_list.append(res_point + right_border_vec)
             self.left_border_points_list.append(res_point + left_border_vec)
-            
 
     def _reward_computation(self):
         """функция для расчёта награды на основе конфигурации награды"""
@@ -1513,16 +1508,16 @@ class Game(gym.Env):
             self.follower_too_close = False
 
     def _to_meters(self, pixels):
-        return pixels/self.PIXELS_TO_METER
+        return pixels / self.PIXELS_TO_METER
 
     def _to_pixels(self, meters):
-        return meters*self.PIXELS_TO_METER
+        return meters * self.PIXELS_TO_METER
 
     def _to_seconds(self, frames):
-        return frames/self.framerate
+        return frames / self.framerate
 
     def _to_frames(self, seconds):
-        return seconds*self.framerate
+        return seconds * self.framerate
 
     @staticmethod
     def closest_point(point, points, return_id=True):
@@ -1545,19 +1540,27 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                        constant_follower_speed=False,
-                        #leader_speed_regime={0:(0.2,1),
-                        #                     200:1,
-                        #                     1000:0.75,
-                        #                     2000:0.3,
-                        #                     3000:1,
-                        #                     3100:0,
-                        #                     5000:(0.5,1)},
-                         #leader_acceleration_regime={0:0,
-                         #                            3100:0.03,
-                         #                            4500:0},
+                         framerate=5000,
+                         obstacle_number=35,
+                         constant_follower_speed=False,
+                         leader_speed_regime={
+                             0: [0.2, 1],
+                             200: 1,
+                             1000: [0.5, 1],
+                             1500: 0.75,
+                             2000: 0,
+                             2500: 1,
+                             3000: [0.5, 1],
+                             4000: [0.0, 0.5],
+                             5000: [0.4, 1],
+                         },
+                         leader_acceleration_regime={0: 0,
+                                                     3100: 0.03,
+                                                     4500: 0},
                          multiple_end_points=True,
-                         #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
+                         warm_start=0,
+                         early_stopping={"max_distance_coef": 1.4, "low_reward": -300},
+                         random_frames_per_step=[2, 20],
                          follower_sensors={
                              'LeaderPositionsTracker': {
                                  'sensor_name': 'LeaderPositionsTracker',
@@ -1578,25 +1581,29 @@ class TestGameManual(Game):
                          }
                          )
 
+
 class TestGameBaseAlgoNoObst(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
-                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
-                             )
-    
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100}
+                         )
+
+
 class TestGameBaseAlgoObst(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=True, game_width=1500, game_height=1000,
-                             early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
-                             follower_sensors={"GreenBoxBorderSensor":{"sensor_range":2,
-                                                                       "available_angle":180,
-                                                                       "angle_step":45}})
+                         early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
+                         follower_sensors={"GreenBoxBorderSensor": {"sensor_range": 2,
+                                                                    "available_angle": 180,
+                                                                    "angle_step": 45}})
+
 
 class TestGameNEAT(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=False,
                          early_stopping={"max_distance_coef": 1.2, "low_reward": -100},
                          discrete_action_space=True)
+
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",

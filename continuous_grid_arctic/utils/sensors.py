@@ -46,7 +46,7 @@ class LaserSensor():
         self.points_number = points_number
         self.data_shape = int(self.available_angle / self.angle_step)
         if self.return_all_points:
-            self.data_shape = self.data_shape * points_number
+            self.data_shape = self.data_shape * points_number  # + 1
 
     def __len__(self):
         return self.data_shape
