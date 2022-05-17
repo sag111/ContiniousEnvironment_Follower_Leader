@@ -1,6 +1,9 @@
+import pathlib
+import sys
+sys.path.append(pathlib.Path().resolve())
 import gym
 
-from continuous_grid_arctic import follow_the_leader_continuous_env
+from continuous_grid_arctic.follow_the_leader_continuous_env import *
 
 from gym.envs.registration import register as gym_register
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -25,12 +28,12 @@ if __name__ == "__main__":
     
     parser.add_argument('--n_steps',
                         type=int,
-                        default=5000,
+                        default=15000,
                         help="Число шагов, в течение которых работает проверочная симуляция")
     
     parser.add_argument('--training_steps',
                     type=int,
-                    default=10000,
+                    default=50000,
                     help="Число шагов, в течение которых происходит обучение модели (только для режима управления автоматом)")
     
     parser.add_argument('--video_name',
@@ -148,4 +151,3 @@ if __name__ == "__main__":
 
 
         
-         

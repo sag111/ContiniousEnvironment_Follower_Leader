@@ -1,10 +1,12 @@
 import os
 import random
+import time
 from warnings import warn
 from collections import OrderedDict
 import pygame
 from math import pi, degrees, radians, cos, sin
 import numpy as np
+import pandas as pd
 from scipy.spatial import distance
 import gym
 from gym.envs.registration import register as gym_register
@@ -19,7 +21,7 @@ from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect
 from continuous_grid_arctic.utils.rrt_star import RRTStar
 from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
 from continuous_grid_arctic.utils.dstar import Map,State, Dstar
-
+from continuous_grid_arctic.utils.rrt import RRT
 
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
@@ -45,12 +47,12 @@ class Game(gym.Env):
                  min_distance=1,  # в метрах
                  max_distance=4,  # в метрах
                  max_dev=1,  # в метрах
-                 warm_start=500,  # в секундах
+                 warm_start=500,  # во фреймах
                  manual_control=False,
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
-                 obstacle_number=15,
+                 obstacle_number=35,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
                  step_grid=10,
@@ -61,6 +63,7 @@ class Game(gym.Env):
                  discrete_action_space=False,
                  constant_follower_speed=False,
                  path_finding_algorythm="dstar",
+                 multiple_end_points=False,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -117,6 +120,8 @@ class Game(gym.Env):
             количество точек через которые будет строится маршрут. По умолчанию одна целевая.
         path_finding_algorythm (str):
             какой алгоритм поиска пути использовать для лидера. astar, dstar
+        multiple_end_points (bool):
+            если False - используется только одна конечная точка, если True - генерируется несколько точек и более сложный маршрут
         """
 
         # нужно для сохранения видео
@@ -146,6 +151,16 @@ class Game(gym.Env):
         self.trajectory_generated = False
 
         self.step_grid = step_grid
+        #Генерация финишной точки
+        self.finish_point = (10,10) #np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
+        self.multiple_end_points = multiple_end_points
+        if multiple_end_points:
+            if path_finding_algorythm!="dstar":
+                raise NotImplementedError("Only dstar pathfinding function supports multiple end points. "
+                                          "multiple_end_points must be False or diggerent path_finding_algorythm "
+                                          "must be chosen")
+            self.finish_point2 = (1490, 990) #np.float64((random.randrange(20, 100, 10), random.randrange(50, 1000, 10)))
+            self.finish_point3 = (0,990) #np.float64((random.randrange(520, 100, 10), random.randrange(720, 1000, 10)))
 
         # номер симуляции
         self.simulation_number = 0
@@ -229,12 +244,15 @@ class Game(gym.Env):
                                                      4: self.follower_config['max_rotation_speed']}
         elif self.constant_follower_speed:
             self.action_space = Box(
-                low=-self.follower_config['max_rotation_speed'], high=self.follower_config['max_rotation_speed'], shape=(1,), dtype=np.float32
+                low=-self.follower_config['max_rotation_speed'], high=self.follower_config['max_rotation_speed'],
+                shape=(1,), dtype=np.float32
             )
         else:
             self.action_space = Box(
-                np.array((self.follower_config['min_speed'], -self.follower_config['max_rotation_speed']), dtype=np.float32),
-                np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']), dtype=np.float32))
+                np.array((self.follower_config['min_speed'], -self.follower_config['max_rotation_speed']),
+                         dtype=np.float32),
+                np.array((self.follower_config['max_speed'], self.follower_config['max_rotation_speed']),
+                         dtype=np.float32))
 
         self._create_observation_space()
         # Скорость лидера
@@ -244,18 +262,23 @@ class Game(gym.Env):
             for k,v in leader_speed_regime.items():
                 self.leader_speed_regime[int(k)] = v
         elif leader_speed_regime is not None:
-            warn("leader_speed_regime должен быть dict или OrderedDict, получено: {}, будет проигнорировано".format(type(leader_speed_regime)))
+            warn("leader_speed_regime должен быть dict или OrderedDict, получено: {}, будет проигнорировано".format(
+                type(leader_speed_regime)))
         self.leader_acceleration_regime = None
         if type(leader_acceleration_regime) in [dict, OrderedDict]:
             self.leader_acceleration_regime = {}
             for k,v in leader_acceleration_regime.items():
                 self.leader_acceleration_regime[int(k)] = v
         elif leader_acceleration_regime is not None:
-            warn("leader_acceleration_regime должен быть dict, получено: {}, будет проигнорировано".format(type(leader_acceleration_regime)))
+            warn("leader_acceleration_regime должен быть dict, получено: {}, будет проигнорировано".format(
+                type(leader_acceleration_regime)))
                 
         if random_frames_per_step is not None and frames_per_step is not None:
-            warn("Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
-            assert len(random_frames_per_step) == 2, "raondom frames per step должен быть задан в виде границ для генерации случайных значений. Задано: {}".format(random_frames_per_step)
+            warn(
+                "Одновременно заданы и random_frames_per_step и frames_per_step, будет использоваться random_frames_per_step")
+            assert len(
+                random_frames_per_step) == 2, "random frames per step должен быть задан в виде границ для генерации случайных значений. Задано: {}".format(
+                random_frames_per_step)
             self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
         self.check_parameters()
     
@@ -264,7 +287,8 @@ class Game(gym.Env):
         Проверка параметров на допустимые значения.
         """
         if self.path_finding_algorythm not in ["astar", "dstar"]:
-            raise ValueError("path_finding_algorythm {} not in list:{}".format(self.path_finding_algorythm, ["astar", "dstar"]))
+            raise ValueError(
+                "path_finding_algorythm {} not in list:{}".format(self.path_finding_algorythm, ["astar", "dstar"]))
 
     def seed(self, seed_value):
         random.seed(seed_value)
@@ -290,7 +314,10 @@ class Game(gym.Env):
 
         # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
-            self.generate_finish_point()
+            self.finish_point = self.generate_finish_point()
+            if self.multiple_end_points:
+                self.finish_point2 = self.generate_finish_point()
+                self.finish_point3 = self.generate_finish_point()
             if self.path_finding_algorythm=="dstar":
                 self.trajectory = self.generate_trajectory_dstar()
             elif self.path_finding_algorythm=="astar":
@@ -410,6 +437,7 @@ class Game(gym.Env):
     def _create_obstacles(self):
 
         #####################################
+        #TODO: отсутствие абсолютных чисел!
         self.most_point1 = (self.DISPLAY_WIDTH / 2, 230)
         self.most_point2 = (self.DISPLAY_WIDTH / 2, 770)
 
@@ -715,7 +743,9 @@ class Game(gym.Env):
         if self.add_obstacles:
             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.bridge_point, 5)
         pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point, 5)
-
+        if self.multiple_end_points:
+            pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point2, 5)
+            pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point3, 5)
         # отображение полного маршрута Ведущего
         if self.show_leader_path:
             if len(self.trajectory) > 2:
@@ -748,6 +778,7 @@ class Game(gym.Env):
         for cur_object in self.game_object_list:
             self.show_object(cur_object)
 
+        # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов) [Слава]
         # отображение круга минимального расстояния
         if self.follower_too_close:
             close_circle_width = 2
@@ -780,69 +811,165 @@ class Game(gym.Env):
                                                                                          False, 
                                                                                          (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 100))
+
+
+    def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
+        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
+        # TODO: добавить проверку, при которойо точки не на одной прямой
+        # TODO: добавить отдельную функцию, которая использует эту:
+        # на вход принимает шаблон -- список из r и c, где
+        #    r -- placeholder, на место которого будут подставляться случайные точки
+        #    c -- координаты точки, которые точно должны присутствовать в пути (например, координаты "моста")
+        # TODO: вообще нужен отдельный класс для траекторий;
+        # TODO: если строить маршрут с учётом препятствий сразу, вероятно обработка будет здесь или где-то рядом [Слава]
+        # TODO: ограничение на число итераций цикла (иначе может уйти в бесконечность).
+        # вероятно нужно сделать staticmethod
         #  генерация финишной точки
-        #self.finish_point = np.float64((random.randrange(20, 500,10),random.randrange(20, 500,10)))
+        # self.finish_point = np.float64((random.randrange(20, 500,10),random.randrange(20, 500,10)))
 
-        #шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
-        #self.step_grid
-        #step_grid = 10
-        
-        # Код Славы, который я закомментировал, аак как при мерже он всплыл посреди нигде. Подозреваю, что он от astar'а;
-#         step_obs = 70/self.step_grid
+        # шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
+        # self.step_grid
+        # step_grid = 10
+        t_astar = time.time()
 
-#         print(self.leader.start_position)
-#         print(self.finish_point)
+        step_obs = 60/self.step_grid
 
-#         self.wid = self.DISPLAY_WIDTH
-#         self.hit = self.DISPLAY_HEIGHT
+        print(self.leader.start_position)
+        print(self.finish_point)
 
-#         start = (int(self.leader.start_position[0]/self.step_grid),int(self.leader.start_position[1]/self.step_grid))
-#         #int(start)
-#         #start.tolist(start)
-#         print(start)
-#         end = (int(self.finish_point[0]/self.step_grid),int(self.finish_point[1]/self.step_grid))
-#         #int(end)
-#         print(end)
+        self.wid = self.DISPLAY_WIDTH
+        self.hit = self.DISPLAY_HEIGHT
 
-#         wid = int(self.wid/self.step_grid)
-#         print(wid)
-#         hit = int(self.hit/self.step_grid)
-#         print(hit)
+        start = (int(self.leader.start_position[0]/self.step_grid),int(self.leader.start_position[1]/self.step_grid))
+        #int(start)
+        #start.tolist(start)
+        print(start)
+        end = (int(self.finish_point[0]/self.step_grid),int(self.finish_point[1]/self.step_grid))
+        #int(end)
+        print(end)
 
-#         #print(self.start)
-#         #print(self.end)
+        wid = int(self.wid/self.step_grid)
+        print(wid)
+        hit = int(self.hit/self.step_grid)
+        print(hit)
 
-#         grid = []
-#         for i in range(wid):
-#             grid.append([0] * hit)
+        #print(self.start)
+        #print(self.end)
 
-#         for i in range(wid):
-#             for j in range(hit):
-#                 for k in range(self.obstacle_number):
-#                     ob = (self.obstacles[k].start_position/self.step_grid)
-#                     ob = ob.astype(int)
-#                     #print(ob)
-#                     if distance.euclidean((i, j), ob) < step_obs:
-#                         grid[i][j] = 1
-#                     if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 0 and j <= 480/self.step_grid:
-#                         grid[i][j] = 1
-#                     if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 530/self.step_grid \
-#                             and j <= 1000/self.step_grid:
-#                         grid[i][j] = 1
+        grid = []
+        for i in range(wid):
+            grid.append([0] * hit)
 
+        for i in range(wid):
+            for j in range(hit):
+                for k in range(self.obstacle_number):
+                    ob = (self.obstacles[k].start_position/self.step_grid)
+                    ob = ob.astype(int)
+                    #print(ob)
+                    if distance.euclidean((i, j), ob) < step_obs:
+                        grid[i][j] = 1
+                    if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 0 and j <= 480/self.step_grid:
+                        grid[i][j] = 1
+                    if i >= 700/self.step_grid and i <=800/self.step_grid and j >= 530/self.step_grid \
+                            and j <= 1000/self.step_grid:
+                        grid[i][j] = 1
+
+        # print(grid)
+        path = astar(maze=grid, start=start, end=end)
+        #print(path)
 #         print(grid)
-#         path = astar(maze=grid, start=start, end=end)
-#         #print(path)
-#         #print(grid)
-#         trajectory = []
-#         trajectory = path
+        trajectory = []
+        trajectory = path
+        timeAstar = time.time() - t_astar
+
+
+        # # print(trajectory)
+        # # print(self.obstacles)
+        # len_tr = len(trajectory)
+        # # print('Astr: ', len_tr)
+        # # print('Aend =', timeAstar)
+        # path_tab_astar = '~/Desktop/lentrAstar.xlsx'
+        # astar_table = pd.read_excel(path_tab_astar, index_col=False)
+        # # print(astar_table)
+        # # print(len_tr)
+        # # print(timeAstar)
+        # new_data = {'Time':timeAstar, 'Len':len_tr}
+        # new_astar_table = astar_table.append(new_data, ignore_index=True)
+        # # print(new_astar_table)
+        # #astar_table.loc[len(astar_table.index)] = ['timeAstar', 'len_tr']
+        # # pdc = pd.DataFrame(new_astar_table, index=False)
+        # new_astar_table.to_excel(path_tab_astar, index=False)
+
+        return trajectory
+
+    # Алгоритм поиска RRT
+    def generate_trajectory_rrt(self):
+
+        obstacle_list = []  # [x,y,size(radius)]
+
+        print(self.leader.start_position)
+        print(self.finish_point)
+
+        for i in range(self.obstacle_number):
+            obst = (self.obstacles[i].start_position[0]/self.step_grid,
+                    self.obstacles[i].start_position[1]/self.step_grid,
+                    (100/self.step_grid)/2)
+            obstacle_list.append(obst)
+        print(obstacle_list)
+
+
+        t_rrt = time.time()
+
+        # Set Initial parameters
+        # rrt = RRT(
+        #     start=self.leader.start_position/self.step_grid,
+        #     goal= ((self.finish_point[0])/self.step_grid,
+        #            (self.finish_point[1])/self.step_grid), #self.finish_point,
+        #     rand_area=[0, 110],
+        #     expand_dis=1.5,
+        #     path_resolution=2,
+        #     goal_sample_rate=1,
+        #     max_iter=1500,
+        #     obstacle_list=obstacle_list)
+
+        rrt = RRT(
+            start=self.leader.start_position/self.step_grid,
+            goal= ((self.finish_point[0])/self.step_grid,
+                   (self.finish_point[1])/self.step_grid), #self.finish_point,
+            rand_area=[0, 110],
+            expand_dis=2.5,
+            path_resolution=2,
+            goal_sample_rate=1,
+            max_iter=1500,
+            obstacle_list=obstacle_list)
+
+        path = rrt.planning(animation = False)
+        #print(path)
+        #trajectory = rrt_star.planning(animation=False)
+
+        trajectory = []
+        trajectory = path[::-1]
+        trajectory.pop(0)
+
+        time_rrt = time.time() - t_rrt
+        len_rrt = len(trajectory)
+        # print('Dstr: ', len_rrt)
+        # print('Dend =', time_rrt)
+        path_tab_rrt = '~/Desktop/lentRRT.xlsx'
+        rrt_table = pd.read_excel(path_tab_rrt, index_col=False)
+        # print(rrtstar_table)
+        # print(len_rrtstar)
+        # print(time_rrtstar)
+        new_data = {'Time': time_rrt, 'Len': len_rrt}
+        new_dstar_table = rrt_table.append(new_data, ignore_index=True)
+        new_dstar_table.to_excel(path_tab_rrt, index=False)
+
 #         print(trajectory)
-#         print(self.obstacles)
-        
+        #print(grid[75][23])
 
-#         return trajectory
+        return trajectory
 
-    
+    # Алгоритм поиска RRTstar
     def generate_trajectory_rrtstar(self):
 
         obstacle_list = []  # [x,y,size(radius)]
@@ -866,7 +993,7 @@ class Game(gym.Env):
             obstacle_list.append(most2)
 
         #print(obstacle_list)
-
+        t_rrtstar = time.time()
         # Set Initial parameters
         rrt_star = RRTStar(
             start=self.leader.start_position/self.step_grid,
@@ -883,6 +1010,20 @@ class Game(gym.Env):
         trajectory = path[::-1]
         trajectory.pop(0)
         #print(trajectory)
+        #print(grid[75][23])
+
+        time_rrtstar = time.time() - t_rrtstar
+        len_rrtstar = len(trajectory)
+        # print('Dstr: ', len_rrtstar)
+        # print('Dend =', time_rrtstar)
+        path_tab_rrtstar = '~/Desktop/lentRRTstar.xlsx'
+        rrtstar_table = pd.read_excel(path_tab_rrtstar, index_col=False)
+        # print(rrtstar_table)
+        # print(len_rrtstar)
+        # print(time_rrtstar)
+        new_data = {'Time': time_rrtstar, 'Len': len_rrtstar}
+        new_dstar_table = rrtstar_table.append(new_data, ignore_index=True)
+        new_dstar_table.to_excel(path_tab_rrtstar, index=False)
 
         return trajectory
 
@@ -927,11 +1068,17 @@ class Game(gym.Env):
     # Алгоритм поиска Dstar (еще не настроен)
     def generate_trajectory_dstar(self):
 
+        # t_dstar = time.time()
+        # print('D0 =', time.time()-t_astar)
         #print(self.leader.start_position)
         #print(self.finish_point)
-
+        #print(self.finish_point2)
+        #print(self.finish_point3)
 
         m = Map(150, 100)
+        m2 = Map(150, 100)
+        m3 = Map(150, 100)
+
         ox, oy = [], []
 
         for ob in range(self.obstacle_number):
@@ -958,6 +1105,10 @@ class Game(gym.Env):
         #print([(i, j) for i, j in zip(ox, oy)])
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
+        m2.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+        m3.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+
+        ########### работа dstar 1
         start = [int(self.leader.start_position[0]/self.step_grid),
                  int(self.leader.start_position[1]/self.step_grid)]
         goal = [int(self.finish_point[0]/self.step_grid),
@@ -971,6 +1122,86 @@ class Game(gym.Env):
         #trajectory = path[::-1]
         for i in range(len(rx)):
             trajectory.append((rx[i],ry[i]))
+        #print(trajectory)
+
+        if self.multiple_end_points:
+            # TODO : работа дстар в 3 захода (костыль)
+            # ##############################################################
+            # работа dstar 2
+            #start2 = [int(self.leader.start_position[0]/self.step_grid),
+            #         int(self.leader.start_position[1]/self.step_grid)]
+
+            start2 = goal
+            goal2 = [int(self.finish_point2[0]/self.step_grid),
+                    int(self.finish_point2[1]/self.step_grid)]
+
+            start2 = m2.map[start2[0]][start2[1]]
+            end2 = m2.map[goal2[0]][goal2[1]]
+            dstar2 = Dstar(m2)
+            rx2, ry2, found_target_point = dstar2.run(start2, end2)
+            trajectory2 = []
+            #trajectory = path[::-1]
+            for i in range(len(rx2)):
+                trajectory2.append((rx2[i],ry2[i]))
+            print(trajectory2)
+
+            # работа dstar 3
+            # start3 = [int(self.leader.start_position[0]/self.step_grid),
+            #          int(self.leader.start_position[1]/self.step_grid)]
+
+            start3 = goal2
+            goal3 = [int(self.finish_point3[0]/self.step_grid),
+                    int(self.finish_point3[1]/self.step_grid)]
+
+            start3 = m3.map[start3[0]][start3[1]]
+            end3 = m3.map[goal3[0]][goal3[1]]
+            dstar3 = Dstar(m3)
+            rx3, ry3, found_target_point = dstar3.run(start3, end3)
+            trajectory3 = []
+            #trajectory = path[::-1]
+            for i in range(len(rx3)):
+                trajectory3.append((rx3[i],ry3[i]))
+            print(trajectory3)
+            trajectory = trajectory + trajectory2 + trajectory3
+
+
+
+
+            # print(trajectory)
+            # len_dstar = len(trajectory)
+            # print("Dstar: ", len_dstar)
+            # print('Dend =', time.time() - t_dstar)
+
+
+            #############################
+            # time_dstar = time.time() - t_dstar
+            # len_dstar = len(trajectory)
+            # if len_dstar>200:
+            #     # print('Dstr: ', len_dstar)
+            #     # print('Dend =', time_dstar)
+            #     path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
+            #     dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
+            #     # print(dstar_table)
+            #     # print(len_dstar)
+            #     # print(time_dstar)
+            #     new_data = {'Time50': time_dstar, 'Len50': len_dstar}
+            #     # new_data = {'Time15': time_dstar, 'Len15': len_dstar}
+            #     new_dstar_table = dstar_table.append(new_data, ignore_index=True)
+            #     new_dstar_table.to_excel(path_tab_dstar, index=False)
+            # else:
+            #     return "PUSTO"
+            # # print('Dstr: ', len_dstar)
+            # # print('Dend =', time_dstar)
+            # path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
+            # dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
+            # # print(dstar_table)
+            # # print(len_dstar)
+            # # print(time_dstar)
+            # # new_data = {'Time': time_dstar, 'Len': len_dstar}
+            # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
+            # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
+            # new_dstar_table.to_excel(path_tab_dstar, index=False)
+
         return trajectory
 
     def generate_finish_point(self):
@@ -987,7 +1218,7 @@ class Game(gym.Env):
                         (distance_to_rect(generated_finish_point, cur_object) < self.leader_pos_epsilon):
                     correct_point_position = False
 
-        self.finish_point = generated_finish_point
+        return generated_finish_point
         
     def generate_trajectory_astar(self,
                             max_iter=None):
@@ -1069,6 +1300,34 @@ class Game(gym.Env):
                          max_iterations=max_iter,
                          return_none_on_max_iter=False)
             return path
+
+    def generate_trajectory_old(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
+        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
+        trajectory = list()
+
+        i = 0  # пока отслеживаем зацикливание по числу итераций на генерацию каждой точки. Примитивно, но лучше, чем никак
+
+        while (len(trajectory) < n) and (i < iter_limit):
+            new_point = np.array((np.random.randint(border, high=self.DISPLAY_WIDTH - border),
+                                  np.random.randint(border, high=self.DISPLAY_HEIGHT - border)))
+
+            if len(trajectory) == 0:
+                trajectory.append(new_point)
+                i = 0
+            else:
+                to_add = True
+
+                # работает только на ограниченном числе точек, может уйти в бесконечный цикл, осторожнее!!!
+
+                for prev_point in trajectory:
+                    if distance.euclidean(prev_point, new_point) < min_distance:
+                        to_add = False
+
+                if to_add:
+                    trajectory.append(new_point)
+
+                i += 1
+        return trajectory
 
     def manual_game_contol(self, event, follower):
         """обработчик нажатий клавиш при ручном контроле."""
@@ -1285,17 +1544,19 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
+                         max_steps=15000,
                         constant_follower_speed=False,
-                        leader_speed_regime={0:(0.2,1),
-                                             200:1,
-                                             1000:0.75,
-                                             2000:0.3,
-                                             3000:1,
-                                             3100:0,
-                                             5000:(0.5,1)},
-                         leader_acceleration_regime={0:0,
-                                                     3100:0.03,
-                                                     4500:0},
+                        #leader_speed_regime={0:(0.2,1),
+                        #                     200:1,
+                        #                     1000:0.75,
+                        #                     2000:0.3,
+                        #                     3000:1,
+                        #                     3100:0,
+                        #                     5000:(0.5,1)},
+                         #leader_acceleration_regime={0:0,
+                         #                            3100:0.03,
+                         #                            4500:0},
+                         multiple_end_points=True,
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
                              'LeaderPositionsTracker': {
@@ -1345,7 +1606,7 @@ gym_register(
 
 gym_register(
     id="Test-Cont-Env-Manual-v0",
-    entry_point="follow_the_leader_continuous_env:TestGameManual",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
 

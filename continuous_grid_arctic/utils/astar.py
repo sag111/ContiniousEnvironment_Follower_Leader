@@ -74,9 +74,9 @@ def astar(maze, start, end, allow_diagonal_movement=True, max_iterations=None,re
 
     # Adding a stop condition
     outer_iterations = 0
- 
+
     if max_iterations is None:
-        max_iterations = 1000
+        max_iterations = 1000  # (len(maze[0]) * len(maze) // 2)
 
     # what squares do we search
     adjacent_squares = ((0, -1), (0, 1), (-1, 0), (1, 0),)
