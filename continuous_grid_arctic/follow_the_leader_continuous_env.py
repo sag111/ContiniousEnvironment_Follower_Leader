@@ -728,7 +728,8 @@ class Game(gym.Env):
         # Rotate the original image without modifying it.
         new_image = pygame.transform.rotate(object_to_rotate.image, -object_to_rotate.direction)
         # Get a new rect with the center of the old rect.
-        object_to_rotate.rectangle = new_image.get_rect(center=cur_rect.center)
+        # Изменение хитбокса убрал в самих роботов
+        # object_to_rotate.rectangle = new_image.get_rect(center=cur_rect.center)
 
         return new_image
 

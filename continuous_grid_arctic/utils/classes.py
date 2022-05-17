@@ -164,7 +164,13 @@ class AbstractRobot(GameObject):
         # скорректировали скорости
         self._controller_call()
         if self.rotation_speed != 0:
+
             self.direction = angle_correction(self.direction + self.rotation_direction * self.rotation_speed)
+            # TODO: объединить изменение положения хитбокса и изменение размера в соответствии с поворотом
+            # Rotate the original image without modifying it.
+            new_image = pygame.transform.rotate(self.image, -self.direction)
+            # Get a new rect with the center of the old rect.
+            self.rectangle = new_image.get_rect(center=self.rectangle.center)
 
         movement_vec = np.array((cos(radians(self.direction)) * self.speed, sin(radians(self.direction)) * self.speed),
                                 dtype=np.float32)
