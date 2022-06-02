@@ -151,6 +151,7 @@ class Game(gym.Env):
         self.trajectory_generated = False
 
         self.step_grid = step_grid
+        self.accumulated_penalty = 0  # штраф, который копится, если долго не получаем отрицательной награды
         # Генерация финишной точки
         self.finish_point = (10, 10)  # np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
         self.multiple_end_points = multiple_end_points
@@ -301,6 +302,8 @@ class Game(gym.Env):
 
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
+        self.accumulated_penalty = 0
+        self.cur_speed_multiplier = 1
 
         #         valid_trajectory = False
 
@@ -625,7 +628,7 @@ class Game(gym.Env):
                     info["agent_status"] = "finished"
                     self.done = True
         if self.step_count > self.warm_start:
-            if "low_reward" in self.early_stopping and self.overall_reward < self.early_stopping["low_reward"]:
+            if "low_reward" in self.early_stopping and self.accumulated_penalty < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
                 info["mission_status"] = "fail"
                 info["leader_status"] = "moving"
@@ -644,6 +647,10 @@ class Game(gym.Env):
                 self.done = True
 
         res_reward = self._reward_computation()
+        if res_reward < 0:
+            self.accumulated_penalty += res_reward
+        else:
+            self.accumulated_penalty = 0
 
         self.overall_reward += res_reward
 
@@ -679,7 +686,9 @@ class Game(gym.Env):
             if cur_key <= self.step_count:
                 if abs(self.step_count - cur_key) < min_step_distance:
                     self.cur_speed_multiplier = self.leader_speed_regime[cur_key]
-                del self.leader_speed_regime[cur_key]
+            elif cur_key > self.step_count:
+                continue
+                #del self.leader_speed_regime[cur_key]
 
         if type(self.cur_speed_multiplier) in (tuple, list):
             self.cur_speed_multiplier = random.uniform(self.cur_speed_multiplier[0], self.cur_speed_multiplier[1])

@@ -342,7 +342,7 @@ class LeaderTrackDetector_radar:
                 relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i) - (
                         self.sectorsAngle_deg / 2))
                 absDot = self.host_object.position - relativeDot
-                pygame.draw.line(env.gameDisplay, (255, 80, 180), self.host_object.position, absDot)
+                pygame.draw.line(env.gameDisplay, (180, 80, 255), self.host_object.position, absDot, 2)
                 # pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
 
 
