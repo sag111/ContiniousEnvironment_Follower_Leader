@@ -129,7 +129,7 @@ class LaserSensor():
 
     def show(self, env):
         for cur_point in self.sensed_points:
-            pygame.draw.circle(env.gameDisplay, env.colours["pink"], cur_point, 3)
+            pygame.draw.circle(env.gameDisplay, (250, 50, 50), cur_point, 3)
 
     # @staticmethod
     # def _add_noise(val, variance):
@@ -207,6 +207,9 @@ class LeaderPositionsTracker:
         self.corridor = list()
 
     def show(self, env):
+        for point in self.leader_positions_hist:
+            pygame.draw.circle(env.gameDisplay, (50, 10, 10), point, 3)
+
         if len(self.corridor) > 1:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
@@ -342,7 +345,7 @@ class LeaderTrackDetector_radar:
                 relativeDot = rotateVector(followerRightVec, self.sectorsAngle_deg * (self.radar_sectors_number - i) - (
                         self.sectorsAngle_deg / 2))
                 absDot = self.host_object.position - relativeDot
-                pygame.draw.line(env.gameDisplay, (180, 80, 255), self.host_object.position, absDot, 2)
+                pygame.draw.line(env.gameDisplay, (180, 80, 255), self.host_object.position, absDot, 3)
                 # pygame.draw.circle(env.gameDisplay, (255, 80, 180), absDot, 4)
 
 
