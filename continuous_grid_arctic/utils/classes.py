@@ -238,7 +238,7 @@ class RobotWithSensors(AbstractRobot):
         # например если надо будет отслеживание истории позиций лидера с поеданием точек и без для разных целей
         for k in sensors:
             if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
-                if 'LeaderPositionsTracker' not in sensors.keys():
+                if 'LeaderPositionsTracker' not in sensors.keys() and "LeaderPositionsTracker_v2" not in sensors.keys():
                     raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
             self.sensors[k] = SENSOR_NAME_TO_CLASS[k](self, **sensors[k])
 
@@ -249,6 +249,11 @@ class RobotWithSensors(AbstractRobot):
                 leader_positions_hist, leader_corridor = self.sensors['LeaderPositionsTracker'].scan(env)
             else:
                 leader_positions_hist = self.sensors['LeaderPositionsTracker'].scan(env)
+        if 'LeaderPositionsTracker_v2' in self.sensors.keys():
+            if self.sensors['LeaderPositionsTracker_v2'].generate_corridor:
+                leader_positions_hist, leader_corridor = self.sensors['LeaderPositionsTracker_v2'].scan(env)
+            else:
+                leader_positions_hist = self.sensors['LeaderPositionsTracker_v2'].scan(env)
         for sensor_name, sensor in self.sensors.items():
             if sensor_name == 'LeaderPositionsTracker':
                 continue

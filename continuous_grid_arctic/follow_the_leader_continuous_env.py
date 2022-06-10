@@ -1572,8 +1572,8 @@ class TestGameManual(Game):
                          early_stopping={"max_distance_coef": 1.4, "low_reward": -300},
                          random_frames_per_step=[2, 20],
                          follower_sensors={
-                             'LeaderPositionsTracker': {
-                                 'sensor_name': 'LeaderPositionsTracker',
+                             'LeaderPositionsTracker_v2': {
+                                 'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
                                  'saving_period': 8},
                              'LeaderTrackDetector_vector': {
@@ -1587,6 +1587,9 @@ class TestGameManual(Game):
                              "LeaderCorridor_lasers": {
                                  'sensor_name': 'LeaderCorridor_lasers',
                                  "react_to_obstacles": True,
+                                 "front_lasers_count": 5,
+                                 "back_lasers_count": 2,
+                                 "react_to_green_zone": True
                              }
                          }
                          )

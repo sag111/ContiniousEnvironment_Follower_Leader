@@ -2,6 +2,8 @@ from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 import pygame
 from scipy.spatial import distance
+from collections import deque
+import itertools
 
 try:
     from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
@@ -155,11 +157,11 @@ class LeaderPositionsTracker:
         self.max_point = max_point
         self.eat_close_points = eat_close_points
         # TODO: попробовать реализовать как ndarray, может быстрее будет, потому что другие сенсоры это как ndarray используют
-        self.leader_positions_hist = list()
+        self.leader_positions_hist = deque()
         self.saving_period = saving_period
         self.saving_counter = 0
         self.generate_corridor = generate_corridor
-        self.corridor = list()
+        self.corridor = deque()
         self.right_border_dot = np.array([0, 0])
         self.left_border_dot = np.array([0, 0])
 
@@ -203,8 +205,9 @@ class LeaderPositionsTracker:
             return self.leader_positions_hist
 
     def reset(self):
-        self.leader_positions_hist = list()
-        self.corridor = list()
+        self.leader_positions_hist.clear()
+        self.corridor.clear()
+        self.saving_counter = 0
 
     def show(self, env):
         for point in self.leader_positions_hist:
@@ -215,7 +218,58 @@ class LeaderPositionsTracker:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
         pass
 
+class LeaderPositionsTracker_v2(LeaderPositionsTracker):
+    def scan(self, env):
+        # если сам сенсор отслеживает перемещение
+        if self.saving_counter % self.saving_period == 0:
+            # Если позиция лидера не изменилась с последнего обсерва, просто возвращаем, что есть, ничего не обновляем
+            if len(self.leader_positions_hist) > 0 and (self.leader_positions_hist[-1] == env.leader.position).all():
+                if self.generate_corridor:
+                    return self.leader_positions_hist, self.corridor
+                else:
+                    return self.leader_positions_hist
+            # Если симуляция только началась, сохраняем текущую ведомого, чтоб начать от неё строить коридор
+            if len(self.leader_positions_hist) == 0 and self.saving_counter == 0:
+                self.leader_positions_hist.append(self.host_object.position.copy())
+                #first_dots_for_follower_count = int(distance.euclidean(self.host_object.position, env.leader.position) / (
+#                        self.saving_period * env.leader.max_speed))
+#                self.leader_positions_hist.extend(
+#                    zip(np.linspace(self.host_object.position[0], env.leader.position[0], first_dots_for_follower_count),
+#                        np.linspace(self.host_object.position[1], env.leader.position[1], first_dots_for_follower_count)))
+            self.leader_positions_hist.append(env.leader.position.copy())
+            if np.linalg.norm(self.leader_positions_hist[0] - self.leader_positions_hist[-1]) > env.max_distance:
+                self.leader_positions_hist.popleft()
+                self.corridor.popleft()
 
+            if self.generate_corridor and len(self.leader_positions_hist) > 1:
+                last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
+                last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                right_border_dot = rotateVector(last_2points_vec, 90)
+                right_border_dot += self.leader_positions_hist[-2]
+                left_border_dot = rotateVector(last_2points_vec, -90)
+                left_border_dot += self.leader_positions_hist[-2]
+                self.corridor.append([right_border_dot, left_border_dot])
+        # Можно ещё брать из среды, но там частота сохранения другая
+        # self.leader_positions_hist = env.leader_factual_trajectory[::self.saving_period]
+        # assert env.frames_per_step % env.trajectory_saving_period == 0
+        # print(self.leader_positions_hist)
+        # print(env.leader_factual_trajectory[::self.saving_period*(int(env.frames_per_step / env.trajectory_saving_period))])
+        self.saving_counter += 1
+        if self.generate_corridor:
+            return self.leader_positions_hist, self.corridor
+        else:
+            return self.leader_positions_hist
+
+    def show(self, env):
+        for point in self.leader_positions_hist:
+            pygame.draw.circle(env.gameDisplay, (50, 10, 10), point, 3)
+
+        if len(self.corridor) > 1:
+            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
+            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
+            pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[0][0], self.corridor[0][1], 3)
+            pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[-1][0], self.corridor[-1][1], 3)
+        pass
 class LeaderTrackDetector_vector:
     """
     Класс, реагирующий на старые позиции лидера и генерирующий вектора до определённых позиций.
@@ -242,9 +296,14 @@ class LeaderTrackDetector_vector:
         self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
         if len(leader_positions_hist) > 0:
             if self.detectable_positions == "new":
-                vecs = np.array(leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
+                # vecs = np.array(leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
+                slice = list(itertools.islice(leader_positions_hist, max(0, len(leader_positions_hist) -
+                                              self.position_sequence_length), len(leader_positions_hist)))
+                vecs = np.array(slice) - self.host_object.position
             elif self.detectable_positions == "old":
-                vecs = np.array(leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
+                # vecs = np.array(leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
+                slice = list(itertools.islice(leader_positions_hist, 0, self.position_sequence_length))
+                vecs = np.array(slice) - self.host_object.position
             self.vecs_values[
             :min(len(leader_positions_hist), self.position_sequence_length)] = vecs
         return self.vecs_values
@@ -312,9 +371,14 @@ class LeaderTrackDetector_radar:
                 distances_follower_to_chosenDots = distances_follower_to_chosenDots[closest_indexes]
             else:
                 if self.detectable_positions == "new":
-                    chosen_dots = np.array(leader_positions_hist[-self.position_sequence_length:])
+                    # chosen_dots = np.array(leader_positions_hist[-self.position_sequence_length:])
+                    slice = list(itertools.islice(leader_positions_hist, max(0, len(leader_positions_hist) -
+                                              self.position_sequence_length), len(leader_positions_hist)))
+                    chosen_dots = np.array(slice)
                 elif self.detectable_positions == "old":
-                    chosen_dots = np.array(leader_positions_hist[:self.position_sequence_length])
+                    # chosen_dots = np.array(leader_positions_hist[:self.position_sequence_length])
+                    slice = list(itertools.islice(leader_positions_hist, 0, self.position_sequence_length))
+                    chosen_dots = np.array(slice)
                 vecs_follower_to_leadhistory = chosen_dots - self.host_object.position
                 distances_follower_to_chosenDots = np.linalg.norm(vecs_follower_to_leadhistory, axis=1)
             angles_history_to_dir = calculateAngle(vecs_follower_to_leadhistory, followerDirVec)
@@ -436,26 +500,29 @@ class LeaderCorridor_lasers:
                  sensor_name,
                  react_to_safe_corridor=True,
                  react_to_obstacles=False,
-                 react_to_leader_zone=False):
+                 react_to_green_zone=False,
+                 front_lasers_count=3,
+                 back_lasers_count=0):
         """
 
         :param host_object: робот, на котором висит сенсор
         :param sensor_name: название сенсора. Важно, если  несколько одинаковых
         :param react_to_obstacles: должны ли лазеры реагировать на препятствия
-        :param react_to_leader_zone: должны ли лазеры реагировать на круг минимальной дистанции вокруг лидера
+        :param react_to_green_zone: должны ли лазеры реагировать на переднюю из заднюю границы зеленой зоны
         """
         self.host_object = host_object
         self.sensor_name = sensor_name
         # TODO: сделать гибкую настройку лазеров
-        self.lasers_count = 3
+        assert front_lasers_count in [3, 5]
+        assert back_lasers_count in [0, 2]
+        self.front_lasers_count = front_lasers_count
+        self.back_lasers_count = back_lasers_count
         self.laser_length = 100
         self.lasers_end_points = []
         self.lasers_collides = []
         self.react_to_safe_corridor = react_to_safe_corridor
         self.react_to_obstacles = react_to_obstacles
-        self.react_to_leader_zone = react_to_leader_zone
-        if react_to_leader_zone:
-            raise NotImplementedError("Опция react_to_leader_zone не имплементирована")
+        self.react_to_green_zone = react_to_green_zone
 
     def ccw(A, B, C):
         return (C[:, 1] - A[:, 1]) * (B[:, 0] - A[:, 0]) > (B[:, 1] - A[:, 1]) * (C[:, 0] - A[:, 0])
@@ -500,12 +567,29 @@ class LeaderCorridor_lasers:
             self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction))
         self.lasers_end_points.append(
             self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction + 40))
+        if self.front_lasers_count == 5:
+            self.lasers_end_points.append(
+                self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                         self.host_object.direction - 90))
+            self.lasers_end_points.append(
+                self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                         self.host_object.direction + 90))
+        if self.back_lasers_count == 2:
+            self.lasers_end_points.append(
+                self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                         self.host_object.direction - 145))
+            self.lasers_end_points.append(
+                self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                         self.host_object.direction + 145))
         if len(corridor) > 1:
             corridor_lines = list()
             if self.react_to_safe_corridor:
                 for i in range(len(corridor) - 1):
                     corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
                     corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
+            if self.react_to_green_zone:
+                corridor_lines.append([corridor[0][0], corridor[0][1]])
+                corridor_lines.append([corridor[-1][0], corridor[-1][1]])
             if self.react_to_obstacles:
                 for cur_object in env.game_object_list:
                     if cur_object is env.follower:
@@ -538,7 +622,7 @@ class LeaderCorridor_lasers:
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
-        obs = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+        obs = np.ones(self.front_lasers_count + self.back_lasers_count, dtype=np.float32) * self.laser_length
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - self.host_object.position)
         return obs
@@ -555,6 +639,7 @@ class LeaderCorridor_lasers:
 SENSOR_NAME_TO_CLASS = {
     "LaserSensor": LaserSensor,
     "LeaderPositionsTracker": LeaderPositionsTracker,
+    "LeaderPositionsTracker_v2": LeaderPositionsTracker_v2,
     "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
     "LeaderTrackDetector_radar": LeaderTrackDetector_radar,
     "LeaderCorridor_lasers": LeaderCorridor_lasers,
