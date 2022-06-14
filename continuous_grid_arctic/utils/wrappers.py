@@ -80,7 +80,12 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_number += env.follower_sensors['LeaderTrackDetector_radar']['radar_sectors_number']
         # этот должен быть 0:1
         if 'LeaderCorridor_lasers' in self.follower_sensors:
-            features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
+            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_lasers']:
+                features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
+            else:
+                features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
+            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers']:
+                features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
         if 'LaserSensor' in self.follower_sensors:
             if self.follower_sensors['LaserSensor']['return_all_points']:
                 lidar_points_number = (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1) * self.follower_sensors['LaserSensor']['points_number']

@@ -601,10 +601,10 @@ class LeaderCorridor_lasers:
         if self.back_lasers_count == 2:
             self.lasers_end_points.append(
                 self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                         self.host_object.direction - 145))
+                                                         self.host_object.direction - 150))
             self.lasers_end_points.append(
                 self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                         self.host_object.direction + 145))
+                                                         self.host_object.direction + 150))
         if len(corridor) > 1:
             corridor_lines = list()
             if self.react_to_safe_corridor:
