@@ -4,23 +4,21 @@ import time
 from warnings import warn
 from collections import OrderedDict
 import pygame
-from math import pi, degrees, radians, cos, sin
+from math import radians, cos, sin
 import numpy as np
 import pandas as pd
 from scipy.spatial import distance
 import gym
 from gym.envs.registration import register as gym_register
-from gym.spaces import Discrete, Box, Dict, Tuple
+from gym.spaces import Discrete, Box
 
 from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
-from continuous_grid_arctic.utils.sensors import LaserSensor
 from continuous_grid_arctic.utils.reward_constructor import Reward
 from continuous_grid_arctic.utils.astar import astar
-from continuous_grid_arctic.utils.misc import angle_correction, distance_to_rect, rotateVector, angle_to_point, \
-    distance_to_rect
+from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
 from continuous_grid_arctic.utils.rrt_star import RRTStar
 from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
-from continuous_grid_arctic.utils.dstar import Map, State, Dstar
+from continuous_grid_arctic.utils.dstar import Map, Dstar
 from continuous_grid_arctic.utils.rrt import RRT
 
 
@@ -53,8 +51,8 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  obstacle_number=35,
-                 end_simulation_on_leader_finish=False,  # NotImplemented
-                 discretization_factor=5,  # NotImplemented
+                 # end_simulation_on_leader_finish=False,  # NotImplemented
+                 # discretization_factor=5,  # NotImplemented
                  step_grid=10,
                  early_stopping={},
                  follower_sensors={},
@@ -90,7 +88,8 @@ class Game(gym.Env):
         simulation_time_limit (int or None):
             лимит по времени одной симуляции (в секундах, если None -- не ограничен)
         reward_config (str, Path or None): 
-            путь до json-конфигурации награды, созданной с помощью класса reward_constructor. Если None, создаёт reward по умолчанию (Ivan v.1)
+            путь до json-конфигурации награды, созданной с помощью класса reward_constructor. Если None, создаёт reward
+            по умолчанию (Ivan v.1)
         pixels_to_meter (int): 
             число пикселей, который в данной модели отражает один метр;
         min_distance (int): 
@@ -284,6 +283,13 @@ class Game(gym.Env):
                 random_frames_per_step)
             self.frames_per_step = np.random.randint(random_frames_per_step[0], random_frames_per_step[1])
         self.check_parameters()
+        self.green_zone_trajectory_points = list()
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
+        self.follower_scan_dict = {}
+        self.step_count = 0
+        self.cur_speed_multiplier = 1
+        self.game_object_list = list()
 
     def check_parameters(self):
         """
@@ -296,6 +302,7 @@ class Game(gym.Env):
     def seed(self, seed_value):
         random.seed(seed_value)
         np.random.seed(seed_value)
+        return
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
@@ -317,7 +324,8 @@ class Game(gym.Env):
         if self.add_obstacles:
             self._create_obstacles()
 
-        # в случае, если траектория не задана или была сгенерированна, при каждой симуляции генерируем новую случайную траекторию
+        # в случае, если траектория не задана или была сгенерирована, при каждой симуляции генерируем новую
+        # случайную траекторию
         if (self.trajectory is None) or self.trajectory_generated:
             self.finish_point = self.generate_finish_point([20, 20], [int(self.DISPLAY_WIDTH/2), self.DISPLAY_HEIGHT - 20])
             if self.multiple_end_points:
@@ -337,7 +345,7 @@ class Game(gym.Env):
                 self.trajectory = self.generate_trajectory_astar(max_iter=None)
             self.trajectory_generated = True
 
-        # список точек пройденного пути Ведущего, которые попадают в границы требуеимого расстояния
+        # список точек пройденного пути Ведущего, которые попадают в границы требуемого расстояния
         self.green_zone_trajectory_points = list()
         self.left_border_points_list = list()
         self.right_border_points_list = list()
@@ -496,7 +504,8 @@ class Game(gym.Env):
                         bridge_rectangle.collidepoint(generated_position) or \
                         (distance.euclidean(self.leader.position, generated_position) <= (
                                 self.max_distance) + obstacle_size / 2):
-                    # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генрировать ведомого за ним)
+                    # чтобы вокруг лидера на минимальном расстоянии не было препятствий (чтобы спокойно генерировать
+                    # ведомого за ним)
                     is_free = False
                 else:
                     is_free = True
@@ -787,13 +796,15 @@ class Game(gym.Env):
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
             for cur_point in self.leader_factual_trajectory[::10]:  # Каждую 10ю точку показываем.
-                pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 3)
+                pass
+                # pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 3)
 
         # отображение всех игровых объектов, которые были добавлены в список игровых объектов
         for cur_object in self.game_object_list:
             self.show_object(cur_object)
 
-        # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов) [Слава]
+        # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов)
+        #  [Слава]
         # отображение круга минимального расстояния
         if self.follower_too_close:
             close_circle_width = 2
@@ -1576,9 +1587,9 @@ class TestGameManual(Game):
                                  'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
                                  'saving_period': 8},
-                             'LeaderTrackDetector_vector': {
-                                 'sensor_name': 'LeaderTrackDetector_vector',
-                                 'position_sequence_length': 10},
+                             #'LeaderTrackDetector_vector': {
+                             #    'sensor_name': 'LeaderTrackDetector_vector',
+                             #    'position_sequence_length': 10},
                              'LeaderTrackDetector_radar': {
                                  'sensor_name': 'LeaderTrackDetector_radar',
                                  'position_sequence_length': 100,

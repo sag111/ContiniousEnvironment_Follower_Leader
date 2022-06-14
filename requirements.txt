@@ -222,3 +222,11 @@ zeromq=4.3.4=h2531618_0
 zipp=3.7.0=pypi_0
 zlib=1.2.11=h36c2ea0_1013
 zstd=1.5.2=ha95c52a_0
+
+gym~=0.21.0
+numpy~=1.19.5
+scipy~=1.7.3
+setuptools~=58.0.4
+matplotlib~=3.5.1
+pygame~=2.1.2
+pandas~=1.3.5

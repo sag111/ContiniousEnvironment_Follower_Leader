@@ -9,7 +9,6 @@ try:
     from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 except:
     from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
-    
 
 
 class LaserSensor():
@@ -125,7 +124,7 @@ class LaserSensor():
                 self.sensed_points.append(point_to_add)
 
         if self.return_only_distances:
-            return np.linalg.norm(self.sensed_points - self.host_object.position , axis=1)
+            return np.linalg.norm(self.sensed_points - self.host_object.position, axis=1)
         else:
             return self.sensed_points - self.host_object.position
 
@@ -218,6 +217,7 @@ class LeaderPositionsTracker:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
         pass
 
+
 class LeaderPositionsTracker_v2(LeaderPositionsTracker):
     def scan(self, env):
         # если сам сенсор отслеживает перемещение
@@ -230,18 +230,38 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
                     return self.leader_positions_hist
             # Если симуляция только началась, сохраняем текущую ведомого, чтоб начать от неё строить коридор
             if len(self.leader_positions_hist) == 0 and self.saving_counter == 0:
-                self.leader_positions_hist.append(self.host_object.position.copy())
-                #first_dots_for_follower_count = int(distance.euclidean(self.host_object.position, env.leader.position) / (
-#                        self.saving_period * env.leader.max_speed))
-#                self.leader_positions_hist.extend(
-#                    zip(np.linspace(self.host_object.position[0], env.leader.position[0], first_dots_for_follower_count),
-#                        np.linspace(self.host_object.position[1], env.leader.position[1], first_dots_for_follower_count)))
-            self.leader_positions_hist.append(env.leader.position.copy())
-            if np.linalg.norm(self.leader_positions_hist[0] - self.leader_positions_hist[-1]) > env.max_distance:
+                # self.leader_positions_hist.append(self.host_object.position.copy())
+                first_dots_for_follower_count = int(
+                    distance.euclidean(self.host_object.position, env.leader.position) / (
+                            self.saving_period * 5 * env.leader.max_speed))
+                self.leader_positions_hist.extend(np.array(x) for x in
+                                                  zip(np.linspace(self.host_object.position[0], env.leader.position[0],
+                                                                  first_dots_for_follower_count),
+                                                      np.linspace(self.host_object.position[1], env.leader.position[1],
+                                                                  first_dots_for_follower_count)))
+            else:
+                self.leader_positions_hist.append(env.leader.position.copy())
+
+            dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
+                                   np.array(self.leader_positions_hist)[1:, :], axis=1)
+            path_length = np.sum(dists)
+            while path_length > env.max_distance:
                 self.leader_positions_hist.popleft()
                 self.corridor.popleft()
+                dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
+                                       np.array(self.leader_positions_hist)[1:, :], axis=1)
+                path_length = np.sum(dists)
 
             if self.generate_corridor and len(self.leader_positions_hist) > 1:
+                if self.saving_counter == 0:
+                    for i in range(len(self.leader_positions_hist) - 1, 0, -1):
+                        last_2points_vec = self.leader_positions_hist[i] - self.leader_positions_hist[i-1]
+                        last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                        right_border_dot = rotateVector(last_2points_vec, 90)
+                        right_border_dot += self.leader_positions_hist[-i-1]
+                        left_border_dot = rotateVector(last_2points_vec, -90)
+                        left_border_dot += self.leader_positions_hist[-i-1]
+                        self.corridor.append([right_border_dot, left_border_dot])
                 last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
                 last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
                 right_border_dot = rotateVector(last_2points_vec, 90)
@@ -262,7 +282,7 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
 
     def show(self, env):
         for point in self.leader_positions_hist:
-            pygame.draw.circle(env.gameDisplay, (50, 10, 10), point, 3)
+            pygame.draw.circle(env.gameDisplay, (80, 10, 10), point, 3)
 
         if len(self.corridor) > 1:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
@@ -270,6 +290,8 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
             pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[0][0], self.corridor[0][1], 3)
             pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[-1][0], self.corridor[-1][1], 3)
         pass
+
+
 class LeaderTrackDetector_vector:
     """
     Класс, реагирующий на старые позиции лидера и генерирующий вектора до определённых позиций.
@@ -298,7 +320,8 @@ class LeaderTrackDetector_vector:
             if self.detectable_positions == "new":
                 # vecs = np.array(leader_positions_hist[-self.position_sequence_length:]) - self.host_object.position
                 slice = list(itertools.islice(leader_positions_hist, max(0, len(leader_positions_hist) -
-                                              self.position_sequence_length), len(leader_positions_hist)))
+                                                                         self.position_sequence_length),
+                                              len(leader_positions_hist)))
                 vecs = np.array(slice) - self.host_object.position
             elif self.detectable_positions == "old":
                 # vecs = np.array(leader_positions_hist[:self.position_sequence_length]) - self.host_object.position
@@ -373,7 +396,8 @@ class LeaderTrackDetector_radar:
                 if self.detectable_positions == "new":
                     # chosen_dots = np.array(leader_positions_hist[-self.position_sequence_length:])
                     slice = list(itertools.islice(leader_positions_hist, max(0, len(leader_positions_hist) -
-                                              self.position_sequence_length), len(leader_positions_hist)))
+                                                                             self.position_sequence_length),
+                                                  len(leader_positions_hist)))
                     chosen_dots = np.array(slice)
                 elif self.detectable_positions == "old":
                     # chosen_dots = np.array(leader_positions_hist[:self.position_sequence_length])
@@ -606,13 +630,14 @@ class LeaderCorridor_lasers:
                 # эта функция не работает с коллинеарными
                 # есть вариант лучше, но медленней
                 # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :], np.array([self.host_object.position]),
-                                  np.array([laser_end_point]))
+                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :],
+                                                      np.array([self.host_object.position]),
+                                                      np.array([laser_end_point]))
                 intersected_line = corridor_lines[rez]
                 if len(intersected_line) > 0:
                     x = LeaderCorridor_lasers.seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
-                                      np.array([self.host_object.position]),
-                                      np.array([laser_end_point]))
+                                                            np.array([self.host_object.position]),
+                                                            np.array([laser_end_point]))
                     # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
                     # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
                     exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
