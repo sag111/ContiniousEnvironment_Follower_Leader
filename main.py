@@ -78,7 +78,8 @@ if __name__ == "__main__":
             recorder.capture_frame()
             
             action, _states = model.predict(obs)
-            obs, rewards, dones, info = env.step(action) 
+            obs, rewards, dones, info = env.step(action)
+
             if dones:
                 break
         

@@ -54,7 +54,7 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
-                 obstacle_number=35,
+                 obstacle_number=3,
                  end_simulation_on_leader_finish=False,#NotImplemented
                  discretization_factor=5,#NotImplemented
                  step_grid=10,
@@ -313,7 +313,7 @@ class Game(gym.Env):
                                       max_rotation_speed_change=20 / 100,
                                       start_position=self.leader.position+50,#(self.leader.position[0]+50,self.leader.position[1]+50),
                                       #((self.DISPLAY_WIDTH / 2) + 50, (self.DISPLAY_HEIGHT / 2) + 50),
-                                      sensor =  LaserSensor)
+                                      sensor = LaserSensor)
         
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
@@ -402,8 +402,8 @@ class Game(gym.Env):
         
         for cur_ministep_nb in range(self.frames_per_step):
             obs,reward,done,_ = self.frame_step(action)
-        
-        return obs,reward,done,{} 
+
+        return obs,reward,done,{}
         
     
     def frame_step(self, action):
@@ -480,7 +480,7 @@ class Game(gym.Env):
             reward_to_return = self.overall_reward
         else:
             reward_to_return = res_reward
-    
+
         return obs, reward_to_return, self.done, {}
     
     
@@ -554,6 +554,8 @@ class Game(gym.Env):
 
         # отображение всех игровых объектов, которые были добавлены в список игровых объектов
         for cur_object in self.game_object_list:
+            # print(cur_object)
+            # print(cur_object)
             self.show_object(cur_object)
         
         # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов) [Слава]

@@ -44,9 +44,9 @@ class RRT:
                  obstacle_list,
                  rand_area,
                  expand_dis=3.0,
-                 path_resolution=0.5,
-                 goal_sample_rate=5,
-                 max_iter=500,
+                 path_resolution=1.5,
+                 goal_sample_rate=15,
+                 max_iter=5500,
                  play_area=None
                  ):
         """
