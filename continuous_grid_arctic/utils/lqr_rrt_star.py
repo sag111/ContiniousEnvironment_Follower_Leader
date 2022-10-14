@@ -19,8 +19,8 @@ import numpy as np
 #     from rrt_star import RRTStar
 # except ImportError:
 #     raise
-from utils.LQRplanner import LQRPlanner
-from utils.rrt_star import RRTStar
+from continuous_grid_arctic.utils.LQRplanner import LQRPlanner
+from continuous_grid_arctic.utils.rrt_star import RRTStar
 
 show_animation = False
 
