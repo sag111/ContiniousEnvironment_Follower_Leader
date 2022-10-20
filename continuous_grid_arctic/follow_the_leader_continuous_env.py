@@ -209,6 +209,8 @@ class Game(gym.Env):
         self.wall_img = pygame.image.load("{}/imgs/wall.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.rock_img = pygame.image.load("{}/imgs/rock.png".format(os.path.dirname(os.path.abspath(__file__))))
 
+        self.bear_img = pygame.image.load("{}/imgs/bear.png".format(os.path.dirname(os.path.abspath(__file__))))
+
         self.caption = caption
         self.manual_control = manual_control
         self.max_steps = max_steps
@@ -323,6 +325,9 @@ class Game(gym.Env):
         # Создание препятствий
         if self.add_obstacles:
             self._create_obstacles()
+
+        #Создание динам препятствия
+        self._create_dynamic_obstacles()
 
         # в случае, если траектория не задана или была сгенерирована, при каждой симуляции генерируем новую
         # случайную траекторию
@@ -527,6 +532,32 @@ class Game(gym.Env):
         self.follower_too_close = False
         self.crash = False
 
+
+    def _create_dynamic_obstacles(self):
+
+        bear_start_pose = (self.follower.position[0] - 50, self.follower.position[1] - 50)
+
+        # self.bear = GameObject('bear',
+        #                         image=self.bear_img,
+        #                         start_position=bear_start_pose,
+        #                         height=50,
+        #                         width=50)
+
+        self.bear = AbstractRobot("bear",
+                                  image=self.bear_img,
+                                  height=50,
+                                  width=50,
+                                  min_speed=self.leader_config["min_speed"],
+                                  max_speed=self.leader_config["max_speed"],
+                                  max_speed_change=self._to_pixels(0.005),  # / 100,
+                                  max_rotation_speed=self.leader_config["max_rotation_speed"],
+                                  max_rotation_speed_change=20 / 100,
+                                  start_position=bear_start_pose,
+                                  start_direction=90)
+
+        self.game_object_list.append(self.bear)
+        return 0
+
     def step(self, action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
@@ -611,6 +642,10 @@ class Game(gym.Env):
             else:
                 acceleration = 0
             self.leader.move_to_the_point(self.cur_target_point, speed=speed + acceleration)
+
+            #TODO : Добавить движение динамичкеского препятствия тут
+            self.bear.move_to_the_point((0,0))
+
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
