@@ -535,28 +535,57 @@ class Game(gym.Env):
 
     def _create_dynamic_obstacles(self):
 
-        bear_start_pose = (self.follower.position[0] - 50, self.follower.position[1] - 50)
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
+                                                               int(self.max_distance * 0.9), 1)
+        follower_start_position_theta = angle_correction(self.follower.direction + 180)
 
-        # self.bear = GameObject('bear',
-        #                         image=self.bear_img,
-        #                         start_position=bear_start_pose,
-        #                         height=50,
-        #                         width=50)
+        follower_start_position = np.array(
+            (follower_start_distance_from_leader * cos(radians(follower_start_position_theta)),
+             follower_start_distance_from_leader * sin(radians(follower_start_position_theta)))) + self.follower.position
+
+        follower_direction = angle_to_point(follower_start_position, self.leader.position)
+
+        # bear_start_pose = (self.follower.position[0] + 100, self.follower.position[1] + 100)
 
         self.bear = AbstractRobot("bear",
                                   image=self.bear_img,
                                   height=50,
                                   width=50,
                                   min_speed=self.leader_config["min_speed"],
-                                  max_speed=self.leader_config["max_speed"],
+                                  max_speed=1.9*self.leader_config["max_speed"],
+                                  # max_speed=3,
                                   max_speed_change=self._to_pixels(0.005),  # / 100,
                                   max_rotation_speed=self.leader_config["max_rotation_speed"],
                                   max_rotation_speed_change=20 / 100,
-                                  start_position=bear_start_pose,
-                                  start_direction=90)
+                                  start_position=follower_start_position,
+                                  start_direction=follower_direction)
 
         self.game_object_list.append(self.bear)
+        self.cur_points_for_bear = follower_start_position
+        self.dyn_index = 0
         return 0
+
+    def _chose_cur_point(self, dyn_obstacle_pose, cur_dyn_point):
+
+        koeff = 70
+
+        p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+        p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+        p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+        p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+
+        dyn_points_list = [p1, p2, p3, p4]
+
+
+        if distance.euclidean(dyn_obstacle_pose, cur_dyn_point) < self.leader_pos_epsilon:
+            self.dyn_index += 1
+            if self.dyn_index > 3:
+                self.dyn_index = 0
+
+        cur_point = dyn_points_list[self.dyn_index]
+        print(cur_point)
+
+        return cur_point
 
     def step(self, action):
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
@@ -631,6 +660,17 @@ class Game(gym.Env):
             else:
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
+        # TODO : Добавить движение динамичкеского препятствия тут
+        #
+        # self.cur_points_for_bear = (self.follower.position[0] - 100, self.follower.position[1] - 100)
+
+        self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+        if distance.euclidean(self.leader.position, self.bear.position) < 100:
+            self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
+        else:
+            # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+            self.bear.move_to_the_point(self.cur_points_for_bear)
+
         if not self.leader_finished:
             if self.leader_speed_regime is not None:
                 speed = self._process_leader_speed_regime()
@@ -643,8 +683,7 @@ class Game(gym.Env):
                 acceleration = 0
             self.leader.move_to_the_point(self.cur_target_point, speed=speed + acceleration)
 
-            #TODO : Добавить движение динамичкеского препятствия тут
-            self.bear.move_to_the_point((0,0))
+
 
         else:
             self.leader.command_forward(0)
@@ -670,15 +709,17 @@ class Game(gym.Env):
                     info["mission_status"] = "success"
                     info["leader_status"] = "finished"
                     info["agent_status"] = "finished"
-                    self.done = True
+                    # TODO : вернуть
+                    # self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.accumulated_penalty < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
                 info["mission_status"] = "fail"
                 info["leader_status"] = "moving"
                 info["agent_status"] = "low_reward"
-                self.crash = True
-                self.done = True
+                # TODO : вернуть
+                # self.crash = True
+                # self.done = True
 
             if "max_distance_coef" in self.early_stopping and np.linalg.norm(
                     self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
@@ -687,8 +728,9 @@ class Game(gym.Env):
                 info["mission_status"] = "fail"
                 info["leader_status"] = "moving"
                 info["agent_status"] = "too_far_from_leader"
-                self.crash = True
-                self.done = True
+                # TODO : вернуть
+                # self.crash = True
+                # self.done = True
 
         res_reward = self._reward_computation()
         if res_reward < 0:
@@ -702,7 +744,8 @@ class Game(gym.Env):
 
         if self.simulation_time_limit is not None:
             if pygame.time.get_ticks() * 1000 > self.simulation_time_limit:
-                self.done = True
+                # TODO : вернуть
+                # self.done = True
                 print("Время истекло! Прошло {} секунд.".format(self.simulation_time_limit))
 
         obs = self._get_obs()
@@ -713,7 +756,8 @@ class Game(gym.Env):
             info["mission_status"] = "finished_by_time"
             info["leader_status"] = "moving"
             info["agent_status"] = "moving"
-            self.done = True
+            # TODO : вернуть
+            # self.done = True
 
         if self.aggregate_reward:
             reward_to_return = self.overall_reward
