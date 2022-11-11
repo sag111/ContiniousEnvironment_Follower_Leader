@@ -552,7 +552,7 @@ class Game(gym.Env):
                                   height=50,
                                   width=50,
                                   min_speed=self.leader_config["min_speed"],
-                                  max_speed=1.9*self.leader_config["max_speed"],
+                                  max_speed=1.8*self.leader_config["max_speed"],
                                   # max_speed=3,
                                   max_speed_change=self._to_pixels(0.005),  # / 100,
                                   max_rotation_speed=self.leader_config["max_rotation_speed"],
@@ -563,6 +563,8 @@ class Game(gym.Env):
         self.game_object_list.append(self.bear)
         self.cur_points_for_bear = follower_start_position
         self.dyn_index = 0
+        self.dyn_index_lead = 0
+
         return 0
 
     def _chose_cur_point(self, dyn_obstacle_pose, cur_dyn_point):
@@ -583,7 +585,42 @@ class Game(gym.Env):
                 self.dyn_index = 0
 
         cur_point = dyn_points_list[self.dyn_index]
-        print(cur_point)
+        # print(cur_point)
+
+        return cur_point
+
+    def _chose_cur_point_for_leader(self, dyn_obstacle_pose, cur_dyn_point):
+
+        koeff = 200
+
+        p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
+        p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+        p3 = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
+        p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+
+        # p1 = ((self.leader.position[0] - self.follower.position[0])+koeff, (self.leader.position[1] -
+        #                                                                     self.follower.position[1])+koeff)
+
+        dyn_points_list = [p1, p2, p3, p4]
+        min_dist = 5000
+        # for i in range(len(dyn_points_list)):
+        for i in dyn_points_list:
+            # print(dyn_points_list[i])
+            dist = distance.euclidean(self.bear.position, i)
+            if dist <= min_dist:
+                min_dist=dist
+                cur_point = i
+
+
+        #
+        #
+        # if distance.euclidean(dyn_obstacle_pose, cur_dyn_point) < self.leader_pos_epsilon:
+        #     self.dyn_index_lead += 1
+        #     if self.dyn_index_lead > 3:
+        #         self.dyn_index_lead = 0
+        #
+        # cur_point = dyn_points_list[self.dyn_index_lead]
+        # print(cur_point)
 
         return cur_point
 
@@ -661,15 +698,21 @@ class Game(gym.Env):
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
         # TODO : Добавить движение динамичкеского препятствия тут
-        #
-        # self.cur_points_for_bear = (self.follower.position[0] - 100, self.follower.position[1] - 100)
 
-        self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-        if distance.euclidean(self.leader.position, self.bear.position) < 100:
-            self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
+
+        # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+        if distance.euclidean(self.leader.position, self.bear.position) < 130:
+            # TODO : придумать чтоб медведь убегал от лидера
+            self.cur_points_for_bear = self._chose_cur_point_for_leader(self.leader.position, self.cur_points_for_bear)
+            self.bear.move_to_the_point(self.cur_points_for_bear)
+            #
+            # self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
         else:
             # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+            self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
             self.bear.move_to_the_point(self.cur_points_for_bear)
+
+        # TODO : Добавить движение динамичкеского препятствия тут
 
         if not self.leader_finished:
             if self.leader_speed_regime is not None:
