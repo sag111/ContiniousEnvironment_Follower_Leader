@@ -552,7 +552,7 @@ class Game(gym.Env):
                                   height=50,
                                   width=50,
                                   min_speed=self.leader_config["min_speed"],
-                                  max_speed=1.8*self.leader_config["max_speed"],
+                                  max_speed=1.9*self.leader_config["max_speed"],
                                   # max_speed=3,
                                   max_speed_change=self._to_pixels(0.005),  # / 100,
                                   max_rotation_speed=self.leader_config["max_rotation_speed"],
@@ -753,7 +753,7 @@ class Game(gym.Env):
                     info["leader_status"] = "finished"
                     info["agent_status"] = "finished"
                     # TODO : вернуть
-                    # self.done = True
+                    self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.accumulated_penalty < self.early_stopping["low_reward"]:
                 # print("LOW REWARD")
@@ -761,8 +761,8 @@ class Game(gym.Env):
                 info["leader_status"] = "moving"
                 info["agent_status"] = "low_reward"
                 # TODO : вернуть
-                # self.crash = True
-                # self.done = True
+                self.crash = True
+                self.done = True
 
             if "max_distance_coef" in self.early_stopping and np.linalg.norm(
                     self.follower.position - self.leader.position) > self.max_distance * self.early_stopping[
@@ -772,8 +772,8 @@ class Game(gym.Env):
                 info["leader_status"] = "moving"
                 info["agent_status"] = "too_far_from_leader"
                 # TODO : вернуть
-                # self.crash = True
-                # self.done = True
+                self.crash = True
+                self.done = True
 
         res_reward = self._reward_computation()
         if res_reward < 0:
@@ -788,7 +788,7 @@ class Game(gym.Env):
         if self.simulation_time_limit is not None:
             if pygame.time.get_ticks() * 1000 > self.simulation_time_limit:
                 # TODO : вернуть
-                # self.done = True
+                self.done = True
                 print("Время истекло! Прошло {} секунд.".format(self.simulation_time_limit))
 
         obs = self._get_obs()
@@ -800,7 +800,7 @@ class Game(gym.Env):
             info["leader_status"] = "moving"
             info["agent_status"] = "moving"
             # TODO : вернуть
-            # self.done = True
+            self.done = True
 
         if self.aggregate_reward:
             reward_to_return = self.overall_reward
