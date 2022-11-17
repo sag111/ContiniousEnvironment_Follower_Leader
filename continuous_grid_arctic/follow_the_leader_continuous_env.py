@@ -50,6 +50,7 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
+                 add_bear=True,
                  obstacle_number=35,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
                  # discretization_factor=5,  # NotImplemented
@@ -217,6 +218,7 @@ class Game(gym.Env):
         self.aggregate_reward = aggregate_reward
 
         self.add_obstacles = add_obstacles
+        self.add_bear = add_bear
         self.obstacles = list()
         self.obstacle_number = obstacle_number
 
@@ -327,7 +329,8 @@ class Game(gym.Env):
             self._create_obstacles()
 
         #Создание динам препятствия
-        self._create_dynamic_obstacles()
+        if self.add_bear:
+            self._create_dynamic_obstacles()
 
         # в случае, если траектория не задана или была сгенерирована, при каждой симуляции генерируем новую
         # случайную траекторию
@@ -535,17 +538,32 @@ class Game(gym.Env):
 
     def _create_dynamic_obstacles(self):
 
-        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
-                                                               int(self.max_distance * 0.9), 1)
-        follower_start_position_theta = angle_correction(self.follower.direction + 180)
+        # bear_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
+        #                                                        int(self.max_distance * 0.9), 1)
+        # bear_start_position_theta = angle_correction(self.follower.direction + 180)
+        #
+        # bear_start_position = np.array(
+        #     (bear_start_distance_from_leader * cos(radians(follower_start_position_theta)),
+        #      bear_start_distance_from_leader * sin(radians(follower_start_position_theta)))) + self.follower.position
+        #
+        # bear_direction = angle_to_point(follower_start_position, self.leader.position)
+        #
+        # # bear_start_position = (self.follower.position[0] + 200, self.follower.position[1] + 200)
+        # # bear_start_position = (1200, 1200)
+        # bear_start_position = (
+        #     random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+        #     random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+        # bear_start_direction = angle_to_point(bear_start_position,
+        #                                         np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
+        #                                                  dtype=int))  # random.randint(1,360)
 
-        follower_start_position = np.array(
-            (follower_start_distance_from_leader * cos(radians(follower_start_position_theta)),
-             follower_start_distance_from_leader * sin(radians(follower_start_position_theta)))) + self.follower.position
+        bear_start_position = (self.follower.position[0] + 200, self.follower.position[1] + 200)
+        bear_start_direction = angle_to_point(bear_start_position, np.array((self.DISPLAY_WIDTH / 2,
+                                                                             self.DISPLAY_HEIGHT / 2),
+                                                                            dtype=int))  # random.randint(1,360)
 
-        follower_direction = angle_to_point(follower_start_position, self.leader.position)
-
-        # bear_start_pose = (self.follower.position[0] + 100, self.follower.position[1] + 100)
+        # bear_start_position = (1400, 1400)
+        # bear_start_direction = 90
 
         self.bear = AbstractRobot("bear",
                                   image=self.bear_img,
@@ -557,11 +575,11 @@ class Game(gym.Env):
                                   max_speed_change=self._to_pixels(0.005),  # / 100,
                                   max_rotation_speed=self.leader_config["max_rotation_speed"],
                                   max_rotation_speed_change=20 / 100,
-                                  start_position=follower_start_position,
-                                  start_direction=follower_direction)
+                                  start_position=bear_start_position,
+                                  start_direction=bear_start_direction)
 
         self.game_object_list.append(self.bear)
-        self.cur_points_for_bear = follower_start_position
+        self.cur_points_for_bear = bear_start_position
         self.dyn_index = 0
         self.dyn_index_lead = 0
 
@@ -699,18 +717,18 @@ class Game(gym.Env):
 
         # TODO : Добавить движение динамичкеского препятствия тут
 
-
-        # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-        if distance.euclidean(self.leader.position, self.bear.position) < 130:
-            # TODO : придумать чтоб медведь убегал от лидера
-            self.cur_points_for_bear = self._chose_cur_point_for_leader(self.leader.position, self.cur_points_for_bear)
-            self.bear.move_to_the_point(self.cur_points_for_bear)
-            #
-            # self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
-        else:
+        if self.add_bear:
             # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-            self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-            self.bear.move_to_the_point(self.cur_points_for_bear)
+            if distance.euclidean(self.leader.position, self.bear.position) < 130:
+                # TODO : придумать чтоб медведь убегал от лидера
+                self.cur_points_for_bear = self._chose_cur_point_for_leader(self.leader.position, self.cur_points_for_bear)
+                self.bear.move_to_the_point(self.cur_points_for_bear)
+                #
+                # self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
+            else:
+                # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+                self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
+                self.bear.move_to_the_point(self.cur_points_for_bear)
 
         # TODO : Добавить движение динамичкеского препятствия тут
 
