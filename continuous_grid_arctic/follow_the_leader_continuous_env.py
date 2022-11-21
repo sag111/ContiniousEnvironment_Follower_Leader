@@ -329,8 +329,11 @@ class Game(gym.Env):
             self._create_obstacles()
 
         #Создание динам препятствия
+        self.add_bear = False
         if self.add_bear:
             self._create_dynamic_obstacles()
+
+
 
         # в случае, если траектория не задана или была сгенерирована, при каждой симуляции генерируем новую
         # случайную траекторию
@@ -352,6 +355,12 @@ class Game(gym.Env):
             elif self.path_finding_algorythm == "astar":
                 self.trajectory = self.generate_trajectory_astar(max_iter=None)
             self.trajectory_generated = True
+
+        # TODO : перенести в конфиг
+        self.multi_bear = True
+        if self.multi_bear:
+            self.bear_number = 3
+            self._create_dyn_obs(bears_number)
 
         # список точек пройденного пути Ведущего, которые попадают в границы требуемого расстояния
         self.green_zone_trajectory_points = list()
@@ -386,6 +395,10 @@ class Game(gym.Env):
         # располагаем ведомого с учётом того, куда направлен лидер
         self.leader.direction = angle_to_point(self.leader.position, self.cur_target_point)
         self._pos_follower_behind_leader()
+
+        # TODO : возможно лишнее (расположение медведя позади)
+        # self._pos_bear_behind_follower()
+
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
         # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
         first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (
@@ -400,6 +413,7 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
+        #  TODO : исправить (уйти от привязки к переменной self.max_distance)
         leader_start_position = (
             random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
             random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
@@ -538,45 +552,34 @@ class Game(gym.Env):
 
     def _create_dynamic_obstacles(self):
 
+        # TODO : исправить генерацию координат стартового положения динамического препятствия
+        #
         # bear_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
         #                                                        int(self.max_distance * 0.9), 1)
         # bear_start_position_theta = angle_correction(self.follower.direction + 180)
         #
         # bear_start_position = np.array(
-        #     (bear_start_distance_from_leader * cos(radians(follower_start_position_theta)),
-        #      bear_start_distance_from_leader * sin(radians(follower_start_position_theta)))) + self.follower.position
-        #
-        # bear_direction = angle_to_point(follower_start_position, self.leader.position)
-        #
-        # # bear_start_position = (self.follower.position[0] + 200, self.follower.position[1] + 200)
-        # # bear_start_position = (1200, 1200)
-        # bear_start_position = (
-        #     random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
-        #     random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
-        # bear_start_direction = angle_to_point(bear_start_position,
-        #                                         np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
-        #                                                  dtype=int))  # random.randint(1,360)
+        #     (bear_start_distance_from_leader * cos(radians(bear_start_position_theta)),
+        #      bear_start_distance_from_leader * sin(radians(bear_start_position_theta)))) + self.follower.position
 
-        bear_start_position = (self.follower.position[0] + 200, self.follower.position[1] + 200)
-        bear_start_direction = angle_to_point(bear_start_position, np.array((self.DISPLAY_WIDTH / 2,
-                                                                             self.DISPLAY_HEIGHT / 2),
-                                                                            dtype=int))  # random.randint(1,360)
+        # TODO :---
 
-        # bear_start_position = (1400, 1400)
-        # bear_start_direction = 90
+        bear_size = 25
+        bear_speed_coeff = 2
+        bear_start_position = (self.follower.position[0] + 100, self.follower.position[1] + 100)
 
         self.bear = AbstractRobot("bear",
                                   image=self.bear_img,
-                                  height=50,
-                                  width=50,
+                                  height=bear_size,
+                                  width=bear_size,
                                   min_speed=self.leader_config["min_speed"],
-                                  max_speed=1.9*self.leader_config["max_speed"],
-                                  # max_speed=3,
+                                  max_speed=bear_speed_coeff*self.leader_config["max_speed"],
                                   max_speed_change=self._to_pixels(0.005),  # / 100,
                                   max_rotation_speed=self.leader_config["max_rotation_speed"],
                                   max_rotation_speed_change=20 / 100,
                                   start_position=bear_start_position,
-                                  start_direction=bear_start_direction)
+                                  #start_direction=bear_start_direction
+                                  )
 
         self.game_object_list.append(self.bear)
         self.cur_points_for_bear = bear_start_position
@@ -585,9 +588,57 @@ class Game(gym.Env):
 
         return 0
 
+    def _create_dyn_obs(self):
+
+
+        self.bears_obs = list()
+
+        bear_size = 25
+        bear_speed_coeff = 2
+
+        for i in range(self.bear_number):
+
+            generate_koeff = random.randrange(30, 150, self.step_grid)
+
+            bear_start_position = (self.follower.position[0] + generate_koeff, self.follower.position[1] + generate_koeff)
+
+            self.game_object_list.append(AbstractRobot("bear",
+                                      image=self.bear_img,
+                                      height=bear_size,
+                                      width=bear_size,
+                                      min_speed=self.leader_config["min_speed"],
+                                      max_speed=bear_speed_coeff * self.leader_config["max_speed"],
+                                      max_speed_change=self._to_pixels(0.005),  # / 100,
+                                      max_rotation_speed=self.leader_config["max_rotation_speed"],
+                                      max_rotation_speed_change=20 / 100,
+                                      start_position=bear_start_position,
+                                      ))
+
+        # self.game_object_list.extend(self.obstacles)
+
+
+        return 0
+
+    def _pos_bear_behind_follower(self):
+        # TODO : возможно лишнее но пусть пока так
+
+        bear_start_distance_from_leader = random.randrange(int(self.min_distance * 2.1),
+                                                               int(self.max_distance * 1.5), 1)
+        bear_start_position_theta = angle_correction(self.follower.direction + 180)
+
+        bear_start_position = np.array(
+            (bear_start_distance_from_leader * cos(radians(bear_start_position_theta)),
+             bear_start_distance_from_leader * sin(radians(bear_start_position_theta)))) + self.leader.position
+
+        bear_direction = angle_to_point(bear_start_position, self.follower.position)
+
+        self.bear.position = bear_start_position
+        self.bear.direction = bear_direction
+        self.bear.start_direction = bear_direction
+
     def _chose_cur_point(self, dyn_obstacle_pose, cur_dyn_point):
 
-        koeff = 70
+        koeff = 50
 
         p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
         p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
@@ -609,7 +660,7 @@ class Game(gym.Env):
 
     def _chose_cur_point_for_leader(self, dyn_obstacle_pose, cur_dyn_point):
 
-        koeff = 200
+        koeff = 100
 
         p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
         p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
@@ -1720,7 +1771,7 @@ class TestGameManual(Game):
                                                      4500: 0},
                          multiple_end_points=True,
                          warm_start=0,
-                         early_stopping={"max_distance_coef": 1.4, "low_reward": -300},
+                         early_stopping={"max_distance_coef": 2.4, "low_reward": -300},
                          random_frames_per_step=[2, 20],
                          follower_sensors={
                              'LeaderPositionsTracker_v2': {
