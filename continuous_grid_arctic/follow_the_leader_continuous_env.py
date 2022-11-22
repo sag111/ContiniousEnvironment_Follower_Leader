@@ -56,7 +56,7 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  add_bear=True,
-                 bear_number = 2,
+                 bear_number = 3,
                  multi_random_bears = False,
                  obstacle_number=35,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
@@ -561,7 +561,7 @@ class Game(gym.Env):
 
         self.bears_obs = list()
         bear_size = 25
-        bear_speed_coeff = 2.1
+        bear_speed_coeff = 2.2
 
         for i in range(self.bear_number):
             # TODO:
@@ -632,14 +632,6 @@ class Game(gym.Env):
 
 
         cur_point = dyn_points_list[self.dynamics_index[index]]
-
-        # min_dist = 5000
-        # # for i in range(len(dyn_points_list)):
-        # for i in dyn_points_list:
-        #     dist = distance.euclidean(self.cur_points_for_bear[index], i)
-        #     if dist <= min_dist:
-        #         min_dist = dist
-        #         cur_point = i
 
         return cur_point
     def _choose_points_for_bear_stat(self, index):
@@ -824,7 +816,7 @@ class Game(gym.Env):
                         self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
 
                 else:
-                    # TODO : debug, пока не работает корректно
+                    # TODO : debug, может стоит поправить в будущем
                     # TODO : test 1
                     # self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
                     # TODO : test 2
