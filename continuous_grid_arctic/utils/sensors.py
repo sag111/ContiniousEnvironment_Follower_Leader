@@ -67,7 +67,7 @@ class LaserSensor():
 
         env_range = self.range * env.PIXELS_TO_METER
 
-        for cur_object in env.game_object_list:
+        for cur_object in (env.game_object_list + env.game_dynamic_list):
             if cur_object is env.follower:
                 continue
 
@@ -613,9 +613,12 @@ class LeaderCorridor_lasers:
                     corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
             if self.react_to_green_zone:
                 corridor_lines.append([corridor[0][0], corridor[0][1]])
+                # TODO : вернуть !!!!!!!!!!!!!!!
+
                 corridor_lines.append([corridor[-1][0], corridor[-1][1]])
             if self.react_to_obstacles:
-                for cur_object in env.game_object_list:
+                # TODO : проверка списка динам препятствий
+                for cur_object in (env.game_object_list + env.game_dynamic_list):
                     if cur_object is env.follower:
                         continue
                     if cur_object.blocks_vision:

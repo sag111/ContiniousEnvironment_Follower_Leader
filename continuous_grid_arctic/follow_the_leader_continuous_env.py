@@ -51,6 +51,7 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  add_bear=True,
+                 bear_number = 3,
                  obstacle_number=35,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
                  # discretization_factor=5,  # NotImplemented
@@ -219,6 +220,7 @@ class Game(gym.Env):
 
         self.add_obstacles = add_obstacles
         self.add_bear = add_bear
+        self.bear_number = bear_number
         self.obstacles = list()
         self.obstacle_number = obstacle_number
 
@@ -334,9 +336,9 @@ class Game(gym.Env):
             self._create_obstacles()
 
         #Создание динам препятствия
-        self.add_bear = False
-        if self.add_bear:
-            self._create_dynamic_obstacles()
+        # self.add_bear = False
+        # if self.add_bear:
+        #     self._create_dynamic_obstacles()
 
 
 
@@ -362,9 +364,8 @@ class Game(gym.Env):
             self.trajectory_generated = True
 
         # TODO : перенести в конфиг
-        self.multi_bear = True
-        if self.multi_bear:
-            self.bear_number = 1
+        self.add_bear = True
+        if self.add_bear:
             self._create_dyn_obs()
 
         # список точек пройденного пути Ведущего, которые попадают в границы требуемого расстояния
@@ -401,8 +402,6 @@ class Game(gym.Env):
         self.leader.direction = angle_to_point(self.leader.position, self.cur_target_point)
         self._pos_follower_behind_leader()
 
-        # TODO : возможно лишнее (расположение медведя позади)
-        # self._pos_bear_behind_follower()
 
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
         # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
@@ -558,14 +557,7 @@ class Game(gym.Env):
     def _create_dynamic_obstacles(self):
 
         # TODO : исправить генерацию координат стартового положения динамического препятствия
-        #
-        # bear_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
-        #                                                        int(self.max_distance * 0.9), 1)
-        # bear_start_position_theta = angle_correction(self.follower.direction + 180)
-        #
-        # bear_start_position = np.array(
-        #     (bear_start_distance_from_leader * cos(radians(bear_start_position_theta)),
-        #      bear_start_distance_from_leader * sin(radians(bear_start_position_theta)))) + self.follower.position
+
 
         # TODO :---
 
@@ -586,27 +578,22 @@ class Game(gym.Env):
                                   #start_direction=bear_start_direction
                                   )
 
-
-
         self.game_object_list.append(self.bear)
         self.game_dynamic_list.append(self.bear)
         self.cur_points_for_bear = bear_start_position
         self.dyn_index = 0
         self.dyn_index_lead = 0
-
         return 0
 
     def _create_dyn_obs(self):
 
-
         self.bears_obs = list()
-
         bear_size = 25
         bear_speed_coeff = 2
 
         for i in range(self.bear_number):
 
-            generate_koeff = random.randrange(30, 150, self.step_grid)
+            generate_koeff = random.randrange(50, 200, self.step_grid)
 
             bear_start_position = (self.follower.position[0] + generate_koeff, self.follower.position[1] + generate_koeff)
 
@@ -623,119 +610,76 @@ class Game(gym.Env):
                                     ))
 
 
-
         self.start_cur_points = [bear_start_position] * self.bear_number
-        # for i in range(self.bear_number):
-        #     self.start_cur_points[i] = [bear_start_position] * 2
-        # self.start_cur_points = [0] * self.bear_number
         self.dynamics_index = [0]*self.bear_number
-        print("pointpointpoint point point point ", self.start_cur_points)
-        # print("DDDDDDDDDDDDDDDDDDDDd", self.game_dynamic_list)
-        # print("DDDDDDDDDDDDDDDDDDDDd", len(self.game_dynamic_list))
-
-
+        self.dynamics_index_lead = [0] * self.bear_number
         return 0
 
 
     def _choose_move_bears_points(self, index):
 
-
-        cur_dyn_obj = self.game_dynamic_list[index]
-        cur_dyn_point = self.start_cur_points[index]
-
-        koeff = 20
-
-        p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
-        p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
-        p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
-        p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
-        dyn_points_list = [p1, p2, p3, p4]
-
-        if distance.euclidean(cur_dyn_obj.position, cur_dyn_point) < 3*self.leader_pos_epsilon:
-
+        if distance.euclidean(self.game_dynamic_list[index].position, self.start_cur_points[index]) < self.leader_pos_epsilon:
             self.dynamics_index[index] += 1
-            print("SUM +1 ", self.dynamics_index )
             if self.dynamics_index[index] > 3:
                 self.dynamics_index[index] = 0
 
-        cur_point = dyn_points_list[self.dynamics_index[index]]
+        if index == 0:
+            koeff = 70
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+            dyn_points_list = [p1, p2, p3, p4]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
 
+        elif index == 1:
+            koeff = 100
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+            dyn_points_list = [p4, p3, p2, p1]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
 
-        return cur_point
+        elif index == 2:
 
+            koeff = 150
 
-    def _pos_bear_behind_follower(self):
-        # TODO : возможно лишнее но пусть пока так
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
 
-        bear_start_distance_from_leader = random.randrange(int(self.min_distance * 2.1),
-                                                               int(self.max_distance * 1.5), 1)
-        bear_start_position_theta = angle_correction(self.follower.direction + 180)
+            dyn_points_list = [p1, p2, p3, p4]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
 
-        bear_start_position = np.array(
-            (bear_start_distance_from_leader * cos(radians(bear_start_position_theta)),
-             bear_start_distance_from_leader * sin(radians(bear_start_position_theta)))) + self.leader.position
+        else:
+            dyn_points_list = [0, 0, 0, 0]
+            for i in range(4):
+                dyn_points_list[i] = (random.randrange(self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                      random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
 
-        bear_direction = angle_to_point(bear_start_position, self.follower.position)
-
-        self.bear.position = bear_start_position
-        self.bear.direction = bear_direction
-        self.bear.start_direction = bear_direction
-
-
-    def _chose_cur_point(self, dyn_obstacle_pose, cur_dyn_point):
-
-        koeff = 50
-
-        p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
-        p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
-        p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
-        p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
-
-        dyn_points_list = [p1, p2, p3, p4]
-
-
-        if distance.euclidean(dyn_obstacle_pose, cur_dyn_point) < self.leader_pos_epsilon:
-            self.dyn_index += 1
-            if self.dyn_index > 3:
-                self.dyn_index = 0
-
-        cur_point = dyn_points_list[self.dyn_index]
-        # print(cur_point)
+            cur_point = dyn_points_list[self.dynamics_index[index]]
 
         return cur_point
 
     def _chose_cur_point_for_leader(self, dyn_obstacle_pose, cur_dyn_point):
 
-        koeff = 100
+        koeff = 150
 
         p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
         p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
         p3 = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
         p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
 
-        # p1 = ((self.leader.position[0] - self.follower.position[0])+koeff, (self.leader.position[1] -
-        #                                                                     self.follower.position[1])+koeff)
-
         dyn_points_list = [p1, p2, p3, p4]
         min_dist = 5000
         # for i in range(len(dyn_points_list)):
         for i in dyn_points_list:
-            # print(dyn_points_list[i])
-            dist = distance.euclidean(self.bear.position, i)
+            dist = distance.euclidean(dyn_obstacle_pose, i)
             if dist <= min_dist:
                 min_dist=dist
                 cur_point = i
-
-
-        #
-        #
-        # if distance.euclidean(dyn_obstacle_pose, cur_dyn_point) < self.leader_pos_epsilon:
-        #     self.dyn_index_lead += 1
-        #     if self.dyn_index_lead > 3:
-        #         self.dyn_index_lead = 0
-        #
-        # cur_point = dyn_points_list[self.dyn_index_lead]
-        # print(cur_point)
 
         return cur_point
 
@@ -812,41 +756,21 @@ class Game(gym.Env):
             else:
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
-        # TODO : Добавить движение динамичкеского препятствия тут
-
-        if self.add_bear:
-            # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-            if distance.euclidean(self.leader.position, self.bear.position) < 130:
-                # TODO : придумать чтоб медведь убегал от лидера
-                self.cur_points_for_bear = self._chose_cur_point_for_leader(self.leader.position, self.cur_points_for_bear)
-                self.bear.move_to_the_point(self.cur_points_for_bear)
-                #
-                # self.bear.move_to_the_point(self.cur_points_for_bear, speed=0)
-            else:
-                # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-                self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-                self.bear.move_to_the_point(self.cur_points_for_bear)
-
-
         # TODO : debug
-        # print("POSITIONS : ", self.start_cur_points)
-        # print('INDEXS : ',self.dynamics_index)
-        if self.multi_bear:
+        if self.add_bear:
+
             for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
 
-                self.start_cur_points[cur_dyn_obj_index] = self._choose_move_bears_points(cur_dyn_obj_index)
-                # print("ТЕКУЩИЙ ИНДЕКС", cur_dyn_obj_index)
-                # print("ТОЧКА К КОТОРОЙ НАДО ДВИГАТЬСЯ", cur_dynamic_point)
-                # print("ТЕКУЩАЯ ПОЗИЦИЯ МЕДВЕДЯ", self.game_dynamic_list[cur_dyn_obj_index].position)
-                self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.start_cur_points[cur_dyn_obj_index])
+                if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 150:
+                    # print("ALARM")
+                    self.start_cur_points[cur_dyn_obj_index] = self._chose_cur_point_for_leader(
+                        self.game_dynamic_list[cur_dyn_obj_index].position, 1)
+                    self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+                        self.start_cur_points[cur_dyn_obj_index])
 
-
-                # if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 130:
-                #     print('1')
-                #     continue
-                # else:
-                #     cur_dynamic_point = self._choose_move_bears_points(cur_dyn_obj_index)
-                #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(cur_dynamic_point)
+                else:
+                    self.start_cur_points[cur_dyn_obj_index] = self._choose_move_bears_points(cur_dyn_obj_index)
+                    self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.start_cur_points[cur_dyn_obj_index])
 
 
         # TODO : Добавить движение динамичкеского препятствия тут
