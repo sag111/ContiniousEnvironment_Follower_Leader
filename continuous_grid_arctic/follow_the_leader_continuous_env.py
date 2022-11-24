@@ -618,7 +618,7 @@ class Game(gym.Env):
             if self.dynamics_index[index] > 3:
                 self.dynamics_index[index] = 0
 
-        koeff = 80*(index+1)
+        koeff = 90*(index+1)
 
         p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
         p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
