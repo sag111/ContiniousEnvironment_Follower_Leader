@@ -626,9 +626,9 @@ class Game(gym.Env):
         p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
 
         if index == 0 :
-            dyn_points_list = [p4, p3, p2, p1]
-        else:
             dyn_points_list = [p1, p2, p3, p4]
+        else:
+            dyn_points_list = [p4, p3, p2, p1]
 
 
         cur_point = dyn_points_list[self.dynamics_index[index]]
