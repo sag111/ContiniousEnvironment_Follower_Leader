@@ -561,7 +561,7 @@ class Game(gym.Env):
 
         self.bears_obs = list()
         bear_size = 25
-        bear_speed_coeff = 1.8
+        bear_speed_coeff = 1.1
 
         for i in range(self.bear_number):
             # TODO:
