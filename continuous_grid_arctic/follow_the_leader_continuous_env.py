@@ -652,7 +652,7 @@ class Game(gym.Env):
         bears_points_behind_leader = []
         # ramdom_koeff = random.randrange(int(100), int(300), 10)
         ramdom_koeff = 150*(index+1)
-        print(ramdom_koeff)
+        # print(ramdom_koeff)
         if index >= 0:
             p1 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
                                                          self.leader.direction - 140))
@@ -1831,6 +1831,7 @@ class TestGameManual(Game):
                          max_distance=4,
                          max_dev=1,
                          add_bear=True,
+                         bear_behind=False,
                          multi_random_bears=False,
                          bear_number=1,
                          corridor_length=7,
