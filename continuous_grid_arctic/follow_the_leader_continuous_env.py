@@ -59,6 +59,7 @@ class Game(gym.Env):
                  bear_number = 3,
                  multi_random_bears = False,
                  obstacle_number=35,
+                 bear_behind=False,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
                  # discretization_factor=5,  # NotImplemented
                  step_grid=10,
@@ -70,6 +71,8 @@ class Game(gym.Env):
                  constant_follower_speed=False,
                  path_finding_algorythm="dstar",
                  multiple_end_points=False,
+                 corridor_length=4,
+                 corridor_width=1,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -228,6 +231,9 @@ class Game(gym.Env):
         self.add_bear = add_bear
         self.bear_number = bear_number
         self.multi_random_bears = multi_random_bears
+        self.bear_behind = bear_behind
+        self.corridor_length = self._to_pixels(corridor_length)
+        self.corridor_width = self._to_pixels(corridor_width)
         self.obstacles = list()
         self.obstacle_number = obstacle_number
 
@@ -566,10 +572,11 @@ class Game(gym.Env):
         for i in range(self.bear_number):
             # TODO:
             koeff = 90*(i+1)
+            if self.bear_behind:
+                bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+            else:
+                bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
 
-            # bear_start_position = (self.follower.position[0] + generate_koeff, self.follower.position[1] + generate_koeff)
-
-            bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
             self.game_dynamic_list.append(AbstractRobot("bear",
                                       image=self.bear_img,
                                       height=bear_size,
@@ -819,10 +826,14 @@ class Game(gym.Env):
 
                 else:
                     # TODO : debug, может стоит поправить в будущем
-                    # TODO : test 1
-                    # self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
-                    # TODO : test 2
-                    self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+
+                    if self.bear_behind:
+                        # TODO : test 1
+                        self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
+                    else:
+                        # TODO : test 2
+                        self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+
                     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
 
                     # TODO : test 3
@@ -1817,9 +1828,13 @@ class TestGameManual(Game):
                          framerate=5000,
                          obstacle_number=35,
                          constant_follower_speed=False,
+                         max_distance=4,
+                         max_dev=1,
                          add_bear=True,
                          multi_random_bears=False,
                          bear_number=1,
+                         corridor_length=7,
+                         corridor_width=1.5,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -1834,15 +1849,16 @@ class TestGameManual(Game):
                          leader_acceleration_regime={0: 0,
                                                      3100: 0.03,
                                                      4500: 0},
-                         multiple_end_points=True,
+                         multiple_end_points=False,
                          warm_start=0,
-                         early_stopping={"max_distance_coef": 2.5, "low_reward": -300},
+                         early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          random_frames_per_step=[2, 20],
                          follower_sensors={
                              'LeaderPositionsTracker_v2': {
                                  'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
-                                 'saving_period': 8},
+                                 'saving_period': 8
+                                 },
                              #'LeaderTrackDetector_vector': {
                              #    'sensor_name': 'LeaderTrackDetector_vector',
                              #    'position_sequence_length': 10},
@@ -1856,7 +1872,8 @@ class TestGameManual(Game):
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 5,
                                  "back_lasers_count": 2,
-                                 "react_to_green_zone": True
+                                 "react_to_green_zone": True,
+                                 "laser_length": 150
                              }
                          }
                          )

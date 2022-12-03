@@ -245,7 +245,8 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
             dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
                                    np.array(self.leader_positions_hist)[1:, :], axis=1)
             path_length = np.sum(dists)
-            while path_length > env.max_distance:
+            # while path_length > env.max_distance:
+            while path_length > env.corridor_length:
                 self.leader_positions_hist.popleft()
                 self.corridor.popleft()
                 dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
@@ -256,14 +257,16 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
                 if self.saving_counter == 0:
                     for i in range(len(self.leader_positions_hist) - 1, 0, -1):
                         last_2points_vec = self.leader_positions_hist[i] - self.leader_positions_hist[i-1]
-                        last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                        # last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                        last_2points_vec *= env.corridor_width / np.linalg.norm(last_2points_vec)
                         right_border_dot = rotateVector(last_2points_vec, 90)
                         right_border_dot += self.leader_positions_hist[-i-1]
                         left_border_dot = rotateVector(last_2points_vec, -90)
                         left_border_dot += self.leader_positions_hist[-i-1]
                         self.corridor.append([right_border_dot, left_border_dot])
                 last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
-                last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                # last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
+                last_2points_vec *= env.corridor_width / np.linalg.norm(last_2points_vec)
                 right_border_dot = rotateVector(last_2points_vec, 90)
                 right_border_dot += self.leader_positions_hist[-2]
                 left_border_dot = rotateVector(last_2points_vec, -90)
@@ -526,7 +529,8 @@ class LeaderCorridor_lasers:
                  react_to_obstacles=False,
                  react_to_green_zone=False,
                  front_lasers_count=3,
-                 back_lasers_count=0):
+                 back_lasers_count=0,
+                 laser_length=100):
         """
 
         :param host_object: робот, на котором висит сенсор
@@ -541,7 +545,7 @@ class LeaderCorridor_lasers:
         assert back_lasers_count in [0, 2]
         self.front_lasers_count = front_lasers_count
         self.back_lasers_count = back_lasers_count
-        self.laser_length = 100
+        self.laser_length = laser_length
         self.lasers_end_points = []
         self.lasers_collides = []
         self.react_to_safe_corridor = react_to_safe_corridor
