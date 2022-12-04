@@ -150,7 +150,9 @@ class LeaderPositionsTracker:
                  eat_close_points=True,
                  max_point=5000,
                  saving_period=5,
-                 generate_corridor=True):
+                 generate_corridor=True,
+                 start_corridor_behind_follower=False
+                 ):
         self.sensor_name = sensor_name
         self.host_object = host_object
         self.max_point = max_point
@@ -163,6 +165,7 @@ class LeaderPositionsTracker:
         self.corridor = deque()
         self.right_border_dot = np.array([0, 0])
         self.left_border_dot = np.array([0, 0])
+        self.start_corridor_behind_follower = start_corridor_behind_follower
 
     def scan(self, env):
         # если сам сенсор отслеживает перемещение
@@ -231,14 +234,34 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
             # Если симуляция только началась, сохраняем текущую ведомого, чтоб начать от неё строить коридор
             if len(self.leader_positions_hist) == 0 and self.saving_counter == 0:
                 # self.leader_positions_hist.append(self.host_object.position.copy())
-                first_dots_for_follower_count = int(
-                    distance.euclidean(self.host_object.position, env.leader.position) / (
-                            self.saving_period * 5 * env.leader.max_speed))
-                self.leader_positions_hist.extend(np.array(x) for x in
-                                                  zip(np.linspace(self.host_object.position[0], env.leader.position[0],
-                                                                  first_dots_for_follower_count),
-                                                      np.linspace(self.host_object.position[1], env.leader.position[1],
-                                                                  first_dots_for_follower_count)))
+                # TODO ; точка позиции за ведомым (для отстроения коридора)
+                # TODO : вариант с отсроением коридора от точки за метр от ведомого
+                if self.start_corridor_behind_follower:
+                    point_start_distance_behind_follower = 50
+                    point_start_position_theta = angle_correction(self.host_object.direction + 180)
+                    point_behind_follower = np.array(
+                        (point_start_distance_behind_follower * cos(radians(point_start_position_theta)),
+                         point_start_distance_behind_follower * sin(radians(point_start_position_theta)))) \
+                                              + self.host_object.position
+                    first_dots_for_follower_count = int(
+                        distance.euclidean(point_behind_follower, env.leader.position) / (
+                                self.saving_period * 5 * env.leader.max_speed))
+
+                    self.leader_positions_hist.extend(np.array(x) for x in
+                                                      zip(np.linspace(point_behind_follower[0], env.leader.position[0],
+                                                                      first_dots_for_follower_count),
+                                                          np.linspace(point_behind_follower[1], env.leader.position[1],
+                                                                      first_dots_for_follower_count)))
+                # TODO : вариант с отсроением коридора от точки ведомого
+                else:
+                    first_dots_for_follower_count = int(
+                        distance.euclidean(self.host_object.position, env.leader.position) / (
+                                self.saving_period * 5 * env.leader.max_speed))
+                    self.leader_positions_hist.extend(np.array(x) for x in
+                                                      zip(np.linspace(self.host_object.position[0], env.leader.position[0],
+                                                                      first_dots_for_follower_count),
+                                                          np.linspace(self.host_object.position[1], env.leader.position[1],
+                                                                      first_dots_for_follower_count)))
             else:
                 self.leader_positions_hist.append(env.leader.position.copy())
 
@@ -617,8 +640,6 @@ class LeaderCorridor_lasers:
                     corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
             if self.react_to_green_zone:
                 corridor_lines.append([corridor[0][0], corridor[0][1]])
-                # TODO : вернуть !!!!!!!!!!!!!!!
-
                 corridor_lines.append([corridor[-1][0], corridor[-1][1]])
             if self.react_to_obstacles:
                 # TODO : проверка списка динам препятствий

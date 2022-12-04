@@ -73,6 +73,8 @@ class Game(gym.Env):
                  multiple_end_points=False,
                  corridor_length=4,
                  corridor_width=1,
+                 negative_speed=False,
+                 follower_speed_koeff=0.5,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -234,6 +236,9 @@ class Game(gym.Env):
         self.bear_behind = bear_behind
         self.corridor_length = self._to_pixels(corridor_length)
         self.corridor_width = self._to_pixels(corridor_width)
+        self.negative_speed = negative_speed
+        self.follower_speed_koeff = follower_speed_koeff
+        # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
 
@@ -243,11 +248,21 @@ class Game(gym.Env):
         self.follower_sensors = follower_sensors
         self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
-        self.follower_config = {
-            'min_speed': 0,
-            'max_speed': self._to_pixels(0.5) / 100,
-            'max_rotation_speed': 57.296 / 100,
-        }
+        # TODO : конфиг для отрицательной скорости, наверное стоит поправить это
+        if self.negative_speed:
+            self.follower_config = {
+                # 'min_speed': 0,
+                'min_speed':-(self._to_pixels(self.follower_speed_koeff) / 100),
+                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
+                'max_rotation_speed': 57.296 / 100,
+            }
+        else:
+            self.follower_config = {
+                'min_speed': 0,
+                # 'min_speed':-(self._to_pixels(0.5) / 100),
+                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
+                'max_rotation_speed': 57.296 / 100,
+            }
         self.leader_config = {
             'min_speed': 0,
             'max_speed': self._to_pixels(0.5) / 100,
@@ -1834,8 +1849,10 @@ class TestGameManual(Game):
                          bear_behind=False,
                          multi_random_bears=False,
                          bear_number=1,
-                         corridor_length=7,
+                         corridor_length=8,
                          corridor_width=1.5,
+                         negative_speed=True,
+                         follower_speed_koeff=0.6,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -1858,11 +1875,13 @@ class TestGameManual(Game):
                              'LeaderPositionsTracker_v2': {
                                  'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
-                                 'saving_period': 8
+                                 'saving_period': 8,
+                                 'start_corridor_behind_follower':True
                                  },
                              #'LeaderTrackDetector_vector': {
                              #    'sensor_name': 'LeaderTrackDetector_vector',
                              #    'position_sequence_length': 10},
+
                              'LeaderTrackDetector_radar': {
                                  'sensor_name': 'LeaderTrackDetector_radar',
                                  'position_sequence_length': 100,
@@ -1875,6 +1894,14 @@ class TestGameManual(Game):
                                  "back_lasers_count": 2,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
+                             },
+                             "LaserSensor": {
+                                 'sensor_name': 'LaserSensor',
+                                 "available_angle": 360,
+                                 "angle_step": 10,
+                                 "points_number": 20,
+                                 "sensor_range": 5,
+                                 "sensor_speed": 0.1
                              }
                          }
                          )
