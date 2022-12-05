@@ -1901,7 +1901,9 @@ class TestGameManual(Game):
                                  "angle_step": 10,
                                  "points_number": 20,
                                  "sensor_range": 5,
-                                 "sensor_speed": 0.1
+                                 "sensor_speed": 0.1,
+                                 "return_all_points":False,
+                                 "return_only_distances": True
                              }
                          }
                          )
