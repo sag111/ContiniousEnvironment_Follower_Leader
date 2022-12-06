@@ -586,10 +586,12 @@ class Game(gym.Env):
 
         for i in range(self.bear_number):
             # TODO:
-            koeff = 90*(i+1)
+            # koeff = 90*(i+1)
             if self.bear_behind:
+                koeff = 150 * (i + 1)
                 bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
             else:
+                koeff = 90 * (i + 1)
                 bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
 
             self.game_dynamic_list.append(AbstractRobot("bear",
@@ -1846,7 +1848,7 @@ class TestGameManual(Game):
                          max_distance=4,
                          max_dev=1,
                          add_bear=True,
-                         bear_behind=False,
+                         bear_behind=True,
                          multi_random_bears=False,
                          bear_number=1,
                          corridor_length=8,
