@@ -424,7 +424,10 @@ class Game(gym.Env):
         self._pos_follower_behind_leader()
 
         # TODO: позиционирование препятствий
-        # self._pos_bears_nearest_leader()
+        if self.bear_behind:
+            # self._pos_bears_nearest_leader()
+            self._reset_pose_bear()
+
 
 
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
@@ -609,6 +612,12 @@ class Game(gym.Env):
         self.dynamics_index = [0]*self.bear_number
         self.dynamics_index_lead = [0] * self.bear_number
         return 0
+
+    def _reset_pose_bear(self):
+        for i in range(len(self.game_dynamic_list)):
+            koeff = 150 * (i + 1)
+            bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+            self.game_dynamic_list[i].position = bear_start_position
 
     def _pos_bears_nearest_leader(self):
 
@@ -1846,7 +1855,7 @@ class TestGameManual(Game):
                          max_distance=4,
                          max_dev=1,
                          add_bear=True,
-                         bear_behind=False,
+                         bear_behind=True,
                          multi_random_bears=False,
                          bear_number=1,
                          corridor_length=8,
