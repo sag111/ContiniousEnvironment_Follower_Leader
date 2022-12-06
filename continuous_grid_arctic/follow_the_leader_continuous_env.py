@@ -56,7 +56,7 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  add_bear=True,
-                 bear_number=3,
+                 bear_number = 3,
                  multi_random_bears = False,
                  obstacle_number=35,
                  bear_behind=False,
@@ -586,12 +586,10 @@ class Game(gym.Env):
 
         for i in range(self.bear_number):
             # TODO:
-            # koeff = 90*(i+1)
+            koeff = 90*(i+1)
             if self.bear_behind:
-                koeff = 70 * (i + 1)
-                bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+                bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
             else:
-                koeff = 90 * (i + 1)
                 bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
 
             self.game_dynamic_list.append(AbstractRobot("bear",
@@ -1848,7 +1846,7 @@ class TestGameManual(Game):
                          max_distance=4,
                          max_dev=1,
                          add_bear=True,
-                         bear_behind=True,
+                         bear_behind=False,
                          multi_random_bears=False,
                          bear_number=1,
                          corridor_length=8,
