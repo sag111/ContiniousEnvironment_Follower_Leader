@@ -1902,8 +1902,8 @@ class TestGameManual(Game):
                              "LeaderCorridor_lasers_v2": {
                                  'sensor_name': 'LeaderCorridor_lasers_v2',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 5,
-                                 "back_lasers_count": 2,
+                                 "front_lasers_count": 6,
+                                 "back_lasers_count": 6,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              }

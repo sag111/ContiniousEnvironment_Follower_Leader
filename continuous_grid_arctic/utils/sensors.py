@@ -690,12 +690,14 @@ class LeaderCorridor_lasers:
 class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
 
     def scan(self, env, corridor):
+        self.count_lasers = 12
         self.lasers_collides = []
         self.lasers_end_points = []
 
-        for i in range(12):
-            self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                           self.host_object.direction + i*30))
+        if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
+            for i in range(self.count_lasers):
+                self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                               self.host_object.direction + i*30))
 
         if len(corridor) > 1:
             corridor_lines = list()
@@ -740,7 +742,7 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
-        obs = np.ones(12, dtype=np.float32) * self.laser_length
+        obs = np.ones(self.count_lasers, dtype=np.float32) * self.laser_length
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - self.host_object.position)
         return obs
