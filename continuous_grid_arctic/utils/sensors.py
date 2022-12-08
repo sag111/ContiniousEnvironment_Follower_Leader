@@ -564,8 +564,8 @@ class LeaderCorridor_lasers:
         self.host_object = host_object
         self.sensor_name = sensor_name
         # TODO: сделать гибкую настройку лазеров
-        assert front_lasers_count in [3, 5]
-        assert back_lasers_count in [0, 2]
+        # assert front_lasers_count in [3, 5]
+        # assert back_lasers_count in [0, 2]
         self.front_lasers_count = front_lasers_count
         self.back_lasers_count = back_lasers_count
         self.laser_length = laser_length
