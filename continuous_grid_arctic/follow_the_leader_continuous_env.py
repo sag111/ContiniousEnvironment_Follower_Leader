@@ -585,11 +585,12 @@ class Game(gym.Env):
 
         self.bears_obs = list()
         bear_size = 25
-        bear_speed_coeff = 1.1
+        # bear_speed_coeff = 1.1
 
         for i in range(self.bear_number):
             # TODO:
             koeff = 90*(i+1)
+            bear_speed_coeff = 0.8 + (i/0.8)
             if self.bear_behind:
                 # bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
                 bear_start_position = (10, 10)
@@ -1860,7 +1861,7 @@ class TestGameManual(Game):
                          bear_behind=True,
                          multi_random_bears=False,
                          bear_number=1,
-                         corridor_length=8,
+                         corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
                          follower_speed_koeff=0.6,
@@ -1898,24 +1899,24 @@ class TestGameManual(Game):
                                  'position_sequence_length': 100,
                                  'radar_sectors_number': 7,
                                  'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
+                             "LeaderCorridor_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_lasers_v2',
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 5,
                                  "back_lasers_count": 2,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
-                             },
-                             "LaserSensor": {
-                                 'sensor_name': 'LaserSensor',
-                                 "available_angle": 360,
-                                 "angle_step": 10,
-                                 "points_number": 20,
-                                 "sensor_range": 5,
-                                 "sensor_speed": 0.1,
-                                 "return_all_points":False,
-                                 "return_only_distances": True
                              }
+                             # "LaserSensor": {
+                             #     'sensor_name': 'LaserSensor',
+                             #     "available_angle": 360,
+                             #     "angle_step": 10,
+                             #     "points_number": 20,
+                             #     "sensor_range": 5,
+                             #     "sensor_speed": 0.1,
+                             #     "return_all_points":False,
+                             #     "return_only_distances": True
+                             # }
                          }
                          )
 
