@@ -590,10 +590,13 @@ class Game(gym.Env):
         for i in range(self.bear_number):
             # TODO:
             koeff = 90*(i+1)
-            bear_speed_coeff = 0.8 + (i/0.8)
+            # bear_speed_coeff = 0.8 + (i/0.8)
+            bear_speed_coeff = 1.1
             if self.bear_behind:
                 # bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+
                 bear_start_position = (10, 10)
+
 
             else:
                 bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
