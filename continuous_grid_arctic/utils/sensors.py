@@ -693,7 +693,7 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
         self.count_lasers = 12
         self.lasers_collides = []
         self.lasers_end_points = []
-
+        print("!!!!!!!!!!!!!!!!!!!!!!!",self.front_lasers_count+self.back_lasers_count)
         if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
             for i in range(self.count_lasers):
                 self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
