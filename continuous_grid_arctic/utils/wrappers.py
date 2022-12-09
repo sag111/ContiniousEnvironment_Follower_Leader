@@ -130,7 +130,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
         if 'LeaderCorridor_lasers_v2' in self.follower.sensors:
             corridor_lasers = obs['LeaderCorridor_lasers_v2']
-            corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers'].laser_length, 0, 1)
+            corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers_v2'].laser_length, 0, 1)
             features_list.append(corridor_lasers)
 
         if 'LaserSensor' in self.follower_sensors:
