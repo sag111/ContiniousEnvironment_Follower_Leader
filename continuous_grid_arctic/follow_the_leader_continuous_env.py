@@ -1852,7 +1852,7 @@ class TestGameManual(Game):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=5000,
-                         obstacle_number=35,
+                         obstacle_number=70,
                          constant_follower_speed=False,
                          max_distance=4,
                          max_dev=1,
@@ -1898,14 +1898,22 @@ class TestGameManual(Game):
                                  'position_sequence_length': 100,
                                  'radar_sectors_number': 7,
                                  'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers_v2": {
-                                 'sensor_name': 'LeaderCorridor_lasers_v2',
+                             "LeaderCorridor_lasers": {
+                                 'sensor_name': 'LeaderCorridor_lasers',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 6,
-                                 "back_lasers_count": 6,
+                                 "front_lasers_count": 5,
+                                 "back_lasers_count": 2,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              }
+                             # "LeaderCorridor_lasers_v2": {
+                             #     'sensor_name': 'LeaderCorridor_lasers_v2',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 6,
+                             #     "back_lasers_count": 6,
+                             #     "react_to_green_zone": True,
+                             #     "laser_length": 150
+                             # }
                              # "LaserSensor": {
                              #     'sensor_name': 'LaserSensor',
                              #     "available_angle": 360,
