@@ -75,6 +75,7 @@ class Game(gym.Env):
                  corridor_width=1,
                  negative_speed=False,
                  follower_speed_koeff=0.5,
+                 bear_speed_coeff=1.1,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -238,6 +239,7 @@ class Game(gym.Env):
         self.corridor_width = self._to_pixels(corridor_width)
         self.negative_speed = negative_speed
         self.follower_speed_koeff = follower_speed_koeff
+        self.bear_speed_coeff = bear_speed_coeff
         # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
@@ -586,7 +588,7 @@ class Game(gym.Env):
         self.bears_obs = list()
         bear_size = 25
         # TODO : вынести в конфиг и сделать настраиваемым для различных режимов езды
-        bear_speed_coeff = 1.1
+        # bear_speed_coeff = 1.2
 
         for i in range(self.bear_number):
             # TODO:
@@ -602,7 +604,7 @@ class Game(gym.Env):
                                       height=bear_size,
                                       width=bear_size,
                                       min_speed=self.leader_config["min_speed"],
-                                      max_speed=bear_speed_coeff * self.leader_config["max_speed"],
+                                      max_speed=self.bear_speed_coeff * self.leader_config["max_speed"],
                                       max_speed_change=self._to_pixels(0.005),  # / 100,
                                       max_rotation_speed=self.leader_config["max_rotation_speed"],
                                       max_rotation_speed_change=20 / 100,
@@ -1852,7 +1854,7 @@ class TestGameManual(Game):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=5000,
-                         obstacle_number=70,
+                         obstacle_number=35,
                          constant_follower_speed=False,
                          max_distance=4,
                          max_dev=1,
@@ -1860,6 +1862,7 @@ class TestGameManual(Game):
                          bear_behind=True,
                          multi_random_bears=False,
                          bear_number=1,
+                         bear_speed_coeff=1.4,
                          corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
