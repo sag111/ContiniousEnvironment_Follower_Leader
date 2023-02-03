@@ -791,6 +791,7 @@ class Game(gym.Env):
             obs, reward, done, info = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
+        # print("OBS", obs['LeaderCorridorObstacles_lasers'])
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         return obs, reward, done, info
@@ -1892,41 +1893,37 @@ class TestGameManual(Game):
                                  'saving_period': 8,
                                  'start_corridor_behind_follower':True
                                  },
-                             #'LeaderTrackDetector_vector': {
-                             #    'sensor_name': 'LeaderTrackDetector_vector',
-                             #    'position_sequence_length': 10},
-
-                             'LeaderTrackDetector_radar': {
-                                 'sensor_name': 'LeaderTrackDetector_radar',
-                                 'position_sequence_length': 100,
-                                 'radar_sectors_number': 7,
-                                 'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
-                                 "react_to_obstacles": True,
-                                 "front_lasers_count": 5,
-                                 "back_lasers_count": 2,
-                                 "react_to_green_zone": True,
-                                 "laser_length": 150
-                             }
-                             # "LeaderCorridor_lasers_v2": {
-                             #     'sensor_name': 'LeaderCorridor_lasers_v2',
+                             # 'LeaderTrackDetector_radar': {
+                             #     'sensor_name': 'LeaderTrackDetector_radar',
+                             #     'position_sequence_length': 100,
+                             #     'radar_sectors_number': 7,
+                             #     'detectable_positions': 'near'},
+                             # "LeaderCorridor_lasers": {
+                             #     'sensor_name': 'LeaderCorridor_lasers',
                              #     "react_to_obstacles": True,
-                             #     "front_lasers_count": 6,
-                             #     "back_lasers_count": 6,
+                             #     "front_lasers_count": 5,
+                             #     "back_lasers_count": 2,
                              #     "react_to_green_zone": True,
                              #     "laser_length": 150
                              # }
-                             # "LaserSensor": {
-                             #     'sensor_name': 'LaserSensor',
-                             #     "available_angle": 360,
-                             #     "angle_step": 10,
-                             #     "points_number": 20,
-                             #     "sensor_range": 5,
-                             #     "sensor_speed": 0.1,
-                             #     "return_all_points":False,
-                             #     "return_only_distances": True
-                             # }
+                             "LeaderCorridor_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_lasers_v2',
+                                 "react_to_obstacles": False,
+                                 "front_lasers_count": 6,
+                                 "back_lasers_count": 6,
+                                 "react_to_safe_corridor": True,
+                                 "react_to_green_zone": True,
+                                 "laser_length": 150
+                             },
+                             "LeaderObstacles_lasers": {
+                                 'sensor_name': 'LeaderObstacles_lasers',
+                                 "react_to_obstacles": True,
+                                 "front_lasers_count": 6,
+                                 "back_lasers_count": 6,
+                                 "react_to_safe_corridor": False,
+                                 "react_to_green_zone": False,
+                                 "laser_length": 150
+                             }
                          }
                          )
 

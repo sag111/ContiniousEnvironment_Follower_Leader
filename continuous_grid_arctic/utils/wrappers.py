@@ -86,11 +86,19 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
                 features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
             if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers']:
                 features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
+
         # TODO : привести потом в нормальный вид
         if 'LeaderCorridor_lasers_v2' in self.follower_sensors:
             if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
                 features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
             if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
+                features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
+
+        # TODO : привести потом в нормальный вид
+        if 'LeaderObstacles_lasers' in self.follower_sensors:
+            if 'front_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
+                features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
+            if 'back_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
                 features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
 
 
@@ -131,9 +139,14 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             features_list.append(corridor_lasers)
 
         if 'LeaderCorridor_lasers_v2' in self.follower.sensors:
-            corridor_lasers = obs['LeaderCorridor_lasers_v2']
-            corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers_v2'].laser_length, 0, 1)
-            features_list.append(corridor_lasers)
+            corridor_lasers_v2 = obs['LeaderCorridor_lasers_v2']
+            corridor_lasers_v2 = np.clip(corridor_lasers_v2 / self.follower.sensors['LeaderCorridor_lasers_v2'].laser_length, 0, 1)
+            features_list.append(corridor_lasers_v2)
+
+        if 'LeaderObstacles_lasers' in self.follower.sensors:
+            corridor_obs_lasers = obs['LeaderObstacles_lasers']
+            corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['LeaderObstacles_lasers'].laser_length, 0, 1)
+            features_list.append(corridor_obs_lasers)
 
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
@@ -150,6 +163,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             action /= self.scale
         obs, rews, dones, infos = self.env.step(action)
         obs = self.observation(obs)
+        print(obs)
         return obs, rews, dones, infos
 
 # сначала сделал нормализацию в отдельном классе, а не параметром action_values_range
