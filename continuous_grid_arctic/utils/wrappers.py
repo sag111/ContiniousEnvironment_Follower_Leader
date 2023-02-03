@@ -90,16 +90,16 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         # TODO : привести потом в нормальный вид
         if 'LeaderCorridor_lasers_v2' in self.follower_sensors:
             if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
+                features_number += env.follower_sensors['LeaderCorridor_lasers_v2']['front_lasers_count']
             if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
+                features_number += env.follower_sensors['LeaderCorridor_lasers_v2']['back_lasers_count']
 
         # TODO : привести потом в нормальный вид
         if 'LeaderObstacles_lasers' in self.follower_sensors:
             if 'front_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
+                features_number += env.follower_sensors['LeaderObstacles_lasers']['front_lasers_count']
             if 'back_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
+                features_number += env.follower_sensors['LeaderObstacles_lasers']['back_lasers_count']
 
 
         if 'LaserSensor' in self.follower_sensors:
