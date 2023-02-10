@@ -7,7 +7,7 @@ try:
     from utils.misc import rotateVector, calculateAngle
 except:
     from continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
-    
+
 from warnings import warn
 
 
@@ -101,6 +101,9 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             if 'back_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
                 features_number += env.follower_sensors['LeaderObstacles_lasers']['back_lasers_count']
 
+        if 'FollowerInfo' in self.follower_sensors:
+            if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
+                features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
 
         if 'LaserSensor' in self.follower_sensors:
             if self.follower_sensors['LaserSensor']['return_all_points']:
@@ -119,8 +122,8 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             self.scale = (high_bound - low_bound) / (env.action_space.high - env.action_space.low)
             self.min = low_bound - env.action_space.low * self.scale
             self.action_space = Box(low=-np.ones_like(env.action_space.low),
-                                    high=np.ones_like(env.action_space.high), 
-                                    shape=env.action_space.shape, 
+                                    high=np.ones_like(env.action_space.high),
+                                    shape=env.action_space.shape,
                                     dtype=env.action_space.dtype)
 
     def observation(self, obs):
@@ -148,6 +151,11 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['LeaderObstacles_lasers'].laser_length, 0, 1)
             features_list.append(corridor_obs_lasers)
 
+        if 'FollowerInfo' in self.follower.sensors:
+            follower_info = obs['FollowerInfo']
+            follower_info = np.clip(follower_info, -1, 1)
+            features_list.append(follower_info)
+
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
             # переход к относительным координатам лучше делать в сенсоре
@@ -167,7 +175,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         return obs, rews, dones, infos
 
 # сначала сделал нормализацию в отдельном классе, а не параметром action_values_range
-# просто для обратной совместимости оставил, чтоб старые конфиги работали. 
+# просто для обратной совместимости оставил, чтоб старые конфиги работали.
 class ContinuousObserveModifier_v1(ContinuousObserveModifier_v0):
     def __init__(self, env, lz4_compress=False):
         super().__init__(env, action_values_range=[-1, 1])
@@ -204,7 +212,7 @@ class LeaderTrajectory_v0(ObservationWrapper):
         - минимальная дистанция
         - максимальная дистанция
         - максимальное отклонение от маршрута
-        
+
         На выходе вектор из 2 конкатеринованных вектора:
         - вектор из пар координат векторов разностей между текущей позицией ведомого и последними N позициями ведущего по которым он прошёл
         - вектор радара, имеет количество компонент равное аргументу из конфига radar_sectors_number, каждая компонента дистанция до ближайшей точки в соответствующем секторе полугруга перед собой.

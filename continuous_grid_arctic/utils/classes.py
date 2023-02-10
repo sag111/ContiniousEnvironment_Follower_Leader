@@ -263,6 +263,10 @@ class RobotWithSensors(AbstractRobot):
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
             elif sensor_name in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
+
+            elif sensor_name in ['FollowerInfo']:
+                sensors_observes[sensor_name] = sensor.scan(env)
+
             else:
                 sensors_observes[sensor_name] = sensor.scan(env)
 

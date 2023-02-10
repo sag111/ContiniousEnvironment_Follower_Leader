@@ -807,7 +807,9 @@ class LeaderObstacles_lasers(LeaderCorridor_lasers):
         obs = np.ones(self.count_lasers, dtype=np.float32) * self.laser_length
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - self.host_object.position)
-
+        # print("!!!!!!!!!!!!!!!!!!")
+        # print(type(obs))
+        # print(obs)
         return obs
 
     def show(self, env):
@@ -816,6 +818,34 @@ class LeaderObstacles_lasers(LeaderCorridor_lasers):
 
         for laser_collide in self.lasers_collides:
             pygame.draw.circle(env.gameDisplay, (0, 200, 64), laser_collide, 5)
+
+
+class FollowerInfo:
+    def __init__(self,
+                 host_object,
+                 sensor_name,
+                 speed_direction_param=2):
+        """
+        :param host_object: робот, на котором висит сенсор
+        :param sensor_name: название сенсора. Важно, если  несколько одинаковых
+        """
+        self.host_object = host_object
+        self.sensor_name = sensor_name
+        self.speed_direction_param = speed_direction_param
+
+    def scan(self, env):
+        self.host_object.speed
+        self.host_object.direction
+
+        obs = np.ones(self.speed_direction_param, dtype=np.float32)
+        obs[0] = self.host_object.speed/self.host_object.max_speed
+        obs[1] = self.host_object.direction/360
+        # print(obs)
+        return obs
+
+    def show(self, env):
+        return 0
+
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
 SENSOR_NAME_TO_CLASS = {
@@ -827,5 +857,6 @@ SENSOR_NAME_TO_CLASS = {
     "LeaderCorridor_lasers": LeaderCorridor_lasers,
     "GreenBoxBorderSensor": GreenBoxBorderSensor,
     "LeaderCorridor_lasers_v2": LeaderCorridor_lasers_v2,
-    "LeaderObstacles_lasers": LeaderObstacles_lasers
+    "LeaderObstacles_lasers": LeaderObstacles_lasers,
+    "FollowerInfo": FollowerInfo
 }

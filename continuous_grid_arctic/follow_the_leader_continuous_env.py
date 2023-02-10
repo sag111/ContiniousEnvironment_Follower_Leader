@@ -56,7 +56,7 @@ class Game(gym.Env):
                  aggregate_reward=False,
                  add_obstacles=True,
                  add_bear=True,
-                 bear_number = 3,
+                 bear_number=3,
                  multi_random_bears = False,
                  obstacle_number=35,
                  bear_behind=False,
@@ -1923,6 +1923,10 @@ class TestGameManual(Game):
                                  "react_to_safe_corridor": False,
                                  "react_to_green_zone": False,
                                  "laser_length": 150
+                             },
+                             "FollowerInfo": {
+                                 'sensor_name': 'FollowerInfo',
+                                 'speed_direction_param': 2
                              }
                          }
                          )
