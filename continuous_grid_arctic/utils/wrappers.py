@@ -101,6 +101,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             if 'back_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
                 features_number += env.follower_sensors['LeaderObstacles_lasers']['back_lasers_count']
 
+        # TODO : привести потом в нормальный вид
+        if 'Leader_Dyn_Obstacles_lasers' in self.follower_sensors:
+            if 'front_lasers_count' in env.follower_sensors['Leader_Dyn_Obstacles_lasers']:
+                features_number += env.follower_sensors['Leader_Dyn_Obstacles_lasers']['front_lasers_count']
+            if 'back_lasers_count' in env.follower_sensors['Leader_Dyn_Obstacles_lasers']:
+                features_number += env.follower_sensors['Leader_Dyn_Obstacles_lasers']['back_lasers_count']
+
         if 'FollowerInfo' in self.follower_sensors:
             if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
                 features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
@@ -149,6 +156,11 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         if 'LeaderObstacles_lasers' in self.follower.sensors:
             corridor_obs_lasers = obs['LeaderObstacles_lasers']
             corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['LeaderObstacles_lasers'].laser_length, 0, 1)
+            features_list.append(corridor_obs_lasers)
+
+        if 'Leader_Dyn_Obstacles_lasers' in self.follower.sensors:
+            corridor_obs_lasers = obs['Leader_Dyn_Obstacles_lasers']
+            corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['Leader_Dyn_Obstacles_lasers'].laser_length, 0, 1)
             features_list.append(corridor_obs_lasers)
 
         if 'FollowerInfo' in self.follower.sensors:
