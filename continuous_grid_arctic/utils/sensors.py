@@ -691,14 +691,16 @@ class LeaderCorridor_lasers:
 class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
 
     def scan(self, env, corridor):
-        self.count_lasers = 12
+        self.count_lasers = self.front_lasers_count + self.back_lasers_count
+        laser_period = 360/self.count_lasers
+
         self.lasers_collides = []
         self.lasers_end_points = []
         # print("!!!!!!!!!!!!!!!!!!!!!!!",self.front_lasers_count+self.back_lasers_count)
         if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
             for i in range(self.count_lasers):
                 self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                               self.host_object.direction + i*30))
+                                                               self.host_object.direction + i*laser_period))
 
         if len(corridor) > 1:
             corridor_lines = list()
@@ -752,14 +754,15 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
 class LeaderObstacles_lasers(LeaderCorridor_lasers):
 
     def scan(self, env, corridor):
-        self.count_lasers = 12
+        self.count_lasers = self.front_lasers_count + self.back_lasers_count
+        laser_period = 360/self.count_lasers
         self.lasers_collides = []
         self.lasers_end_points = []
         # print("!!!!!!!!!!!!!!!!!!!!!!!",self.front_lasers_count+self.back_lasers_count)
         if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
             for i in range(self.count_lasers):
                 self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                               self.host_object.direction + i*30))
+                                                               self.host_object.direction + i*laser_period))
         if len(corridor) > 1:
             corridor_lines = list()
             # if self.react_to_safe_corridor:
@@ -823,14 +826,16 @@ class LeaderObstacles_lasers(LeaderCorridor_lasers):
 class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers):
 
     def scan(self, env, corridor):
-        self.count_lasers = 12
+        self.count_lasers = self.front_lasers_count + self.back_lasers_count
+        laser_period = 360/self.count_lasers
+
         self.lasers_collides = []
         self.lasers_end_points = []
         # print("!!!!!!!!!!!!!!!!!!!!!!!",self.front_lasers_count+self.back_lasers_count)
         if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
             for i in range(self.count_lasers):
                 self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                               self.host_object.direction + i*30))
+                                                               self.host_object.direction + i*laser_period))
         if len(corridor) > 1:
             corridor_lines = list()
             # if self.react_to_safe_corridor:

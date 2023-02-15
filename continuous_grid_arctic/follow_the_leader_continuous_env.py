@@ -1918,8 +1918,8 @@ class TestGameManual(Game):
                              "LeaderObstacles_lasers": {
                                  'sensor_name': 'LeaderObstacles_lasers',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 6,
-                                 "back_lasers_count": 6,
+                                 "front_lasers_count": 15,
+                                 "back_lasers_count": 15,
                                  "react_to_safe_corridor": False,
                                  "react_to_green_zone": False,
                                  "laser_length": 150
@@ -1927,11 +1927,11 @@ class TestGameManual(Game):
                              "Leader_Dyn_Obstacles_lasers": {
                                  'sensor_name': 'Leader_Dyn_Obstacles_lasers',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 6,
-                                 "back_lasers_count": 6,
+                                 "front_lasers_count": 15,
+                                 "back_lasers_count": 15,
                                  "react_to_safe_corridor": False,
                                  "react_to_green_zone": False,
-                                 "laser_length": 150
+                                 "laser_length": 200
 
                              },
                              "FollowerInfo": {
