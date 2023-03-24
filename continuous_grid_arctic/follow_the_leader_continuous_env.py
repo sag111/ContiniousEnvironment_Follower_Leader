@@ -817,11 +817,10 @@ class Game(gym.Env):
 
     def step(self, action):
 
-        print("leader ", self.leader.max_speed)
+        # print("leader ", self.leader.max_speed)
         # print("follower ", self.follower.max_speed)
-        print("bear ", self.game_dynamic_list[0].max_speed)
-        # print(self.dynamics_index)
-        # print(self.cur_points_for_bear)
+        # print("bear ", self.game_dynamic_list[0].max_speed)
+
 
 
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
