@@ -1937,7 +1937,7 @@ class TestGameManual(Game):
                          add_bear=True,
                          bear_behind=False,
                          multi_random_bears=False,
-                         move_bear_v4=True,
+                         move_bear_v4=False,
                          bear_number=2,
                          bear_speed_coeff=1.2,
                          corridor_length=7,
