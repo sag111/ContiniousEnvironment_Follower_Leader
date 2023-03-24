@@ -57,7 +57,8 @@ class Game(gym.Env):
                  add_obstacles=True,
                  add_bear=True,
                  bear_number=3,
-                 multi_random_bears = False,
+                 multi_random_bears=False,
+                 move_bear_v4=True,
                  obstacle_number=35,
                  bear_behind=False,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
@@ -235,6 +236,9 @@ class Game(gym.Env):
         self.bear_number = bear_number
         self.multi_random_bears = multi_random_bears
         self.bear_behind = bear_behind
+        self.move_bear_v4 = move_bear_v4
+
+
         self.corridor_length = self._to_pixels(corridor_length)
         self.corridor_width = self._to_pixels(corridor_width)
         self.negative_speed = negative_speed
@@ -390,6 +394,7 @@ class Game(gym.Env):
         # TODO : перенести в конфиг
         if self.add_bear:
             self._create_dyn_obs()
+            self._reset_pose_bear()
 
         # список точек пройденного пути Ведущего, которые попадают в границы требуемого расстояния
         self.green_zone_trajectory_points = list()
@@ -584,6 +589,10 @@ class Game(gym.Env):
 
 
     def _create_dyn_obs(self):
+        """
+        Returns:
+            Создать динамические препятствия
+        """
 
         self.bears_obs = list()
         bear_size = 25
@@ -593,6 +602,7 @@ class Game(gym.Env):
         for i in range(self.bear_number):
             # TODO:
             koeff = 90*(i+1)
+            koeff = 150
             if self.bear_behind:
                 # bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
                 bear_start_position = (10, 10)
@@ -614,14 +624,58 @@ class Game(gym.Env):
 
         self.cur_points_for_bear = [bear_start_position] * self.bear_number
         self.dynamics_index = [0]*self.bear_number
-        self.dynamics_index_lead = [0] * self.bear_number
+        # self.dynamics_index_lead = [0] * self.bear_number
         return 0
+
+    def _move_bear_v4(self, index):
+        if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
+            self.dynamics_index[index] += 1
+        if self.dynamics_index[index] > 3:
+            self.dynamics_index[index] = 0
+
+        level_1 = 150
+        level_2 = 250
+
+        p1 = (self.leader.position + rotateVector(np.array([level_1, 0]),
+                                                  self.leader.direction + 140))
+        p2 = (self.leader.position + rotateVector(np.array([level_1, 0]),
+                                                  self.leader.direction - 140))
+
+        p3 = (self.leader.position + rotateVector(np.array([level_2, 0]),
+                                                  self.leader.direction - 160))
+        p4 = (self.leader.position + rotateVector(np.array([level_2, 0]),
+                                                  self.leader.direction + 160))
+
+
+        if index == 0:
+            dyn_points_list = [p1, p2, p4, p3]
+        elif index == 1:
+            dyn_points_list = [p4, p3, p1, p2]
+        elif index == 2:
+            dyn_points_list = [p2, p4, p3, p1]
+        elif index == 3:
+            dyn_points_list = [p3, p1, p2, p4]
+        else:
+            dyn_points_list = [0, 0, 0, 0]
+            for i in range(4):
+                dyn_points_list[i] = (random.randrange(self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                      random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+
+        cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        return cur_point
+
 
     def _reset_pose_bear(self):
         for i in range(len(self.game_dynamic_list)):
-            koeff = 150 * (i + 1)
-            bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
-            self.game_dynamic_list[i].position = bear_start_position
+            # koeff = 150 * (i + 1)
+            koeff = 150
+            if i % 2 == 0:
+                bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+                self.game_dynamic_list[i].position = bear_start_position
+            else:
+                bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+                self.game_dynamic_list[i].position = bear_start_position
 
     def _pos_bears_nearest_leader(self):
 
@@ -661,7 +715,7 @@ class Game(gym.Env):
         p3 = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
         p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
 
-        if index == 0 :
+        if index == 0:
             dyn_points_list = [p3, p4, p1, p2]
         else:
             dyn_points_list = [p3, p2, p1, p4]
@@ -731,7 +785,8 @@ class Game(gym.Env):
             cur_point = dyn_points_list[self.dynamics_index[index]]
 
         else:
-            dyn_points_list = [0, 0, 0, 0]
+            p = (0,0)
+            dyn_points_list = [p, p, p, p]
             for i in range(4):
                 dyn_points_list[i] = (random.randrange(self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
                                       random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
@@ -755,12 +810,20 @@ class Game(gym.Env):
         for i in dyn_points_list:
             dist = distance.euclidean(dyn_obstacle_pose, i)
             if dist <= min_dist:
-                min_dist=dist
+                min_dist = dist
                 cur_point = i
 
         return cur_point
 
     def step(self, action):
+
+        print("leader ", self.leader.max_speed)
+        # print("follower ", self.follower.max_speed)
+        print("bear ", self.game_dynamic_list[0].max_speed)
+        # print(self.dynamics_index)
+        # print(self.cur_points_for_bear)
+
+
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
             self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
@@ -838,9 +901,15 @@ class Game(gym.Env):
 
         if self.add_bear:
 
+
             for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
 
-                if self.multi_random_bears:
+                if self.move_bear_v4:
+                    self.cur_points_for_bear[cur_dyn_obj_index] = self._move_bear_v4(cur_dyn_obj_index)
+                    self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+                        self.cur_points_for_bear[cur_dyn_obj_index])
+
+                elif self.multi_random_bears:
 
                     if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 150:
                         # print("ALARM")
@@ -1012,14 +1081,21 @@ class Game(gym.Env):
         """Рассматривает, не участвует ли объект в коллизиях"""
         objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
         dyn_objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_dynamic_list if cur_obj is not target_object]
-
-        if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
-                (target_object.rectangle.collidelist(dyn_objects_to_collide) != -1) or \
-                any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
-                any(target_object.position < 0):
-            return True
+        if target_object.name == 'leader':
+            if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
+                    any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
+                    any(target_object.position < 0):
+                return True
+            else:
+                return False
         else:
-            return False
+            if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
+                    (target_object.rectangle.collidelist(dyn_objects_to_collide) != -1) or \
+                    any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
+                    any(target_object.position < 0):
+                return True
+            else:
+                return False
 
     def render(self, custom_message=None, **kwargs):
         """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
@@ -1860,10 +1936,11 @@ class TestGameManual(Game):
                          max_distance=4,
                          max_dev=1,
                          add_bear=True,
-                         bear_behind=True,
+                         bear_behind=False,
                          multi_random_bears=False,
-                         bear_number=1,
-                         bear_speed_coeff=1.4,
+                         move_bear_v4=True,
+                         bear_number=2,
+                         bear_speed_coeff=1.2,
                          corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
