@@ -710,10 +710,10 @@ class Game(gym.Env):
 
         koeff = 90*(index+1)
 
-        p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
-        p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
-        p3 = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
-        p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+        p1 = np.array(self.leader.position[0] + koeff, self.leader.position[1] + koeff)
+        p2 = np.array(self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+        p3 = np.array(self.leader.position[0] - koeff, self.leader.position[1] - koeff)
+        p4 = np.array(self.leader.position[0] + koeff, self.leader.position[1] - koeff)
 
         if index == 0:
             dyn_points_list = [p3, p4, p1, p2]
@@ -723,7 +723,6 @@ class Game(gym.Env):
         # dyn_points_list = [p3, p4, p1, p2]
 
         cur_point = dyn_points_list[self.dynamics_index[index]]
-
         return cur_point
     def _choose_points_for_bear_stat(self, index):
         if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
@@ -733,13 +732,13 @@ class Game(gym.Env):
 
         bears_points_behind_leader = []
         # ramdom_koeff = random.randrange(int(100), int(300), 10)
-        ramdom_koeff = 150*(index+1)
+        ramdom_koeff = 100*(index+1)
         # print(ramdom_koeff)
         if index >= 0:
             p1 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
-                                                         self.leader.direction - 140))
+                                                         self.leader.direction - 130))
             p2 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
-                                                         self.leader.direction + 140))
+                                                         self.leader.direction + 130))
 
             dyn_points_list = [p1, p2]
             cur_point = dyn_points_list[self.dynamics_index[index]]
@@ -900,49 +899,59 @@ class Game(gym.Env):
 
         if self.add_bear:
 
-
             for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
-
-                if self.move_bear_v4:
+                if self.move_bear_v4 and cur_dyn_obj_index % 2:
                     self.cur_points_for_bear[cur_dyn_obj_index] = self._move_bear_v4(cur_dyn_obj_index)
-                    self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
-                        self.cur_points_for_bear[cur_dyn_obj_index])
-
-                elif self.multi_random_bears:
-
-                    if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 150:
-                        # print("ALARM")
-                        self.cur_points_for_bear[cur_dyn_obj_index] = self._chose_cur_point_for_leader(
-                            self.game_dynamic_list[cur_dyn_obj_index].position, 1)
-                        self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
-                            self.cur_points_for_bear[cur_dyn_obj_index])
-
-                    else:
-                        self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_move_bears_points(cur_dyn_obj_index)
-                        self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
-
                 else:
-                    # TODO : debug, может стоит поправить в будущем
+                    self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
+                    # self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+                self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
 
-                    if self.bear_behind:
-                        # TODO : test 1
-                        self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
-                    else:
-                        # TODO : test 2
-                        self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
-
-                    self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
-
-                    # TODO : test 3
-                    # if distance.euclidean(self.leader.position,
-                    #                       self.game_dynamic_list[cur_dyn_obj_index].position) < 80:
-                    #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
-                    #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
-                    #         self.cur_points_for_bear[cur_dyn_obj_index], speed=0)
-                    # else:
-                    #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
-                    #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
-                    #         self.cur_points_for_bear[cur_dyn_obj_index])
+        # if self.add_bear:
+        #
+        #
+        #     for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
+        #
+        #         if self.move_bear_v4:
+        #             self.cur_points_for_bear[cur_dyn_obj_index] = self._move_bear_v4(cur_dyn_obj_index)
+        #             self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #                 self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #         elif self.multi_random_bears:
+        #
+        #             if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 150:
+        #                 # print("ALARM")
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._chose_cur_point_for_leader(
+        #                     self.game_dynamic_list[cur_dyn_obj_index].position, 1)
+        #                 self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #                     self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #             else:
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_move_bears_points(cur_dyn_obj_index)
+        #                 self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #         else:
+        #             # TODO : debug, может стоит поправить в будущем
+        #
+        #             if self.bear_behind:
+        #                 # TODO : test 1
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
+        #             else:
+        #                 # TODO : test 2
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #
+        #             self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #             # TODO : test 3
+        #             # if distance.euclidean(self.leader.position,
+        #             #                       self.game_dynamic_list[cur_dyn_obj_index].position) < 80:
+        #             #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #             #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #             #         self.cur_points_for_bear[cur_dyn_obj_index], speed=0)
+        #             # else:
+        #             #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #             #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #             #         self.cur_points_for_bear[cur_dyn_obj_index])
 
 
 
@@ -1937,8 +1946,8 @@ class TestGameManual(Game):
                          add_bear=True,
                          bear_behind=False,
                          multi_random_bears=False,
-                         move_bear_v4=False,
-                         bear_number=2,
+                         move_bear_v4=True,
+                         bear_number=1,
                          bear_speed_coeff=1.2,
                          corridor_length=7,
                          corridor_width=1.5,
