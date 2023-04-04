@@ -74,7 +74,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         self.observations_list = None
         features_number = 0
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", env)
-        print(dir(env))
+        print(dir(env.env))
         # этот должен быть -1:1
         if 'LeaderTrackDetector_vector' in self.follower_sensors:
             features_number += env.follower_sensors['LeaderTrackDetector_vector']['position_sequence_length'] * 2
