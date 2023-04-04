@@ -128,6 +128,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             else:
                 features_number += lidar_points_number * 2
 
+        self.features_number_num = features_number
         if self.prev_obs_flag:
             self.observation_space = Box(-np.ones([self.num_prev_obs, features_number]),
                                          np.ones([self.num_prev_obs, features_number]))
@@ -198,7 +199,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def add_prev_obs(self, concatenate_features_list):
         if self.observations_list is None:
-            self.observations_list = np.zeros([self.num_prev_obs, features_number])
+            self.observations_list = np.zeros([self.num_prev_obs, self.features_number_num])
 
         remove_arr = self.observations_list
         after_remove = np.delete(remove_arr, [-1], 0)
