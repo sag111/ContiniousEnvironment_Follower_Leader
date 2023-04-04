@@ -126,7 +126,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             else:
                 features_number += lidar_points_number * 2
 
-        if env.env.use_prev_obs:
+        if True:
             self.observation_space = Box(-np.ones([env.env.max_prev_obs, features_number]),
                                          np.ones([env.env.max_prev_obs, features_number]))
         else:
