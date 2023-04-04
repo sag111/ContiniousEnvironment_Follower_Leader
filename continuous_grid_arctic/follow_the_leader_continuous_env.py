@@ -76,7 +76,10 @@ class Game(gym.Env):
                  corridor_width=1,
                  negative_speed=False,
                  follower_speed_koeff=0.5,
+                 leader_speed_coeff=0.5,
                  bear_speed_coeff=1.1,
+                 use_prev_obs=False,
+                 max_prev_obs=5,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -243,10 +246,15 @@ class Game(gym.Env):
         self.corridor_width = self._to_pixels(corridor_width)
         self.negative_speed = negative_speed
         self.follower_speed_koeff = follower_speed_koeff
+        self.leader_speed_coeff = leader_speed_coeff
         self.bear_speed_coeff = bear_speed_coeff
         # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
+
+        self.use_prev_obs = use_prev_obs
+        self.max_prev_obs = max_prev_obs
+
 
         if not self.add_obstacles:
             self.obstacle_number = 0
@@ -258,7 +266,7 @@ class Game(gym.Env):
         if self.negative_speed:
             self.follower_config = {
                 # 'min_speed': 0,
-                'min_speed':-(self._to_pixels(self.follower_speed_koeff) / 100),
+                'min_speed': -(self._to_pixels(self.follower_speed_koeff) / 100),
                 'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
                 'max_rotation_speed': 57.296 / 100,
             }
@@ -271,7 +279,7 @@ class Game(gym.Env):
             }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': self._to_pixels(0.5) / 100,
+            'max_speed': self._to_pixels(self.leader_speed_coeff) / 100,
             'max_rotation_speed': 57.296 / 100,
         }
         self.discrete_action_space = discrete_action_space
@@ -816,9 +824,9 @@ class Game(gym.Env):
 
     def step(self, action):
 
-        # print("leader ", self.leader.max_speed)
-        # print("follower ", self.follower.max_speed)
-        # print("bear ", self.game_dynamic_list[0].max_speed)
+        print("leader ", self.leader.max_speed)
+        print("follower ", self.follower.max_speed)
+        print("bear ", self.game_dynamic_list[0].max_speed)
 
 
 
@@ -907,6 +915,7 @@ class Game(gym.Env):
                     # self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
                 self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
 
+        # TODO : старые алгоритмы движения динамического препятствия
         # if self.add_bear:
         #
         #
@@ -1947,12 +1956,15 @@ class TestGameManual(Game):
                          bear_behind=False,
                          multi_random_bears=False,
                          move_bear_v4=True,
-                         bear_number=1,
-                         bear_speed_coeff=1.2,
+                         bear_number=2,
+                         bear_speed_coeff=1.0,
                          corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
                          follower_speed_koeff=0.6,
+                         leader_speed_coeff=0.45,
+                         use_prev_obs=True,
+                         max_prev_obs=5,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,

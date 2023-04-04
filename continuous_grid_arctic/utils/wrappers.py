@@ -71,6 +71,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def __init__(self, env, action_values_range=None, lz4_compress=False):
         super().__init__(env)
+        self.observations_list = None
         features_number = 0
         # этот должен быть -1:1
         if 'LeaderTrackDetector_vector' in self.follower_sensors:
@@ -121,8 +122,14 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
                 features_number += lidar_points_number
             else:
                 features_number += lidar_points_number * 2
-        self.observation_space = Box(-np.ones(features_number),
-                                     np.ones(features_number))
+
+        if env.use_prev_obs:
+            self.observation_space = Box(-np.ones([env.max_prev_obs, features_number]),
+                                         np.ones([env.max_prev_obs, features_number]))
+        else:
+            self.observation_space = Box(-np.ones(features_number),
+                                         np.ones(features_number))
+
         self.action_values_range = action_values_range
         if self.action_values_range is not None:
             low_bound, high_bound = self.action_values_range
@@ -175,7 +182,24 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
                 lidar_sensed_points = np.concatenate(lidar_sensed_points)
             lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors["LaserSensor"].range * self.PIXELS_TO_METER), -1, 1)
             features_list.append(lidar_sensed_points)
-        return np.concatenate(features_list)
+
+        if env.use_prev_obs:
+            concatenate_features_list = np.concatenate(features_list)
+            self.observations_list = self.add_prev_obs(concatenate_features_list)
+        else:
+            self.observations_list = np.concatenate(features_list)
+        print("observations_list", self.observations_list)
+        return self.observations_list
+
+    def add_prev_obs(self, concatenate_features_list):
+        if self.observations_list is None:
+            self.observations_list = np.zeros([env.max_prev_obs, features_number])
+
+        remove_arr = self.observations_list
+        after_remove = np.delete(remove_arr, [-1], 0)
+        after_add = np.insert(after_remove, 0, concatenate_features_list, axis=0)
+
+        return after_add
 
     def step(self, action):
         if self.action_values_range is not None:
