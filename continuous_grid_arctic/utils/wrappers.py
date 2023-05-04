@@ -3,6 +3,7 @@ from collections import deque
 import numpy as np
 from gym import ObservationWrapper
 from gym.spaces import Box
+import cv2
 try:
     from utils.misc import rotateVector, calculateAngle
 except:
@@ -138,12 +139,146 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         obs = self.observation(obs)
         return obs, rews, dones, infos
 
-# сначала сделал нормализацию в отдельном классе, а не параметром action_values_range
-# просто для обратной совместимости оставил, чтоб старые конфиги работали. 
-class ContinuousObserveModifier_v1(ContinuousObserveModifier_v0):
-    def __init__(self, env, lz4_compress=False):
-        super().__init__(env, action_values_range=[-1, 1])
-        warn("ContinuousObserveModifier_v1 is deprecated and will be removed", DeprecationWarning)
+def areDotsOnLeft(line, dots):
+    """
+    Определяем, лежат ли точки dots слева от прямой line
+    line: ndarray [[x1, y1], [x2,y2]]
+    dots: ndarray (points, coordinates)
+    """
+    # D = (x2 - x1) * (yp - y1) - (xp - x1) * (y2 - y1)
+    d = (line[1,0] - line[0,0]) * (dots[:,1] - line[0,1]) - (dots[:, 0] - line[0,0]) * (line[1,1]-line[0,1])
+    return d > 0.01
+# Враппер, который выходы лидара преобразует в 2д картинку
+class ContinuousObserveModifier_lidarMap2d(ContinuousObserveModifier_v0):
+    def __init__(self, env, action_values_range=None, map_wrapper_forgetting_rate=None, resized_image_shape=(84,84), add_safezone_on_map=False, lz4_compress=False):
+        super().__init__(env)
+        print(map_wrapper_forgetting_rate, add_safezone_on_map)
+        self.map_wrapper_forgetting_rate = map_wrapper_forgetting_rate
+        self.lidar_angle_steps_count = 1 + self.follower_sensors['LaserSensor']['available_angle'] // self.follower_sensors['LaserSensor']['angle_step'] 
+        self.lidar_points_number = self.follower_sensors['LaserSensor']['points_number']
+        self.lidar_range_pixels = self.follower_sensors['LaserSensor']['sensor_range'] * env.PIXELS_TO_METER
+        self.resized_image_shape = resized_image_shape
+        self.add_safezone_on_map = add_safezone_on_map
+
+        self.observation_space = Box(-np.zeros(list(resized_image_shape) + [3]),
+                                     np.ones(list(resized_image_shape) + [3]))
+        self.action_values_range = action_values_range
+        if self.action_values_range is not None:
+            low_bound, high_bound = self.action_values_range
+            self.scale = (high_bound - low_bound) / (env.action_space.high - env.action_space.low)
+            self.min = low_bound - env.action_space.low * self.scale
+            self.action_space = Box(low=-np.ones_like(env.action_space.low),
+                                    high=np.ones_like(env.action_space.high), 
+                                    shape=env.action_space.shape, 
+                                    dtype=env.action_space.dtype)
+        self.prev_lidar_map = None
+
+    def DrawLidar2dMap(self, lidar_map_size,
+                     leader_position,
+                     follower_position,
+                     angle_between_leader_and_follower,
+                     lidar_observation,
+                     lidar_angle_step,
+                     leader_directions,
+                     follower_direction):
+        """
+        leader_position - координаты лидера
+        follower_position - координаты фолловера
+        """
+        
+        # рисуем карту из нулей
+        lidar_map = np.zeros((lidar_map_size[0], lidar_map_size[1], 3), dtype=np.float32)
+        # Заполняем красный канал единицами - препятствия, потом будем обнулять точки, которые видит лидар
+        lidar_map[:,:,0] = 1
+        
+        # добавить прямоугольник за лидером
+        # вычисляем линии простого прямоугольника за спиной у лидера в относительных координатах
+        if self.add_safezone_on_map:
+            min_distance, max_distance, max_dev = self.min_distance, self.max_distance, self.max_dev
+            rectangle_points = [np.array([-min_distance, max_dev]), np.array([-min_distance, -max_dev]),
+                               np.array([-min_distance - max_distance, max_dev]), np.array([-min_distance - max_distance, -max_dev])]
+            rotated_rectangle_points = [rotateVector(x, leader_directions) for x in rectangle_points]
+            actual_rectangle_points = [x+leader_position for x in rotated_rectangle_points]
+            relative_to_follower_rectangle_points = [x-follower_position for x in actual_rectangle_points]
+            relative_to_follower_rectangle_points_rotated = [rotateVector(x, -follower_direction) for x in relative_to_follower_rectangle_points]
+            # проверяем точки лидара на то, находятся ли они внутри этого прямоугольника или нет.
+            
+            line = np.array([relative_to_follower_rectangle_points[1], relative_to_follower_rectangle_points[0]])
+            insideDots_currRectangle = areDotsOnLeft(line, lidar_observation)
+            line = np.array([relative_to_follower_rectangle_points[3], relative_to_follower_rectangle_points[1]])
+            insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+            line = np.array([ relative_to_follower_rectangle_points[2], relative_to_follower_rectangle_points[3]])
+            insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+            line = np.array([relative_to_follower_rectangle_points[0], relative_to_follower_rectangle_points[2]])
+            insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+        else:
+            insideDots_currRectangle = np.zeros(lidar_observation.shape[0], dtype=np.bool)
+        step_i, point_i = 0, 0
+        # идём по точкам, которые вернул лидар
+        # предполагается, что каждая точка [0,0] в списке - это начало нового луча
+        for x_i, x in enumerate(lidar_observation):
+            if (x==0).all():
+                point_i = 0
+                if x_i !=0:
+                    if step_i==0:
+                        step_i += 1
+                    elif step_i > 0:
+                        step_i *= -1
+                    elif step_i < 0:
+                        step_i *= -1
+                        step_i += 1     
+            # Если эта точка есть в списке, ставим ей 0 в красном канале
+            lidar_map[step_i, point_i, 0] = 0
+            if insideDots_currRectangle[x_i]:
+                lidar_map[step_i, point_i, 2] = 1
+            point_i +=1
+        
+        # лидеру на карте ставим 1 в зелёном канале
+        follower_to_leader_vec = leader_position - follower_position
+        follower_to_leader_dist = np.linalg.norm(follower_to_leader_vec)
+        distance_between_points = self.lidar_range_pixels / self.lidar_points_number
+        if follower_to_leader_dist <= self.lidar_range_pixels:
+            leader_row_on_map = -int(angle_between_leader_and_follower // lidar_angle_step)
+            leader_col_on_map = int(follower_to_leader_dist // distance_between_points)
+            lidar_map[leader_row_on_map, leader_col_on_map, 1] = 1
+        return lidar_map
+
+    def observation(self, obs):
+        leader_position = np.array([obs['numerical_features'][0], obs['numerical_features'][1]])
+        follower_position = np.array([obs['numerical_features'][5], obs['numerical_features'][6]])
+        relative_leader_position = leader_position - follower_position
+        relative_leader_position_2 = rotateVector(relative_leader_position, -obs['numerical_features'][8])
+        arccos_x = np.arccos(relative_leader_position_2.dot(np.array([1, 0])) / (np.linalg.norm(relative_leader_position_2) * np.linalg.norm(np.array([1, 0]))))
+        arccos_y = np.arccos(relative_leader_position_2.dot(np.array([0, 1])) / (np.linalg.norm(relative_leader_position_2) * np.linalg.norm(np.array([0, 1]))))
+        if arccos_y > np.pi / 2:
+            arccos_x = -arccos_x
+        angle_between_leader_and_follower = np.degrees(arccos_x)
+        
+        lidar_map = self.DrawLidar2dMap((self.lidar_angle_steps_count, self.lidar_points_number), leader_position, follower_position,
+                                 angle_between_leader_and_follower,  obs["LaserSensor"], self.follower_sensors['LaserSensor']['angle_step'],
+                                 obs['numerical_features'][3], obs['numerical_features'][8])
+
+        lidar_map = np.roll(lidar_map, self.lidar_angle_steps_count // 2, axis=0)
+        if self.prev_lidar_map is not None:
+            lidar_map += (self.prev_lidar_map - self.map_wrapper_forgetting_rate)
+            lidar_map = np.clip(lidar_map, 0, 1)
+        self.prev_lidar_map = lidar_map
+        resized = cv2.resize(lidar_map, self.resized_image_shape, interpolation = cv2.INTER_NEAREST)
+        return resized
+
+    def step(self, action):
+        if self.action_values_range is not None:
+            action -= self.min
+            action /= self.scale
+        obs, rews, dones, infos = self.env.step(action)
+        obs = self.observation(obs)
+        return obs, rews, dones, infos
+
+    def reset(self, **kwargs):
+        observation = self.env.reset(**kwargs)
+        self.prev_lidar_map = None
+
+        return self.observation(observation)
 
 class LeaderTrajectory_v0(ObservationWrapper):
     """
