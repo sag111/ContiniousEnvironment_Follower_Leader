@@ -202,9 +202,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             self.observations_list = np.zeros([self.num_prev_obs, self.features_number_num])
 
         remove_arr = self.observations_list
-        after_remove = np.delete(remove_arr, [-1], 0)
-        after_add = np.insert(after_remove, 0, concatenate_features_list, axis=0)
+        # вариант добавления нового сверху
+        # after_remove = np.delete(remove_arr, [-1], 0)
+        # after_add = np.insert(after_remove, 0, concatenate_features_list, axis=0)
+        # вариант добавления нового снизу
 
+        after_remove = np.delete(remove_arr, [0], 0)
+        after_add = np.vstack([after_remove, a1])
         return after_add
 
     def step(self, action):
@@ -213,7 +217,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             action /= self.scale
         obs, rews, dones, infos = self.env.step(action)
         obs = self.observation(obs)
-        print(obs)
+        print("OBS",obs)
         return obs, rews, dones, infos
 
 # сначала сделал нормализацию в отдельном классе, а не параметром action_values_range
