@@ -114,6 +114,12 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             if 'back_lasers_count' in env.follower_sensors['Leader_Dyn_Obstacles_lasers']:
                 features_number += env.follower_sensors['Leader_Dyn_Obstacles_lasers']['back_lasers_count']
 
+        if 'LaserPrevSensor' in self.follower_sensors:
+            if 'front_lasers_count' in env.follower_sensors['LaserPrevSensor']:
+                features_number += env.follower_sensors['LaserPrevSensor']['front_lasers_count']
+            if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor']:
+                features_number += env.follower_sensors['LaserPrevSensor']['back_lasers_count']
+
         if 'FollowerInfo' in self.follower_sensors:
             if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
                 features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
@@ -208,7 +214,7 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         # вариант добавления нового снизу
 
         after_remove = np.delete(remove_arr, [0], 0)
-        after_add = np.vstack([after_remove, a1])
+        after_add = np.vstack([after_remove, after_remove])
         return after_add
 
     def step(self, action):
