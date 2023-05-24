@@ -11,6 +11,8 @@ except:
     from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 
+import pandas as pd
+
 class LaserSensor():
     """Реализует лазерный лидар"""
 
@@ -997,7 +999,17 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
                 all_obs_list.append(obs_item)
 
             all_obs_arr = np.array(all_obs_list)
-            print('ALL CORIDOR OBS ARR: ', all_obs_arr)
+            # print('ALL CORIDOR OBS ARR: ', all_obs_arr)
+
+        env.count_history += 1
+        a1 = np.array([env.count_history]*env.max_prev_obs)
+        a2 = np.array([1, 2, 3, 4, 5])
+        d1 = pd.DataFrame(a1)
+        d2 = pd.DataFrame(a2)
+        d3 = pd.DataFrame(all_obs_arr)
+        df = pd.concat([d1, d2, d3], axis=1, ignore_index=True)
+        df.to_csv("steps_stat_7.csv", index=False, mode='a',
+                  header=False)
 
 
         return all_obs_arr
@@ -1019,7 +1031,6 @@ class LaserPrevSensor(LeaderCorridor_lasers):
 
         print("!!!!!!!!!!!!!!!!!!!!!!!!!")
         # print(env.follower.position)
-        print(env.game_dynamic_list[0].position)
 
 
         self.count_lasers = self.front_lasers_count + self.back_lasers_count
@@ -1089,7 +1100,17 @@ class LaserPrevSensor(LeaderCorridor_lasers):
                 all_obs_list.append(obs_item)
 
             all_obs_arr = np.array(all_obs_list)
-            print('ALL OBS ARR: ', all_obs_arr)
+            # print('ALL OBS ARR: ', all_obs_arr)
+
+        # env.count_history += 1
+        # a1 = np.array([env.count_history]*env.max_prev_obs)
+        # a2 = np.array([1, 2, 3, 4, 5])
+        # d1 = pd.DataFrame(a1)
+        # d2 = pd.DataFrame(a2)
+        # d3 = pd.DataFrame(all_obs_arr)
+        # df = pd.concat([d1, d2, d3], axis=1, ignore_index=True)
+        # df.to_csv("steps_all_3.csv", index=False, mode='a',
+        #           header=False)
 
 
         return all_obs_arr

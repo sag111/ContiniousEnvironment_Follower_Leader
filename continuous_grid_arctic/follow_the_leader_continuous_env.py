@@ -344,6 +344,8 @@ class Game(gym.Env):
         self.game_object_list = list()
         self.game_dynamic_list = list()
 
+        self.count_history = 0
+
 
     def check_parameters(self):
         """
@@ -360,6 +362,13 @@ class Game(gym.Env):
 
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
+
+        file = '/home/sheins/rl_robot/continuous-grid-arctic/steps_stat_7.csv'
+        if (os.path.exists(file) and os.path.isfile(file)):
+            os.remove(file)
+            print("file deleted")
+        else:
+            print("file not found")
 
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
@@ -1970,15 +1979,15 @@ class TestGameManual(Game):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=5000,
-                         obstacle_number=35,
+                         obstacle_number=0,
                          constant_follower_speed=False,
                          max_distance=4,
                          max_dev=1,
-                         add_bear=True,
+                         add_bear=False,
                          bear_behind=False,
                          multi_random_bears=False,
                          move_bear_v4=True,
-                         bear_number=1,
+                         bear_number=2,
                          bear_speed_coeff=1.2,
                          corridor_length=7,
                          corridor_width=1.5,
@@ -2060,8 +2069,8 @@ class TestGameManual(Game):
                              "LeaderCorridor_Prev_lasers_v2": {
                                  'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 6,
-                                 "back_lasers_count": 6,
+                                 "front_lasers_count": 2,
+                                 "back_lasers_count": 2,
                                  "react_to_safe_corridor": True,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
@@ -2069,8 +2078,8 @@ class TestGameManual(Game):
                              "LaserPrevSensor": {
                                 'sensor_name': 'LaserPrevSensor',
                                 "react_to_obstacles": True,
-                                "front_lasers_count": 15,
-                                "back_lasers_count": 15,
+                                "front_lasers_count": 4,
+                                "back_lasers_count": 4,
                                 "react_to_safe_corridor": False,
                                 "react_to_green_zone": False,
                                 "laser_length": 150
