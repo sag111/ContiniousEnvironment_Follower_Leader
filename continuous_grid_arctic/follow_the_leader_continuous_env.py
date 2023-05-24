@@ -255,6 +255,10 @@ class Game(gym.Env):
         self.use_prev_obs = use_prev_obs
         self.max_prev_obs = max_prev_obs
 
+        # TODO: убрать потом данную тестовую переменную
+        self.history_corridor_laser_list = []
+        self.history_obstacles_list = []
+
 
         if not self.add_obstacles:
             self.obstacle_number = 0
@@ -438,6 +442,16 @@ class Game(gym.Env):
         self.leader.direction = angle_to_point(self.leader.position, self.cur_target_point)
         self._pos_follower_behind_leader()
 
+        # TODO: список истории положений динамических препятствий
+
+        if self.use_prev_obs:
+            zeros_item = np.zeros([1, 2, 2])
+            self.history_obstacles_list = list()
+            self.history_corridor_laser_list = list()
+            for i in range(self.max_prev_obs):
+                self.history_obstacles_list.append(zeros_item)
+                self.history_corridor_laser_list.append(zeros_item)
+
         # TODO: позиционирование препятствий
         if self.bear_behind:
             # self._pos_bears_nearest_leader()
@@ -508,6 +522,7 @@ class Game(gym.Env):
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
+
 
     def _pos_follower_behind_leader(self):
         follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
@@ -824,10 +839,17 @@ class Game(gym.Env):
 
     def step(self, action):
 
-        print("leader ", self.leader.max_speed)
-        print("follower ", self.follower.max_speed)
-        print("bear ", self.game_dynamic_list[0].max_speed)
+        # print("leader ", self.leader.max_speed)
+        # print("follower ", self.follower.max_speed)
+        # print("bear ", self.game_dynamic_list[0].max_speed)
+        # print(self.follower.position)
 
+
+        print("history_obstacles_list: ", len(self.history_obstacles_list))
+        print(self.history_obstacles_list[0].shape)
+
+        print("history_cor_list: ", len(self.history_corridor_laser_list))
+        print(self.history_corridor_laser_list[0].shape)
 
 
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
@@ -903,7 +925,7 @@ class Game(gym.Env):
             else:
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
-        # TODO : Добавить движение динамичкеского препятствия тут №№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№3
+        # TODO : Добавить движение динамичкеского препятствия тут
 
         if self.add_bear:
 
@@ -2003,8 +2025,40 @@ class TestGameManual(Game):
                              #     "react_to_green_zone": True,
                              #     "laser_length": 150
                              # }
-                             "LeaderCorridor_lasers_v2": {
-                                 'sensor_name': 'LeaderCorridor_lasers_v2',
+                             # "LeaderCorridor_lasers_v2": {
+                             #     'sensor_name': 'LeaderCorridor_lasers_v2',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 6,
+                             #     "back_lasers_count": 6,
+                             #     "react_to_safe_corridor": True,
+                             #     "react_to_green_zone": True,
+                             #     "laser_length": 150
+                             # },
+                             # "LeaderObstacles_lasers": {
+                             #     'sensor_name': 'LeaderObstacles_lasers',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 15,
+                             #     "back_lasers_count": 15,
+                             #     "react_to_safe_corridor": False,
+                             #     "react_to_green_zone": False,
+                             #     "laser_length": 150
+                             # },
+                             # "Leader_Dyn_Obstacles_lasers": {
+                             #     'sensor_name': 'Leader_Dyn_Obstacles_lasers',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 15,
+                             #     "back_lasers_count": 15,
+                             #     "react_to_safe_corridor": False,
+                             #     "react_to_green_zone": False,
+                             #     "laser_length": 200
+                             #
+                             # },
+                             # "FollowerInfo": {
+                             #     'sensor_name': 'FollowerInfo',
+                             #     'speed_direction_param': 2
+                             # },
+                             "LeaderCorridor_Prev_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 6,
                                  "back_lasers_count": 6,
@@ -2012,29 +2066,15 @@ class TestGameManual(Game):
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              },
-                             "LeaderObstacles_lasers": {
-                                 'sensor_name': 'LeaderObstacles_lasers',
-                                 "react_to_obstacles": True,
-                                 "front_lasers_count": 15,
-                                 "back_lasers_count": 15,
-                                 "react_to_safe_corridor": False,
-                                 "react_to_green_zone": False,
-                                 "laser_length": 150
-                             },
-                             "Leader_Dyn_Obstacles_lasers": {
-                                 'sensor_name': 'Leader_Dyn_Obstacles_lasers',
-                                 "react_to_obstacles": True,
-                                 "front_lasers_count": 15,
-                                 "back_lasers_count": 15,
-                                 "react_to_safe_corridor": False,
-                                 "react_to_green_zone": False,
-                                 "laser_length": 200
-
-                             },
-                             "FollowerInfo": {
-                                 'sensor_name': 'FollowerInfo',
-                                 'speed_direction_param': 2
-                             }
+                             "LaserPrevSensor": {
+                                'sensor_name': 'LaserPrevSensor',
+                                "react_to_obstacles": True,
+                                "front_lasers_count": 15,
+                                "back_lasers_count": 15,
+                                "react_to_safe_corridor": False,
+                                "react_to_green_zone": False,
+                                "laser_length": 150
+                            }
                          }
                          )
 
