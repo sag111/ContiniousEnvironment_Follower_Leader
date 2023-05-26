@@ -363,12 +363,12 @@ class Game(gym.Env):
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
 
-        file = '/home/sheins/rl_robot/continuous-grid-arctic/steps_stat_7.csv'
-        if (os.path.exists(file) and os.path.isfile(file)):
-            os.remove(file)
-            print("file deleted")
-        else:
-            print("file not found")
+#         file = '/home/sheins/rl_robot/continuous-grid-arctic/steps_stat_7.csv'
+#         if (os.path.exists(file) and os.path.isfile(file)):
+#             os.remove(file)
+#             print("file deleted")
+#         else:
+#             print("file not found")
 
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
