@@ -854,11 +854,11 @@ class Game(gym.Env):
         # print(self.follower.position)
 
 
-        print("history_obstacles_list: ", len(self.history_obstacles_list))
-        print(self.history_obstacles_list[0].shape)
+        #print("history_obstacles_list: ", len(self.history_obstacles_list))
+        #print(self.history_obstacles_list[0].shape)
 
-        print("history_cor_list: ", len(self.history_corridor_laser_list))
-        print(self.history_corridor_laser_list[0].shape)
+        #print("history_cor_list: ", len(self.history_corridor_laser_list))
+        #print(self.history_corridor_laser_list[0].shape)
 
 
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.

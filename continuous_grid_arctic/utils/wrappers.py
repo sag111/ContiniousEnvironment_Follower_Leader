@@ -74,8 +74,6 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         super().__init__(env)
         self.observations_list = None
         features_number = 0
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", env)
-        print(env.env.use_prev_obs)
         self.prev_obs_flag = env.env.use_prev_obs
         self.num_prev_obs = env.env.max_prev_obs
 
@@ -223,7 +221,6 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             self.observations_list  = np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
         else:
             self.observations_list = np.concatenate(features_list)
-        print("observations_list", self.observations_list)
         return self.observations_list
 
     def add_prev_obs(self, concatenate_features_list):
@@ -246,7 +243,6 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             action /= self.scale
         obs, rews, dones, infos = self.env.step(action)
         obs = self.observation(obs)
-        print("OBS",obs)
         return obs, rews, dones, infos
 
 
@@ -263,8 +259,6 @@ class ContinuousObserveModifierPrev(ObservationWrapper):
         super().__init__(env)
         self.observations_list = None
         features_number = 0
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", env)
-        print(env.env.use_prev_obs)
         self.prev_obs_flag = env.env.use_prev_obs
         self.num_prev_obs = env.env.max_prev_obs
 
@@ -284,13 +278,11 @@ class ContinuousObserveModifierPrev(ObservationWrapper):
 
 
         self.features_number_num = features_number
-        print("features_number_num", self.features_number_num)
 
 
         self.observation_space = Box(-np.ones([self.num_prev_obs, features_number]),
                                      np.ones([self.num_prev_obs, features_number]))
 
-        print(self.observation_space)
 
 
         self.action_values_range = action_values_range
@@ -321,7 +313,6 @@ class ContinuousObserveModifierPrev(ObservationWrapper):
 
         self.observations_list  = np.concatenate((corridor_lasers_v2, corridor_obs_lasers), axis=1)
 
-        print("observations_list", self.observations_list)
         return self.observations_list
 
     def step(self, action):
@@ -330,7 +321,6 @@ class ContinuousObserveModifierPrev(ObservationWrapper):
             action /= self.scale
         obs, rews, dones, infos = self.env.step(action)
         obs = self.observation(obs)
-        print("OBS",obs)
         return obs, rews, dones, infos
 
 def areDotsOnLeft(line, dots):
@@ -354,7 +344,6 @@ class ContinuousObserveModifier_lidarMap2d(ContinuousObserveModifier_v0):
         fill_safe_zone=True,
         lz4_compress=False):
         super().__init__(env)
-        print(map_wrapper_forgetting_rate, add_safezone_on_map)
         self.map_wrapper_forgetting_rate = map_wrapper_forgetting_rate
         self.lidar_angle_steps_count = 1 + self.follower_sensors['LaserSensor']['available_angle'] // self.follower_sensors['LaserSensor']['angle_step']
         self.lidar_points_number = self.follower_sensors['LaserSensor']['points_number']
@@ -525,7 +514,6 @@ class ContinuousObserveModifier_lidarMap2d_v2(ContinuousObserveModifier_lidarMap
                  add_safezone_on_map,
                  fill_safe_zone,
                  lz4_compress)
-        print(map_wrapper_forgetting_rate, add_safezone_on_map)
         self.leader_positions_hist = deque()
         self.corridor = deque()
         self.saving_counter = 0
@@ -555,46 +543,52 @@ class ContinuousObserveModifier_lidarMap2d_v2(ContinuousObserveModifier_lidarMap
         # вычисляем линии простого прямоугольника за спиной у лидера в относительных координатах
         if self.add_safezone_on_map:
             dotsInsideSafeZone = None
-            for i in range(len(self.corridor)-1):
-                rectangle_points = [self.corridor[i][0], self.corridor[i][1],
-                                   self.corridor[i+1][0], self.corridor[i+1][1]]
-                check1 = areDotsOnLeft(np.array([rectangle_points[0], rectangle_points[3]]), np.array([rectangle_points[1], rectangle_points[2]]))
-                check2 = areDotsOnLeft(np.array([rectangle_points[1], rectangle_points[2]]), np.array([rectangle_points[3], rectangle_points[0]]))
-                if ((check1==[False, True]).all() and (check2==[False, True]).all()):
-                    pass
-                elif ((check1==[True, True]).all() and (check2==[True, True]).all()):
-                    rectangle_points[1], rectangle_points[3] = rectangle_points[3], rectangle_points[1]
-                elif ((check1==[False, False]).all() and (check2==[False, False]).all()):
-                    rectangle_points[0], rectangle_points[2] = rectangle_points[2], rectangle_points[0]
-                elif ((check1==[True, True]).all() and (check2==[False, False]).all()):
-                    rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
-                elif ((check1==[False, False]).all() and (check2==[True, True]).all()):
-                    rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
-                elif ((check1==[True, False]).all() and (check2==[True, False]).all()):
-                    rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
-                    rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
-                elif (((check1==[False, True]).all() or (check1==[True, False]).all()) and (check2==[True, True]).all()):
-                    warnings.warn("Впуклый прямоугольник, не обрабатывается корректно")
-                    pass
-                elif ((check1==[True, True]).all() and ((check2==[True, False]).all() or (check2==[False, True]).all())):
-                    warnings.warn("Впуклый прямоугольник, не обрабатывается корректно")
-                else:
-                    raise ValueError("Не предвидел такой вариант расположения вершин прямоугольника (сегмента корридора) при проверке, находятся ли точки внутри него: check1:{}, check2:{}".format(str(check1), str(check2)))
-                # проверяем точки лидара на то, находятся ли они внутри этого прямоугольника или нет.
-                # Проверка для каждой стороны 4-ёхугольника, лежат ли точки слева от неё. Точки, которые слева от всех сторон - внутри многоугольника.
-                # TODO: Не работает с впуклыми многоугольниками, возможно стоит попробовать алгоритм с лучами или ещё что-то.
-                line = np.array([rectangle_points[0], rectangle_points[1]])
-                insideDots_currRectangle = areDotsOnLeft(line, lidar_observation)
-                line = np.array([rectangle_points[1], rectangle_points[3]])
-                insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
-                line = np.array([rectangle_points[3], rectangle_points[2]])
-                insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
-                line = np.array([rectangle_points[2], rectangle_points[0]])
-                insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
-                if i==0:
-                    dotsInsideSafeZone = insideDots_currRectangle
-                else:
-                    dotsInsideSafeZone |= insideDots_currRectangle
+            if len(self.corridor)>2:
+                for i in range(len(self.corridor)-1):
+                    rectangle_points = [self.corridor[i][0], self.corridor[i][1],
+                                       self.corridor[i+1][0], self.corridor[i+1][1]]
+                    check1 = areDotsOnLeft(np.array([rectangle_points[0], rectangle_points[3]]), np.array([rectangle_points[1], rectangle_points[2]]))
+                    check2 = areDotsOnLeft(np.array([rectangle_points[1], rectangle_points[2]]), np.array([rectangle_points[3], rectangle_points[0]]))
+                    if ((check1==[False, True]).all() and (check2==[False, True]).all()):
+                        pass
+                    elif ((check1==[True, True]).all() and (check2==[True, True]).all()):
+                        rectangle_points[1], rectangle_points[3] = rectangle_points[3], rectangle_points[1]
+                    elif ((check1==[False, False]).all() and (check2==[False, False]).all()):
+                        rectangle_points[0], rectangle_points[2] = rectangle_points[2], rectangle_points[0]
+                    elif ((check1==[True, True]).all() and (check2==[False, False]).all()):
+                        rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
+                    elif ((check1==[False, False]).all() and (check2==[True, True]).all()):
+                        rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
+                    elif ((check1==[True, False]).all() and (check2==[True, False]).all()):
+                        rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
+                        rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
+                    elif (((check1==[False, True]).all() or (check1==[True, False]).all()) and (check2==[True, True]).all()):
+                        warn("Впуклый прямоугольник, не обрабатывается корректно")
+                    elif ((check1==[True, True]).all() and ((check2==[True, False]).all() or (check2==[False, True]).all())):
+                        warn("Впуклый прямоугольник, не обрабатывается корректно")
+                    elif ((check1==[False, False]).all() and ((check2==[True, False]).all() or (check2==[False, True]).all())):
+                        warn("Впуклый прямоугольник, не обрабатывается корректно")
+                    elif (((check1==[False, True]).all() or (check1==[True, False]).all()) and (check2==[False, False]).all()):
+                        warn("Впуклый прямоугольник, не обрабатывается корректно")
+                    else:
+                        raise ValueError("Не предвидел такой вариант расположения вершин прямоугольника (сегмента корридора) при проверке, находятся ли точки внутри него: check1:{}, check2:{}".format(str(check1), str(check2)))
+                    # проверяем точки лидара на то, находятся ли они внутри этого прямоугольника или нет.
+                    # Проверка для каждой стороны 4-ёхугольника, лежат ли точки слева от неё. Точки, которые слева от всех сторон - внутри многоугольника.
+                    # TODO: Не работает с впуклыми многоугольниками, возможно стоит попробовать алгоритм с лучами или ещё что-то.
+                    line = np.array([rectangle_points[0], rectangle_points[1]])
+                    insideDots_currRectangle = areDotsOnLeft(line, lidar_observation)
+                    line = np.array([rectangle_points[1], rectangle_points[3]])
+                    insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+                    line = np.array([rectangle_points[3], rectangle_points[2]])
+                    insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+                    line = np.array([rectangle_points[2], rectangle_points[0]])
+                    insideDots_currRectangle &= areDotsOnLeft(line, lidar_observation)
+                    if i==0:
+                        dotsInsideSafeZone = insideDots_currRectangle
+                    else:
+                        dotsInsideSafeZone |= insideDots_currRectangle
+            else:
+                dotsInsideSafeZone = np.zeros(lidar_observation.shape[0], dtype=np.bool)
         else:
             dotsInsideSafeZone = np.zeros(lidar_observation.shape[0], dtype=np.bool)
         step_i, point_i = 0, 0
