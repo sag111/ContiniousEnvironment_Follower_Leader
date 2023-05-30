@@ -21,6 +21,11 @@ from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
 from continuous_grid_arctic.utils.dstar import Map, Dstar
 from continuous_grid_arctic.utils.rrt import RRT
 
+try:
+    from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+except:
+    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
 # как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
@@ -50,7 +55,12 @@ class Game(gym.Env):
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
+                 add_bear=True,
+                 bear_number=3,
+                 multi_random_bears=False,
+                 move_bear_v4=True,
                  obstacle_number=35,
+                 bear_behind=False,
                  # end_simulation_on_leader_finish=False,  # NotImplemented
                  # discretization_factor=5,  # NotImplemented
                  step_grid=10,
@@ -62,6 +72,14 @@ class Game(gym.Env):
                  constant_follower_speed=False,
                  path_finding_algorythm="dstar",
                  multiple_end_points=False,
+                 corridor_length=4,
+                 corridor_width=1,
+                 negative_speed=False,
+                 follower_speed_koeff=0.5,
+                 leader_speed_coeff=0.5,
+                 bear_speed_coeff=1.1,
+                 use_prev_obs=False,
+                 max_prev_obs=5,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -209,14 +227,38 @@ class Game(gym.Env):
         self.wall_img = pygame.image.load("{}/imgs/wall.png".format(os.path.dirname(os.path.abspath(__file__))))
         self.rock_img = pygame.image.load("{}/imgs/rock.png".format(os.path.dirname(os.path.abspath(__file__))))
 
+        self.bear_img = pygame.image.load("{}/imgs/bear.png".format(os.path.dirname(os.path.abspath(__file__))))
+
         self.caption = caption
         self.manual_control = manual_control
         self.max_steps = max_steps
         self.aggregate_reward = aggregate_reward
 
         self.add_obstacles = add_obstacles
+        self.add_bear = add_bear
+        self.bear_number = bear_number
+        self.multi_random_bears = multi_random_bears
+        self.bear_behind = bear_behind
+        self.move_bear_v4 = move_bear_v4
+
+
+        self.corridor_length = self._to_pixels(corridor_length)
+        self.corridor_width = self._to_pixels(corridor_width)
+        self.negative_speed = negative_speed
+        self.follower_speed_koeff = follower_speed_koeff
+        self.leader_speed_coeff = leader_speed_coeff
+        self.bear_speed_coeff = bear_speed_coeff
+        # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
+
+        self.use_prev_obs = use_prev_obs
+        self.max_prev_obs = max_prev_obs
+
+        # TODO: убрать потом данную тестовую переменную
+        self.history_corridor_laser_list = []
+        self.history_obstacles_list = []
+
 
         if not self.add_obstacles:
             self.obstacle_number = 0
@@ -224,14 +266,24 @@ class Game(gym.Env):
         self.follower_sensors = follower_sensors
         self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
-        self.follower_config = {
-            'min_speed': 0,
-            'max_speed': self._to_pixels(0.5) / 100,
-            'max_rotation_speed': 57.296 / 100,
-        }
+        # TODO : конфиг для отрицательной скорости, наверное стоит поправить это
+        if self.negative_speed:
+            self.follower_config = {
+                # 'min_speed': 0,
+                'min_speed': -(self._to_pixels(self.follower_speed_koeff) / 100),
+                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
+                'max_rotation_speed': 57.296 / 100,
+            }
+        else:
+            self.follower_config = {
+                'min_speed': 0,
+                # 'min_speed':-(self._to_pixels(0.5) / 100),
+                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
+                'max_rotation_speed': 57.296 / 100,
+            }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': self._to_pixels(0.5) / 100,
+            'max_speed': self._to_pixels(self.leader_speed_coeff) / 100,
             'max_rotation_speed': 57.296 / 100,
         }
         self.discrete_action_space = discrete_action_space
@@ -290,6 +342,10 @@ class Game(gym.Env):
         self.step_count = 0
         self.cur_speed_multiplier = 1
         self.game_object_list = list()
+        self.game_dynamic_list = list()
+
+        self.count_history = 0
+
 
     def check_parameters(self):
         """
@@ -307,6 +363,13 @@ class Game(gym.Env):
     def reset(self):
         """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
 
+#         file = '/home/sheins/rl_robot/continuous-grid-arctic/steps_stat_7.csv'
+#         if (os.path.exists(file) and os.path.isfile(file)):
+#             os.remove(file)
+#             print("file deleted")
+#         else:
+#             print("file not found")
+
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
         self.step_count = 0
         self.accumulated_penalty = 0
@@ -317,12 +380,16 @@ class Game(gym.Env):
         # Список всех игровых объектов
         self.game_object_list = list()
 
+        # Список всех динамических препятствий
+        self.game_dynamic_list = list()
+
         # Создание ведущего и ведомого
         self._create_robots()
 
         # Создание препятствий
         if self.add_obstacles:
             self._create_obstacles()
+
 
         # в случае, если траектория не задана или была сгенерирована, при каждой симуляции генерируем новую
         # случайную траекторию
@@ -344,6 +411,11 @@ class Game(gym.Env):
             elif self.path_finding_algorythm == "astar":
                 self.trajectory = self.generate_trajectory_astar(max_iter=None)
             self.trajectory_generated = True
+
+        # TODO : перенести в конфиг
+        if self.add_bear:
+            self._create_dyn_obs()
+            self._reset_pose_bear()
 
         # список точек пройденного пути Ведущего, которые попадают в границы требуемого расстояния
         self.green_zone_trajectory_points = list()
@@ -378,6 +450,24 @@ class Game(gym.Env):
         # располагаем ведомого с учётом того, куда направлен лидер
         self.leader.direction = angle_to_point(self.leader.position, self.cur_target_point)
         self._pos_follower_behind_leader()
+
+        # TODO: список истории положений динамических препятствий
+
+        if self.use_prev_obs:
+            zeros_item = np.zeros([1, 2, 2])
+            self.history_obstacles_list = list()
+            self.history_corridor_laser_list = list()
+            for i in range(self.max_prev_obs):
+                self.history_obstacles_list.append(zeros_item)
+                self.history_corridor_laser_list.append(zeros_item)
+
+        # TODO: позиционирование препятствий
+        if self.bear_behind:
+            # self._pos_bears_nearest_leader()
+            self._reset_pose_bear()
+
+
+
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
         # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
         first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (
@@ -392,6 +482,7 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
+        #  TODO : исправить (уйти от привязки к переменной self.max_distance)
         leader_start_position = (
             random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
             random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
@@ -440,6 +531,7 @@ class Game(gym.Env):
 
         self.game_object_list.append(self.leader)
         self.game_object_list.append(self.follower)
+
 
     def _pos_follower_behind_leader(self):
         follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
@@ -527,7 +619,248 @@ class Game(gym.Env):
         self.follower_too_close = False
         self.crash = False
 
+
+    def _create_dyn_obs(self):
+        """
+        Returns:
+            Создать динамические препятствия
+        """
+
+        self.bears_obs = list()
+        bear_size = 25
+        # TODO : вынести в конфиг и сделать настраиваемым для различных режимов езды
+        # bear_speed_coeff = 1.2
+
+        for i in range(self.bear_number):
+            # TODO:
+            koeff = 90*(i+1)
+            koeff = 150
+            if self.bear_behind:
+                # bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+                bear_start_position = (10, 10)
+            else:
+                bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
+
+            self.game_dynamic_list.append(AbstractRobot("bear",
+                                      image=self.bear_img,
+                                      height=bear_size,
+                                      width=bear_size,
+                                      min_speed=self.leader_config["min_speed"],
+                                      max_speed=self.bear_speed_coeff * self.leader_config["max_speed"],
+                                      max_speed_change=self._to_pixels(0.005),  # / 100,
+                                      max_rotation_speed=self.leader_config["max_rotation_speed"],
+                                      max_rotation_speed_change=20 / 100,
+                                      start_position=bear_start_position,
+                                    ))
+
+
+        self.cur_points_for_bear = [bear_start_position] * self.bear_number
+        self.dynamics_index = [0]*self.bear_number
+        # self.dynamics_index_lead = [0] * self.bear_number
+        return 0
+
+    def _move_bear_v4(self, index):
+        if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
+            self.dynamics_index[index] += 1
+        if self.dynamics_index[index] > 3:
+            self.dynamics_index[index] = 0
+
+        level_1 = 150
+        level_2 = 250
+
+        p1 = (self.leader.position + rotateVector(np.array([level_1, 0]),
+                                                  self.leader.direction + 140))
+        p2 = (self.leader.position + rotateVector(np.array([level_1, 0]),
+                                                  self.leader.direction - 140))
+
+        p3 = (self.leader.position + rotateVector(np.array([level_2, 0]),
+                                                  self.leader.direction - 160))
+        p4 = (self.leader.position + rotateVector(np.array([level_2, 0]),
+                                                  self.leader.direction + 160))
+
+
+        if index == 0:
+            dyn_points_list = [p1, p2, p4, p3]
+        elif index == 1:
+            dyn_points_list = [p4, p3, p1, p2]
+        elif index == 2:
+            dyn_points_list = [p2, p4, p3, p1]
+        elif index == 3:
+            dyn_points_list = [p3, p1, p2, p4]
+        else:
+            dyn_points_list = [0, 0, 0, 0]
+            for i in range(4):
+                dyn_points_list[i] = (random.randrange(self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                      random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+
+        cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        return cur_point
+
+
+    def _reset_pose_bear(self):
+        for i in range(len(self.game_dynamic_list)):
+            # koeff = 150 * (i + 1)
+            koeff = 150
+            if i % 2 == 0:
+                bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+                self.game_dynamic_list[i].position = bear_start_position
+            else:
+                bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+                self.game_dynamic_list[i].position = bear_start_position
+
+    def _pos_bears_nearest_leader(self):
+
+        for index in range(len(self.game_dynamic_list)):
+
+            ramdom_koeff = 150
+            if index==0 or switch:
+                switch = False
+                bear_start_position = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
+                                                                           self.leader.direction - 160))
+                bear_direction = self.leader.direction - 90
+
+            else:
+                switch = True
+                bear_start_position = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
+                                                                           self.leader.direction + 160))
+                bear_direction = self.leader.direction + 90
+
+
+            self.game_dynamic_list[index].position = bear_start_position
+            self.game_dynamic_list[index].direction = bear_direction
+            self.game_dynamic_list[index].start_direction = bear_direction
+
+        return 0
+
+    def _choose_point_around_lid(self, index):
+
+        if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
+            self.dynamics_index[index] += 1
+            if self.dynamics_index[index] > 3:
+                self.dynamics_index[index] = 0
+
+        koeff = 90*(index+1)
+
+        p1 = np.array(self.leader.position[0] + koeff, self.leader.position[1] + koeff)
+        p2 = np.array(self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+        p3 = np.array(self.leader.position[0] - koeff, self.leader.position[1] - koeff)
+        p4 = np.array(self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+
+        if index == 0:
+            dyn_points_list = [p3, p4, p1, p2]
+        else:
+            dyn_points_list = [p3, p2, p1, p4]
+
+        # dyn_points_list = [p3, p4, p1, p2]
+
+        cur_point = dyn_points_list[self.dynamics_index[index]]
+        return cur_point
+    def _choose_points_for_bear_stat(self, index):
+        if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
+            self.dynamics_index[index] += 1
+            if self.dynamics_index[index] > 1:
+                self.dynamics_index[index] = 0
+
+        bears_points_behind_leader = []
+        # ramdom_koeff = random.randrange(int(100), int(300), 10)
+        ramdom_koeff = 100*(index+1)
+        # print(ramdom_koeff)
+        if index >= 0:
+            p1 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
+                                                         self.leader.direction - 130))
+            p2 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
+                                                         self.leader.direction + 130))
+
+            dyn_points_list = [p1, p2]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        return cur_point
+
+
+    def _choose_move_bears_points(self, index):
+
+        if distance.euclidean(self.game_dynamic_list[index].position, self.cur_points_for_bear[index]) < self.leader_pos_epsilon:
+            self.dynamics_index[index] += 1
+            if self.dynamics_index[index] > 3:
+                self.dynamics_index[index] = 0
+
+        if index == 0:
+            koeff = 70
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+            dyn_points_list = [p1, p2, p3, p4]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        elif index == 1:
+            koeff = 100
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+            dyn_points_list = [p4, p3, p2, p1]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        elif index == 2:
+
+            koeff = 150
+
+            p1 = (self.follower.position[0] + koeff, self.follower.position[1] + koeff)
+            p2 = (self.follower.position[0] - koeff, self.follower.position[1] + koeff)
+            p3 = (self.follower.position[0] - koeff, self.follower.position[1] - koeff)
+            p4 = (self.follower.position[0] + koeff, self.follower.position[1] - koeff)
+
+            dyn_points_list = [p1, p2, p3, p4]
+            cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        else:
+            p = (0,0)
+            dyn_points_list = [p, p, p, p]
+            for i in range(4):
+                dyn_points_list[i] = (random.randrange(self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+                                      random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+
+            cur_point = dyn_points_list[self.dynamics_index[index]]
+
+        return cur_point
+
+    def _chose_cur_point_for_leader(self, dyn_obstacle_pose, cur_dyn_point):
+
+        koeff = 150
+
+        p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
+        p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
+        p3 = (self.leader.position[0] - koeff, self.leader.position[1] - koeff)
+        p4 = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
+
+        dyn_points_list = [p1, p2, p3, p4]
+        min_dist = 5000
+        # for i in range(len(dyn_points_list)):
+        for i in dyn_points_list:
+            dist = distance.euclidean(dyn_obstacle_pose, i)
+            if dist <= min_dist:
+                min_dist = dist
+                cur_point = i
+
+        return cur_point
+
     def step(self, action):
+
+        # print("leader ", self.leader.max_speed)
+        # print("follower ", self.follower.max_speed)
+        # print("bear ", self.game_dynamic_list[0].max_speed)
+        # print(self.follower.position)
+
+
+        print("history_obstacles_list: ", len(self.history_obstacles_list))
+        print(self.history_obstacles_list[0].shape)
+
+        print("history_cor_list: ", len(self.history_corridor_laser_list))
+        print(self.history_corridor_laser_list[0].shape)
+
+
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
             self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
@@ -558,6 +891,7 @@ class Game(gym.Env):
             obs, reward, done, info = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
+        # print("OBS", obs['LeaderCorridorObstacles_lasers'])
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         return obs, reward, done, info
@@ -600,6 +934,69 @@ class Game(gym.Env):
             else:
                 self.cur_target_point = self.trajectory[self.cur_target_id]
 
+        # TODO : Добавить движение динамичкеского препятствия тут
+
+        if self.add_bear:
+
+            for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
+                if self.move_bear_v4 and cur_dyn_obj_index % 2:
+                    self.cur_points_for_bear[cur_dyn_obj_index] = self._move_bear_v4(cur_dyn_obj_index)
+                else:
+                    self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
+                    # self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+                self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
+
+        # TODO : старые алгоритмы движения динамического препятствия
+        # if self.add_bear:
+        #
+        #
+        #     for cur_dyn_obj_index in range(0, len(self.game_dynamic_list)):
+        #
+        #         if self.move_bear_v4:
+        #             self.cur_points_for_bear[cur_dyn_obj_index] = self._move_bear_v4(cur_dyn_obj_index)
+        #             self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #                 self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #         elif self.multi_random_bears:
+        #
+        #             if distance.euclidean(self.leader.position, self.game_dynamic_list[cur_dyn_obj_index].position) < 150:
+        #                 # print("ALARM")
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._chose_cur_point_for_leader(
+        #                     self.game_dynamic_list[cur_dyn_obj_index].position, 1)
+        #                 self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #                     self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #             else:
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_move_bears_points(cur_dyn_obj_index)
+        #                 self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #         else:
+        #             # TODO : debug, может стоит поправить в будущем
+        #
+        #             if self.bear_behind:
+        #                 # TODO : test 1
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_points_for_bear_stat(cur_dyn_obj_index)
+        #             else:
+        #                 # TODO : test 2
+        #                 self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #
+        #             self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(self.cur_points_for_bear[cur_dyn_obj_index])
+        #
+        #             # TODO : test 3
+        #             # if distance.euclidean(self.leader.position,
+        #             #                       self.game_dynamic_list[cur_dyn_obj_index].position) < 80:
+        #             #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #             #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #             #         self.cur_points_for_bear[cur_dyn_obj_index], speed=0)
+        #             # else:
+        #             #     self.cur_points_for_bear[cur_dyn_obj_index] = self._choose_point_around_lid(cur_dyn_obj_index)
+        #             #     self.game_dynamic_list[cur_dyn_obj_index].move_to_the_point(
+        #             #         self.cur_points_for_bear[cur_dyn_obj_index])
+
+
+
+        # TODO : Добавить движение динамичкеского препятствия тут №№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№№3
+
         if not self.leader_finished:
             if self.leader_speed_regime is not None:
                 speed = self._process_leader_speed_regime()
@@ -611,6 +1008,9 @@ class Game(gym.Env):
             else:
                 acceleration = 0
             self.leader.move_to_the_point(self.cur_target_point, speed=speed + acceleration)
+
+
+
         else:
             self.leader.command_forward(0)
             self.leader.command_turn(0, 0)
@@ -635,6 +1035,7 @@ class Game(gym.Env):
                     info["mission_status"] = "success"
                     info["leader_status"] = "finished"
                     info["agent_status"] = "finished"
+                    # TODO : вернуть
                     self.done = True
         if self.step_count > self.warm_start:
             if "low_reward" in self.early_stopping and self.accumulated_penalty < self.early_stopping["low_reward"]:
@@ -642,6 +1043,7 @@ class Game(gym.Env):
                 info["mission_status"] = "fail"
                 info["leader_status"] = "moving"
                 info["agent_status"] = "low_reward"
+                # TODO : вернуть
                 self.crash = True
                 self.done = True
 
@@ -652,6 +1054,7 @@ class Game(gym.Env):
                 info["mission_status"] = "fail"
                 info["leader_status"] = "moving"
                 info["agent_status"] = "too_far_from_leader"
+                # TODO : вернуть
                 self.crash = True
                 self.done = True
 
@@ -667,6 +1070,7 @@ class Game(gym.Env):
 
         if self.simulation_time_limit is not None:
             if pygame.time.get_ticks() * 1000 > self.simulation_time_limit:
+                # TODO : вернуть
                 self.done = True
                 print("Время истекло! Прошло {} секунд.".format(self.simulation_time_limit))
 
@@ -678,6 +1082,7 @@ class Game(gym.Env):
             info["mission_status"] = "finished_by_time"
             info["leader_status"] = "moving"
             info["agent_status"] = "moving"
+            # TODO : вернуть
             self.done = True
 
         if self.aggregate_reward:
@@ -723,13 +1128,22 @@ class Game(gym.Env):
     def _collision_check(self, target_object):
         """Рассматривает, не участвует ли объект в коллизиях"""
         objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
-
-        if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
-                any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
-                any(target_object.position < 0):
-            return True
+        dyn_objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_dynamic_list if cur_obj is not target_object]
+        if target_object.name == 'leader':
+            if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
+                    any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
+                    any(target_object.position < 0):
+                return True
+            else:
+                return False
         else:
-            return False
+            if (target_object.rectangle.collidelist(objects_to_collide) != -1) or \
+                    (target_object.rectangle.collidelist(dyn_objects_to_collide) != -1) or \
+                    any(target_object.position > (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT)) or \
+                    any(target_object.position < 0):
+                return True
+            else:
+                return False
 
     def render(self, custom_message=None, **kwargs):
         """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
@@ -802,6 +1216,9 @@ class Game(gym.Env):
         # отображение всех игровых объектов, которые были добавлены в список игровых объектов
         for cur_object in self.game_object_list:
             self.show_object(cur_object)
+
+        for cur_dyn_object in self.game_dynamic_list:
+            self.show_object(cur_dyn_object)
 
         # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов)
         #  [Слава]
@@ -1562,8 +1979,23 @@ class TestGameManual(Game):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=5000,
-                         obstacle_number=35,
+                         obstacle_number=0,
                          constant_follower_speed=False,
+                         max_distance=4,
+                         max_dev=1,
+                         add_bear=False,
+                         bear_behind=False,
+                         multi_random_bears=False,
+                         move_bear_v4=True,
+                         bear_number=2,
+                         bear_speed_coeff=1.2,
+                         corridor_length=7,
+                         corridor_width=1.5,
+                         negative_speed=True,
+                         follower_speed_koeff=0.6,
+                         leader_speed_coeff=0.45,
+                         use_prev_obs=True,
+                         max_prev_obs=5,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -1578,30 +2010,80 @@ class TestGameManual(Game):
                          leader_acceleration_regime={0: 0,
                                                      3100: 0.03,
                                                      4500: 0},
-                         multiple_end_points=True,
+                         multiple_end_points=False,
                          warm_start=0,
-                         early_stopping={"max_distance_coef": 1.4, "low_reward": -300},
+                         early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          random_frames_per_step=[2, 20],
                          follower_sensors={
                              'LeaderPositionsTracker_v2': {
                                  'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
-                                 'saving_period': 8},
-                             #'LeaderTrackDetector_vector': {
-                             #    'sensor_name': 'LeaderTrackDetector_vector',
-                             #    'position_sequence_length': 10},
-                             'LeaderTrackDetector_radar': {
-                                 'sensor_name': 'LeaderTrackDetector_radar',
-                                 'position_sequence_length': 100,
-                                 'radar_sectors_number': 7,
-                                 'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
+                                 'saving_period': 8,
+                                 'start_corridor_behind_follower':True
+                                 },
+                             # 'LeaderTrackDetector_radar': {
+                             #     'sensor_name': 'LeaderTrackDetector_radar',
+                             #     'position_sequence_length': 100,
+                             #     'radar_sectors_number': 7,
+                             #     'detectable_positions': 'near'},
+                             # "LeaderCorridor_lasers": {
+                             #     'sensor_name': 'LeaderCorridor_lasers',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 5,
+                             #     "back_lasers_count": 2,
+                             #     "react_to_green_zone": True,
+                             #     "laser_length": 150
+                             # }
+                             # "LeaderCorridor_lasers_v2": {
+                             #     'sensor_name': 'LeaderCorridor_lasers_v2',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 6,
+                             #     "back_lasers_count": 6,
+                             #     "react_to_safe_corridor": True,
+                             #     "react_to_green_zone": True,
+                             #     "laser_length": 150
+                             # },
+                             # "LeaderObstacles_lasers": {
+                             #     'sensor_name': 'LeaderObstacles_lasers',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 15,
+                             #     "back_lasers_count": 15,
+                             #     "react_to_safe_corridor": False,
+                             #     "react_to_green_zone": False,
+                             #     "laser_length": 150
+                             # },
+                             # "Leader_Dyn_Obstacles_lasers": {
+                             #     'sensor_name': 'Leader_Dyn_Obstacles_lasers',
+                             #     "react_to_obstacles": True,
+                             #     "front_lasers_count": 15,
+                             #     "back_lasers_count": 15,
+                             #     "react_to_safe_corridor": False,
+                             #     "react_to_green_zone": False,
+                             #     "laser_length": 200
+                             #
+                             # },
+                             # "FollowerInfo": {
+                             #     'sensor_name': 'FollowerInfo',
+                             #     'speed_direction_param': 2
+                             # },
+                             "LeaderCorridor_Prev_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 5,
+                                 "front_lasers_count": 2,
                                  "back_lasers_count": 2,
-                                 "react_to_green_zone": True
-                             }
+                                 "react_to_safe_corridor": True,
+                                 "react_to_green_zone": True,
+                                 "laser_length": 150
+                             },
+                             "LaserPrevSensor": {
+                                'sensor_name': 'LaserPrevSensor',
+                                "react_to_obstacles": True,
+                                "front_lasers_count": 4,
+                                "back_lasers_count": 4,
+                                "react_to_safe_corridor": False,
+                                "react_to_green_zone": False,
+                                "laser_length": 150
+                            }
                          }
                          )
 

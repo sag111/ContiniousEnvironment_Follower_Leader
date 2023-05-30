@@ -35,7 +35,7 @@ class RRTStar(RRT):
                  path_resolution=1.0,
                  goal_sample_rate=20,
                  max_iter=10300,
-                 connect_circle_dist=50.0,
+                 connect_circle_dist=10.0,
                  search_until_max_iter=False):
         """
         Setting Parameter

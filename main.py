@@ -59,7 +59,7 @@ if __name__ == "__main__":
         env = gym.make("Test-Cont-Env-Manual-v0")
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
-        env.seed(1)
+        env.seed(8)
         env.reset()
         action = (0,0)
         
@@ -142,7 +142,8 @@ if __name__ == "__main__":
             recorder.capture_frame()
 
             action, _states = model.predict(obs)
-            obs, rewards, dones, info = env.step(action) 
+            obs, rewards, dones, info = env.step(action)
+
             if dones:
                 break
 

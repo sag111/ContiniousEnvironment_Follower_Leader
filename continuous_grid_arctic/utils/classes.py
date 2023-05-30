@@ -249,18 +249,25 @@ class RobotWithSensors(AbstractRobot):
                 leader_positions_hist, leader_corridor = self.sensors['LeaderPositionsTracker'].scan(env)
             else:
                 leader_positions_hist = self.sensors['LeaderPositionsTracker'].scan(env)
+
         if 'LeaderPositionsTracker_v2' in self.sensors.keys():
             if self.sensors['LeaderPositionsTracker_v2'].generate_corridor:
                 leader_positions_hist, leader_corridor = self.sensors['LeaderPositionsTracker_v2'].scan(env)
             else:
                 leader_positions_hist = self.sensors['LeaderPositionsTracker_v2'].scan(env)
+
         for sensor_name, sensor in self.sensors.items():
             if sensor_name == 'LeaderPositionsTracker':
                 continue
             if sensor_name in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
-            elif sensor_name in ['LeaderCorridor_lasers']:
+            elif sensor_name in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
+                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
+
+            elif sensor_name in ['FollowerInfo']:
+                sensors_observes[sensor_name] = sensor.scan(env)
+
             else:
                 sensors_observes[sensor_name] = sensor.scan(env)
 
