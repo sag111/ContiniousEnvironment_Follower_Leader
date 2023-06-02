@@ -206,7 +206,6 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor'].laser_length, 0, 1)
             # features_list.append(corridor_obs_lasers)
 
-
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
             # переход к относительным координатам лучше делать в сенсоре
@@ -683,7 +682,8 @@ class ContinuousObserveModifier_lidarMap2d_v2(ContinuousObserveModifier_lidarMap
             path_length = np.sum(dists)
             while path_length > self.max_distance:
                 self.leader_positions_hist.popleft()
-                self.corridor.popleft()
+                if len(self.corridor) > 0:
+                    self.corridor.popleft()
                 dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
                                        np.array(self.leader_positions_hist)[1:, :], axis=1)
                 path_length = np.sum(dists)
