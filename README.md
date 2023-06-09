@@ -68,7 +68,6 @@ python main.py --manual
 <img src="continuous_grid_arctic/figures/demo_video.gif" width="500">
 </p>
 
-
 ## Конфигурация собственной среды
 Чтобы создать собственную конфигурацию среды, необходимо выполнить следующие шаги: 
 1. В файле follow_the_leader_continuous_env.py создать наследующий основную среду класс (как, например, Test-Cont-Env-Auto-v0);
