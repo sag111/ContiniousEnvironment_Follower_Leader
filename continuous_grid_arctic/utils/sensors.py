@@ -1029,7 +1029,7 @@ class LaserPrevSensor(LeaderCorridor_lasers):
 
     def scan(self, env, corridor):
 
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!")
+        #print("!!!!!!!!!!!!!!!!!!!!!!!!!")
         # print(env.follower.position)
 
 
@@ -1061,7 +1061,7 @@ class LaserPrevSensor(LeaderCorridor_lasers):
 
             # print("1111", corridor_lines.shape)
 
-            print(type(env.history_obstacles_list))
+            #print(type(env.history_obstacles_list))
 
             env.history_obstacles_list.pop(0)
             env.history_obstacles_list.append(corridor_lines)
