@@ -1,22 +1,20 @@
 #!/usr/bin/env python
-import os
 import rospy
 import gym
 
 from gym.utils import seeding
+
+
+from src.arctic_gym.topic.subscribers import Subscribers
+from src.arctic_gym.topic.publishers import Publishers
+
+
+from pathlib import Path
 from pyhocon import ConfigFactory
 
-from src.instruments.rosmod.subscribers import Subscribers
-from src.instruments.rosmod.publishers import Publishers
-from src.instruments.rosmod.services import Services
-from src.instruments.log.customlogger import logger
-
-
-PATH_TO_CONFIG = os.path.join(os.getcwd(), 'CONFIG', 'config.conf')
-config = ConfigFactory.parse_file(PATH_TO_CONFIG)
-
-
-log, formatter = logger(name='gazebo_env', level=config.logmode.gazebo_env)
+project_path = Path(__file__).resolve().parents[3]
+config_path = project_path.joinpath('config/config.conf')
+config = ConfigFactory.parse_file(config_path)
 
 
 class RobotGazeboEnv(gym.Env):
@@ -24,9 +22,8 @@ class RobotGazeboEnv(gym.Env):
     def __init__(self):
         self.seed()
 
-        self.srv = Services()
-        self.pub = Publishers()
-        self.sub = Subscribers()
+        self.pub = Publishers(config)
+        self.sub = Subscribers(config)
 
         self.episode_num = 0
         self.cumulated_episode_reward = 0
@@ -45,5 +42,4 @@ class RobotGazeboEnv(gym.Env):
         raise NotImplementedError()
 
     def close(self):
-        log.info("Завершение работы Gym окружения")
         rospy.signal_shutdown("Closing RobotGazeboEnvironment")

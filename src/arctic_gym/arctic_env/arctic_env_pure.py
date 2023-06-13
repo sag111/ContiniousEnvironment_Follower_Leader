@@ -14,7 +14,7 @@ from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker, GazeboLeaderPositionsTrackerRadar
 
 
-PATH_TO_CONFIG = os.path.join(os.path.expanduser('~'), 'arctic_build', 'robots_HRI', 'CONFIG', 'config.conf')
+PATH_TO_CONFIG = os.path.join(os.path.expanduser('~'), 'arctic_build', 'robots_HRI', 'config', 'config.conf')
 config = ConfigFactory.parse_file(PATH_TO_CONFIG)
 
 

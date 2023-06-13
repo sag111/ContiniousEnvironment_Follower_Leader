@@ -64,8 +64,8 @@ if __name__ == '__main__':
     )
 
     configs = ConfigFactory.parse_file(PATH)
-    # CONFIG = configs.ppo_env4feats12_train5v6
-    # CONFIG["config"]["num_workers"] = 1
+    # config = configs.ppo_env4feats12_train5v6
+    # config["config"]["num_workers"] = 1
 
     CONFIG = configs["ppo_env4feats12_train5v6"].as_plain_ordered_dict()
     CONFIG["config"]["num_workers"] = 1
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         "num_workers": 1,
         "input_evaluation": [],
         # "timesteps_per_iteration": 1000,
-        # "num_gpus": CONFIG['config']['num_gpus'],
+        # "num_gpus": config['config']['num_gpus'],
         "log_level": 'DEBUG',
         "framework": "torch",
         "normalize_actions": False,
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     trainer = PPOTrainer(config=config)
     trainer.restore(CHECKPOINT)
 
-    # trainer = ray.rllib.agents.registry.get_trainer_class(CONFIG["run"])(CONFIG["config"])
+    # trainer = ray.rllib.agents.registry.get_trainer_class(config["run"])(config["config"])
     # trainer.restore(CHECKPOINT)
 
     while True:

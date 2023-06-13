@@ -12,7 +12,7 @@ from flask import Flask, request
 from src.arctic_gym import arctic_env_maker
 
 
-PATH_TO_CONFIG = os.path.join(os.path.expanduser('~'), 'arctic_build', 'robots_HRI', 'CONFIG', 'config.conf')
+PATH_TO_CONFIG = os.path.join(os.path.expanduser('~'), 'arctic_build', 'robots_HRI', 'config', 'config.conf')
 config = ConfigFactory.parse_file(PATH_TO_CONFIG)
 
 

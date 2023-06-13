@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
-from pyhocon import ConfigFactory
+
 from math import atan, tan, sqrt, cos, sin
 from random import choice
 from gym.spaces import Discrete, Box
@@ -33,8 +33,14 @@ from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTrac
 
 from src.arctic_gym.utils.misc import rotateVector
 
-PATH_TO_CONFIG = os.path.join(os.getcwd(), 'CONFIG', 'config.conf')
-config = ConfigFactory.parse_file(PATH_TO_CONFIG)
+
+from pathlib import Path
+from pyhocon import ConfigFactory, ConfigTree
+
+
+project_path = Path(__file__).resolve().parents[3]
+config_path = project_path.joinpath('config/config.conf')
+config = ConfigFactory.parse_file(config_path)
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 # log, formatter = logger(name='arctic_env', level=config.logmode.arctic_env)
