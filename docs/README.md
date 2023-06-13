@@ -1,12 +1,12 @@
 ## Основные модули
-- [follow_the_leader_continuous_env](../continuous_grid_arctic/follow_the_leader_continuous_env.py) - содержит класс среды, и процедуры регистрации среды. При импорте этого модуля происходит регистрация сред;
-- [utils/classes](../continuous_grid_arctic/utils/classes.py) - классы роботов ведущего и ведомого.
-- [utils/sensors](../continuous_grid_arctic/utils/sensors.py) - классы сенсоров, реализующие процедуры рассчёта наблюдаемых показателей.
-- [utils/wrappers](../continuous_grid_arctic/utils/wrappers.py) - классы обёртки, для пред/постобработки наблюдений и действий для взаимодействия среды и алгоритма управления
+- [follow_the_leader_continuous_env](../src/continuous_grid_arctic/follow_the_leader_continuous_env.py) - содержит класс среды, и процедуры регистрации среды. При импорте этого модуля происходит регистрация сред;
+- [utils/classes](../src/continuous_grid_arctic/utils/classes.py) - классы роботов ведущего и ведомого.
+- [utils/sensors](../src/continuous_grid_arctic/utils/sensors.py) - классы сенсоров, реализующие процедуры рассчёта наблюдаемых показателей.
+- [utils/wrappers](../src/continuous_grid_arctic/utils/wrappers.py) - классы обёртки, для пред/постобработки наблюдений и действий для взаимодействия среды и алгоритма управления
 - utils/astar, utils/dstar, utils/lqr_rrt_star, utils/rrt, utils/rrt_star - алгоритмы расчёта маршрута ведущего
-- [utils/reward_constructor](../continuous_grid_arctic/utils/reward_constructor.py) - класс для хранения значений используемых в качестве награды
-- [utils/misc](../continuous_grid_arctic/utils/misc.py) - прочие полезные функции, например для расчёта геометрии
-- [utils/imgs](../continuous_grid_arctic/utils/imgs) - спрайты для визуализации среды;
+- [utils/reward_constructor](../src/continuous_grid_arctic/utils/reward_constructor.py) - класс для хранения значений используемых в качестве награды
+- [utils/misc](../src/continuous_grid_arctic/utils/misc.py) - прочие полезные функции, например для расчёта геометрии
+- [utils/imgs](../src/continuous_grid_arctic/utils/imgs) - спрайты для визуализации среды;
 
 ## Класс среды
 [Класс среды](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/continuous_grid_arctic/follow_the_leader_continuous_env.py#L33) содержит следующие параметры:
