@@ -65,7 +65,7 @@ python main.py --manual
 препятствиями и 1 динамическим. 
 
 <p align="center">
-<img src="continuous_grid_arctic/figures/demo_video.gif" width="500">
+<img src="src/continuous_grid_arctic/figures/demo_video.gif" width="500">
 </p>
 
 ## Конфигурация собственной среды
