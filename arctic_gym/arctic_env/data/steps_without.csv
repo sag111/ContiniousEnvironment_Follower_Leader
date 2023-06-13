@@ -1,0 +1,12 @@
+start_target,start_arctic,goal,step_count,steps_out,reward,info,leader_reward,leader_steps,stop_count
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",98,76,28.6,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",97,97,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",98,76,28.6,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",97,97,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",100,78,28.8,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",99,99,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,28.7,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,77,-15.3,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",99,95,-86.0,"{'mission_status': 'in_progress', 'agent_status': 'moving', 'leader_status': 'finished'}",98,98,0

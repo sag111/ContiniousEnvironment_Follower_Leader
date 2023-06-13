@@ -1,0 +1,49 @@
+start_target,start_arctic,goal,step_count,steps_out,reward,info,leader_reward,leader_steps,stop_count,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",84,2,76.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",66,80,1,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",97,16,60.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",65,80,1,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",89,8,46.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",67,77,0,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",86,5,66.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",63,78,2,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",90,13,35.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,78,2,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",84,2,74.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,77,1,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",86,6,57.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,76,0,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",99,18,61.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",78,81,4,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",81,4,70.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,76,0,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",86,4,75.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,80,4,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",98,22,49.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",77,77,1,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",88,12,55.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",77,77,0,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -40.0]",94,15,60.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",77,77,0,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",36,0,33.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",22,36,14,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",57,2,50.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",43,57,14,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",75,5,12.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",47,75,28,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",48,23,-0.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",23,48,25,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",69,5,-10.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",48,69,21,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",62,7,45.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",44,62,18,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",55,8,36.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",40,55,15,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",63,5,49.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",44,63,19,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",72,5,-8.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",48,72,24,
+"[12, 0, 1.0]","[0, 0, 0.5]","[30.0, -50.0]",59,4,47.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",44,59,15,
+"[12, 0, 1.0]","[0, 0, 0.5]","[35.0, -50.0]",99,5,2.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",66,99,33,
+"[12, 0, 1.0]","[0, 0, 0.5]","[35.0, -50.0]",87,5,75.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",79,84,5,
+"[12, 0, 1.0]","[0, 0, 0.5]","[35.0, -50.0]",101,6,-58.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",71,101,30,*******
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",123,6,89.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",96,121,25,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",124,5,28.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",88,124,36,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",112,6,95.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",95,109,14,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",80,3,5.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",57,80,23,
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",80,5,67.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",58,80,22
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",109,6,92.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",95,107,12
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",112,6,92.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",87,112,25
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",115,3,40.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",87,115,28
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",139,7,47.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",98,139,41
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",76,4,64.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",61,76,15
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",127,0,30.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",90,127,37
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",117,7,64.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",89,117,28
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",75,6,60.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",57,75,18
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",109,5,96.0,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",98,108,10
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",83,5,70.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",66,83,17
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",115,6,100.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",97,113,16
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",114,6,99.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",88,114,26
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",118,3,19.0,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",87,118,31
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",85,0,77.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",59,85,26
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",118,6,26.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",89,118,29
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",111,3,98.5,"{'mission_status': 'success', 'agent_status': 'finished', 'leader_status': 'finished'}",98,110,12
+"[12, 0, 1.0]","[0, 0, 0.5]","[50.0, -60.0]",109,5,42.5,"{'mission_status': 'safety system end', 'agent_status': 'moving', 'leader_status': 'None'}",80,109,29
