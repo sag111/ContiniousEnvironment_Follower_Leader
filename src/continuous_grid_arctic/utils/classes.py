@@ -6,8 +6,8 @@ try:
     from utils.misc import angle_correction, angle_to_point
     from utils.sensors import SENSOR_NAME_TO_CLASS
 except:
-    from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
-    from continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
+    from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
+    from src.continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
     
 import json
 

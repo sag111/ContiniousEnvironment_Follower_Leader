@@ -12,19 +12,19 @@ import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box
 
-from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
-from continuous_grid_arctic.utils.reward_constructor import Reward
-from continuous_grid_arctic.utils.astar import astar
-from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
-from continuous_grid_arctic.utils.rrt_star import RRTStar
-from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
-from continuous_grid_arctic.utils.dstar import Map, Dstar
-from continuous_grid_arctic.utils.rrt import RRT
+from src.continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
+from src.continuous_grid_arctic.utils.reward_constructor import Reward
+from src.continuous_grid_arctic.utils.astar import astar
+from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
+from src.continuous_grid_arctic.utils.rrt_star import RRTStar
+from src.continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
+from src.continuous_grid_arctic.utils.dstar import Map, Dstar
+from src.continuous_grid_arctic.utils.rrt import RRT
 
 try:
     from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 except:
-    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
@@ -2113,24 +2113,24 @@ class TestGameNEAT(Game):
 
 gym_register(
     id="Test-Cont-Env-Auto-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameAuto",
+    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameAuto",
     reward_threshold=10000
 )
 
 gym_register(
     id="Test-Cont-Env-Manual-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
+    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
 
 gym_register(
     id="Test-Cont-Env-Auto-Follow-no-obstacles-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
+    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoNoObst")
 
 gym_register(
     id="Test-Cont-Env-Auto-Follow-with-obstacles-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoObst")
+    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameBaseAlgoObst")
 
 gym_register(
     id="Test-Game-Neat-v0",
-    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameNEAT")
+    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameNEAT")

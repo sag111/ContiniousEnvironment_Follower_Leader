@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../RRT/")
 
-from continuous_grid_arctic.utils.rrt import RRT
+from src.continuous_grid_arctic.utils.rrt import RRT
 
 #show_animation = False
 

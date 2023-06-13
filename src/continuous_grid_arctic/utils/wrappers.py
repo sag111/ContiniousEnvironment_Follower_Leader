@@ -7,7 +7,7 @@ import cv2
 try:
     from utils.misc import rotateVector, calculateAngle
 except:
-    from continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
+    from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
 
 from warnings import warn
 

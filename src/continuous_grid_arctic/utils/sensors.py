@@ -8,7 +8,7 @@ import itertools
 try:
     from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 except:
-    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 
 import pandas as pd
