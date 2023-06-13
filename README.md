@@ -1,10 +1,15 @@
 # continuous-grid-arctic
 
+## 2d среда continuous-grid-arctic для обучения 
 В репозитории представлена реализация gym-среды решения задачи следования за лидером. В среде реализованы два агента: ведущий и ведомый, реализованы статические и динамические препятствия. 
 
 - [Описание основных классов среды](docs/README.md)
 - [Описание сенсоров](docs/Sensors.md)
 - [Описание врапперов](docs/Wrappers.md)
+
+## 3d среда arctic_gym для апробации
+
+- Описание 
 
 ### Установка
 ```
@@ -14,6 +19,20 @@ cd continuous-grid-arctic
 Если нет необходимости менять код среды, можно установить через файл setup.py.
 ```
 pip install git+https://github.com/sag111/continuous-grid-arctic.git
+```
+
+### Установка окружения
+1. Установка с помощью файла conda.yml 
+``` 
+conda env create -f conda.yml 
+```
+
+2. Установка в случае возникновения ошибок:
+``` 
+conda create -n rl -c conda-forge python-pdal=3.1.2 python=3.7 
+
+pip install requirements.txt
+
 ```
 
 
@@ -42,7 +61,7 @@ pip install git+https://github.com/sag111/continuous-grid-arctic.git
 ```
 
 
-### Примеры использования среды:
+## Примеры использования 2D среды (continuous-grid-arctic):
 Для демонстрации работы среды в ручном режиме работы необходимо запускать файл main.py:
 ```
 python main.py --manual
@@ -68,6 +87,17 @@ python main.py --manual
 <img src="src/continuous_grid_arctic/figures/demo_video.gif" width="500">
 </p>
 
+## Примеры использования 3D среды (arctic_gym):
+Для демонстрации работы среды в ручном режиме работы необходимо запускать файл run.py:
+```
+python run.py 
+```
+
+
+<p align="center">
+<img src="src/arctic_gym/figures/demo_gazebo.gif" width="500">
+</p>
+
 ## Конфигурация собственной среды
 Чтобы создать собственную конфигурацию среды, необходимо выполнить следующие шаги: 
 1. В файле follow_the_leader_continuous_env.py создать наследующий основную среду класс (как, например, Test-Cont-Env-Auto-v0);
@@ -80,4 +110,6 @@ python main.py --manual
     3.2. follow_the_leader_continuous_env:<название класса среды, который создан в п.1>;
     
     3.3. reward_threshold по своему желанию.
+
+
 
