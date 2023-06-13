@@ -9,7 +9,7 @@ try:
     from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 except:
     try:
-        from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+        from src.continuous_grid_arctic import angle_correction, rotateVector, calculateAngle, distance_to_rect
     except:
         from src.arctic_gym.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 

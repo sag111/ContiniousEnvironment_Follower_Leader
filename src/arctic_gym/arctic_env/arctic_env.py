@@ -23,7 +23,7 @@ from random import choice
 from gym.spaces import Discrete, Box
 from scipy.spatial import distance
 
-from src.instruments.log.customlogger import logger
+# from src.instruments.log.customlogger import logger
 
 from src.arctic_gym.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
@@ -37,7 +37,7 @@ PATH_TO_CONFIG = os.path.join(os.getcwd(), 'CONFIG', 'config.conf')
 config = ConfigFactory.parse_file(PATH_TO_CONFIG)
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-log, formatter = logger(name='arctic_env', level=config.logmode.arctic_env)
+# log, formatter = logger(name='arctic_env', level=config.logmode.arctic_env)
 
 
 class ArcticEnv(RobotGazeboEnv):
@@ -54,7 +54,7 @@ class ArcticEnv(RobotGazeboEnv):
                  max_steps=5000,
                  low_reward=-200,
                  close_coeff=0.6):
-        log.debug('Запуск окружения арктики')
+        print('Запуск окружения арктики')
         super(ArcticEnv, self).__init__()
 
         self.discrete_action = discrete_action
@@ -138,7 +138,7 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.reset_target_cam_path()
 
         if move:
-            log.warning('перемещение ведущего и ведомого в начальную позицию')
+            print('перемещение ведущего и ведомого в начальную позицию')
             # self.arctic_coords = [0.0, 30.0, 1.0]
             # self.target_coords = [12.0, 30.0, 1.0]
 
@@ -268,9 +268,9 @@ class ArcticEnv(RobotGazeboEnv):
     def step(self, action):
 
         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        log_linear = formatter.colored_logs(round(float(action[0]), 2), 'obs')
-        log_angular = formatter.colored_logs(round(float(action[1]), 2), 'obs')
-        log.debug(f'Actions: linear - {log_linear}, angular - {log_angular}')
+        log_linear = round(float(action[0]), 2)
+        log_angular = round(float(action[1]), 2)
+        print(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
         self.follower_delta_position = self._get_delta_position()
         """
@@ -301,33 +301,33 @@ class ArcticEnv(RobotGazeboEnv):
         obs = self._get_obs()
         """"""
         self._is_done(self.leader_position, self.follower_position)
-        log_obs = formatter.colored_logs(list(map(lambda x: round(x, 2), obs)), 'obs')
-        log.debug(f'Наблюдения: {log_obs}')
+        log_obs = list(map(lambda x: round(x, 2), obs))
+        print(f'Наблюдения: {log_obs}')
         reward = self._compute_reward()
         self.cumulated_episode_reward += reward
-        log.debug(self.cumulated_episode_reward)
+        print(self.cumulated_episode_reward)
 
-        log_reward = formatter.colored_logs(reward, 'yellow')
+        log_reward = reward
         if self.is_in_box:
-            in_box = formatter.colored_logs(self.is_in_box, 'green')
+            in_box = self.is_in_box
         else:
-            in_box = formatter.colored_logs(self.is_in_box, 'red')
+            in_box = self.is_in_box
             self.steps_out_box += 1
 
         if self.is_on_trace:
-            on_trace = formatter.colored_logs(self.is_on_trace, 'green')
+            on_trace = self.is_on_trace
         else:
-            on_trace = formatter.colored_logs(self.is_on_trace, 'red')
+            on_trace = self.is_on_trace
 
         if self.follower_too_close:
-            too_close = formatter.colored_logs(self.follower_too_close, 'red')
+            too_close = self.follower_too_close
         else:
-            too_close = formatter.colored_logs(self.follower_too_close, 'green')
-        log.info(f'Награда за шаг: {log_reward}, в зоне следования: {in_box}, на пути: {on_trace}, слишком близко: {too_close}')
+            too_close = self.follower_too_close
+        print(f'Награда за шаг: {log_reward}, в зоне следования: {in_box}, на пути: {on_trace}, слишком близко: {too_close}')
 
         if self.done:
-            log.info(f"Количество шагов: {self.step_count}, шагов вне зоны следования: {self.steps_out_box}")
-            log.info(f"Общая награда: {np.round(self.cumulated_episode_reward, decimals=2)}")
+            print(f"Количество шагов: {self.step_count}, шагов вне зоны следования: {self.steps_out_box}")
+            print(f"Общая награда: {np.round(self.cumulated_episode_reward, decimals=2)}")
             # self._test_sys()
 
         return obs, reward, self.done, self.info
@@ -451,7 +451,7 @@ class ArcticEnv(RobotGazeboEnv):
         try:
             results = json.loads(results.text)
         except json.decoder.JSONDecodeError:
-            log.warning('Пустой JSON от сервиса распознавания объектов')
+            print('Пустой JSON от сервиса распознавания объектов')
             results = {}
         camera_objects = results
         return camera_objects
@@ -593,7 +593,7 @@ class ArcticEnv(RobotGazeboEnv):
                 other_points.append([i[0], i[1], i[2]])
                 length_to_leader = None
 
-        log.debug(f'Расстояние до ведущего, определенное с помощью лидара: {length_to_leader}')
+        print(f'Расстояние до ведущего, определенное с помощью лидара: {length_to_leader}')
 
         return length_to_leader, other_points
 
@@ -601,7 +601,7 @@ class ArcticEnv(RobotGazeboEnv):
     def _get_camera_lead_info(self, camera_objects, length_to_leader):
 
         info_lead = next((x for x in camera_objects if x["name"] == "car"), None)
-        log.debug(info_lead)
+        print(info_lead)
         self.camera_leader_information = info_lead
 
         camera_yaw_state_info = self.sub.get_camera_yaw_state()
@@ -643,7 +643,7 @@ class ArcticEnv(RobotGazeboEnv):
         self.history_time.append(follower_time)
         if len(self.history_time) > 2:
             self.delta_time = (self.history_time[1]-self.history_time[0])
-            log.info(f"Время шага: {np.round(self.delta_time, decimals=2)}")
+            print(f"Время шага: {np.round(self.delta_time, decimals=2)}")
             self.history_time.pop(0)
 
         #Рассчет дельта Х
@@ -711,9 +711,9 @@ class ArcticEnv(RobotGazeboEnv):
 
         try:
             self.code, self.text = leader_status.status_list[-1].status, leader_status.status_list[-1].text
-            log.debug(f"Статус ведущего: {self.code}, {self.text}")
+            print(f"Статус ведущего: {self.code}, {self.text}")
         except IndexError as e:
-            log.debug(f"Проблема получения статуса ведущего: {e}")
+            print(f"Проблема получения статуса ведущего: {e}")
 
         # Информирование (global)
         self._trajectory_in_box()
@@ -727,7 +727,7 @@ class ArcticEnv(RobotGazeboEnv):
         self.step_count += 1
 
         # Для индикации завершения миссии ведущего
-        log.info(f"Статус ведущего: {self.code}, {self.text}")
+        print(f"Статус ведущего: {self.code}, {self.text}")
         if self.code == 3:
             self.info["leader_status"] = "finished"
             # self.done = True
@@ -747,7 +747,7 @@ class ArcticEnv(RobotGazeboEnv):
             self.crash = True
             self.done = True
 
-            log.error(self.info)
+            print(self.info)
 
             return 0
 
@@ -769,7 +769,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
 
@@ -781,7 +781,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
 
@@ -793,7 +793,7 @@ class ArcticEnv(RobotGazeboEnv):
                 # self.crash = True
                 # self.done = True
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
             # Превысило максимальное количество шагов
@@ -803,7 +803,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.info["agent_status"] = "moving"
                 self.done = True
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
             # Завершение следование, ведущий доехал (Local)
@@ -814,7 +814,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.info["agent_status"] = "finished"
                 self.done = True
 
-                log.info(self.info)
+                print(self.info)
 
                 return 0
 
@@ -827,7 +827,7 @@ class ArcticEnv(RobotGazeboEnv):
                     self.info["mission_status"] = "safety system end"
                     self.done = True
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
 
@@ -835,7 +835,7 @@ class ArcticEnv(RobotGazeboEnv):
             if self.camera_lead_info['length'] < 5.5:
                 self.info["agent_status"] = "too_close_to_leader"
 
-                log.error(self.info)
+                print(self.info)
 
                 return 0
 
@@ -848,7 +848,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         if self.info["leader_status"] == "moving":
             self.end_stop_count = 0
-            log.info(self.info)
+            print(self.info)
             return 0
 
 

@@ -3,7 +3,7 @@ import sys
 sys.path.append(pathlib.Path().resolve())
 import gym
 
-from continuous_grid_arctic.follow_the_leader_continuous_env import *
+from src.continuous_grid_arctic.follow_the_leader_continuous_env import *
 
 from gym.envs.registration import register as gym_register
 from gym.wrappers.monitoring.video_recorder import VideoRecorder

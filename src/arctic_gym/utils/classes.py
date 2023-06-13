@@ -7,8 +7,8 @@ try:
     from utils.sensors import SENSOR_NAME_TO_CLASS
 except:
     try:
-        from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
-        from continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
+        from src.continuous_grid_arctic import angle_correction, angle_to_point
+        from src.continuous_grid_arctic import SENSOR_NAME_TO_CLASS
     except:
         from src.arctic_gym.utils.misc import angle_correction, angle_to_point
         from src.arctic_gym.utils.sensors import SENSOR_NAME_TO_CLASS

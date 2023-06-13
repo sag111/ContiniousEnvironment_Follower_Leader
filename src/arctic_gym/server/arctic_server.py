@@ -9,9 +9,8 @@ from ray.rllib.env.policy_server_input import PolicyServerInput
 from ray.tune.logger import pretty_print
 from ray.rllib.examples.custom_metrics_and_callbacks import MyCallbacks
 
-# TODO: ip
-SERVER_ADDRESS = '192.168.1.34'
-# SERVER_ADDRESS = 'localhost'
+
+SERVER_ADDRESS = 'localhost'
 SERVER_BASE_PORT = 9900
 PATH = os.path.join(os.path.dirname(__file__), "config", "FollowerContinuous", "PPO_dyn_obst.conf")
 CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000340", "checkpoint-340")

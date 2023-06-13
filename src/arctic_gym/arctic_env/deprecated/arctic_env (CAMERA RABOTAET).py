@@ -6,11 +6,11 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 from random import choice
 from scipy.spatial import distance
-from arctic_gym.utils.reward_constructor import Reward
-from arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
-from arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker, GazeboLeaderPositionsTrackerRadar
+from src.arctic_gym.utils.reward_constructor import Reward
+from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
+from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker, GazeboLeaderPositionsTrackerRadar
 # from arctic_gym.utils.CustomFormatter import logger
-from arctic_gym.utils.CustomFormatter import ColoredFormatter
+from src.arctic_gym.utils.CustomFormatter import ColoredFormatter
 
 from gym.spaces import Discrete, Box
 

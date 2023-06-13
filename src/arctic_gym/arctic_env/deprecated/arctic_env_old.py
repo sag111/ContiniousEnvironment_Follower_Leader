@@ -1,50 +1,49 @@
-import os
 import rospy
+import os
+import gym
 import numpy as np
-
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 from random import choice
 from scipy.spatial import distance
-from arctic_gym.utils.reward_constructor import Reward
-from arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
-from arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker, GazeboLeaderPositionsTrackerRadar
-from arctic_gym.utils.CustomFormatter import logger
+from src.arctic_gym.utils.reward_constructor import Reward
+from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
+from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker, GazeboLeaderPositionsTrackerRadar
+from pyhocon import ConfigFactory
 from gym.spaces import Discrete, Box
+from ray.tune import register_env
 
 
-log, formatter = logger(name='arctic_env', level='INFO')
+PATH = os.path.join(os.path.dirname(__file__), '../config', 'arctic_robot.conf')
+
+
+def arctic_env_maker(config):
+    name = config["name"]
+    env = gym.make(name, **config)
+
+    return env
+
+
+register_env('ArcticRobot-v1', arctic_env_maker)
 
 
 class ArcticEnv(RobotGazeboEnv):
 
-    def __init__(self, name,
-                 discrete_action=False,
-                 time_for_action=0.5,
-                 trajectory_saving_period=5,
-                 leader_max_speed=1.0,
-                 min_distance=6.0,
-                 max_distance=15.0,
-                 leader_pos_epsilon=1.25,
-                 max_dev=1.5,
-                 max_steps=5000,
-                 low_reward=-200,
-                 close_coeff=0.6):
-        log.debug('init ArcticEnv')
+    def __init__(self, name='ArcticRobot-v1'):
         super(ArcticEnv, self).__init__()
 
-        self.discrete_action = discrete_action
-        self.time_for_action = time_for_action
-        self.trajectory_saving_period = trajectory_saving_period
-        self.leader_max_speed = leader_max_speed
-        self.min_distance = min_distance
-        self.max_distance = max_distance
-        self.leader_pos_epsilon = leader_pos_epsilon
-        self.max_dev = max_dev
-        self.warm_start = 5 / self.time_for_action
-        self.max_steps = max_steps
-        self.low_reward = low_reward
-        self.close_coeff = close_coeff
+        # конфиг файл
+        self.config = ConfigFactory.parse_file(PATH)
+
+        self.trajectory_saving_period = 8
+        self.leader_max_speed = 0.5
+        self.min_distance = 6.0
+        self.max_distance = 15.0
+        self.leader_pos_epsilon = 1.25
+        self.max_dev = 2.0
+        self.warm_start = 5 / self.config.time_for_action
+        self.max_steps = 5000
+        self.low_reward = -200
+        self.close_coeff = 0.6
 
         # Периодическое сохранение позиций ведущего в Gazebo
         self.tracker = GazeboLeaderPositionsTracker(host_object="arctic_robot",
@@ -69,8 +68,8 @@ class ArcticEnv(RobotGazeboEnv):
         # dataclass наград
         self.reward = Reward()
 
-        if self.discrete_action:
-            self.action_space = Discrete(4)
+        if self.config.discrete_action:
+            self.action_space = Discrete(3)
         else:
             self.action_space = Box(
                 np.array((0, 0.57), dtype=np.float32),
@@ -87,46 +86,39 @@ class ArcticEnv(RobotGazeboEnv):
     def reset(self):
         self._reset_sim()
         self._init_env_variables()
+        self._init_reward_flags()
+        self._update_episode()
 
-        """для reset image data как в step()"""
         self.leader_position, self.follower_position, self.follower_orientation = self._get_positions()
         self.leader_history = self.tracker.scan(self.leader_position, self.follower_position)
         self.radar_values = self.radar.scan(self.follower_position, self.follower_orientation, self.leader_history)
 
         obs = self._get_obs()
-        """"""
 
-        self._safe_zone()
-        coord = choice(self.targets)
-        self.gz_publishers.move_target(coord[0], coord[1])
-
-        rospy.sleep(0.1)
-
-        self._is_done(self.leader_position, self.follower_position)
-
-        return obs
-
-    def _safe_zone(self):
+        """Возможно стоит добавить"""
+        # начальные позиции - от ведомого до ведущего, сейф зона
         first_dots_for_follower_count = int(distance.euclidean(self.follower_position, self.leader_position) * (self.leader_max_speed))
 
         self.leader_factual_trajectory.extend(zip(np.linspace(self.follower_position[0], self.leader_position[0], first_dots_for_follower_count),
                                                   np.linspace(self.follower_position[1], self.leader_position[1], first_dots_for_follower_count)))
+        """"""
 
-    def _reset_sim(self):
-        self._check_all_systems_ready()
-        self._set_init_pose()
-        self.gazebo.reset_world()
-        self._check_all_systems_ready()
+        self._is_done(self.leader_position, self.follower_position)
 
-    def _check_all_systems_ready(self):
-        self.gz_subscribers.check_all_subscribers_ready()
-        return True
+        coord = choice(self.targets)
 
-    def _set_init_pose(self):
-        # TODO: телепорты для ведущего и ведомого
-        self.gz_publishers.move_base(linear_speed=0.0,
-                                     angular_speed=0.0)
-        return True
+        self.gz_publishers.move_target(coord[0], coord[1])
+
+        return obs
+
+    def _init_reward_flags(self):
+        """
+        Флаги для расчета награды на каждом шаге
+        """
+        self.is_in_box = False
+        self.is_on_trace = False
+        self.follower_too_close = False
+        self.crash = False
 
     def _init_env_variables(self):
         """
@@ -134,14 +126,15 @@ class ArcticEnv(RobotGazeboEnv):
         """
         # Green Zone
         self.green_zone_trajectory_points = list()
+        self.left_border_points_list = list()
+        self.right_border_points_list = list()
         self.leader_factual_trajectory = list()
-        self.follower_factual_trajectory = list()
 
         # Sensors
         self.tracker.reset()
         self.radar.reset()
 
-        self.cumulated_episode_reward = 0.0
+        self.cumulated_reward = 0.0
         self._episode_done = False
 
         self.step_count = 0
@@ -152,65 +145,39 @@ class ArcticEnv(RobotGazeboEnv):
 
         self.saving_counter = 0
 
-        self.is_in_box = False
-        self.is_on_trace = False
-        self.follower_too_close = False
-        self.crash = False
+    def _update_episode(self):
+        rospy.logwarn("PUBLISHING REWARD...")
+        rospy.logwarn("PUBLISHING REWARD...DONE="+str(self.cumulated_episode_reward)+",EP="+str(self.episode_num))
 
-        self.code = 0
-        self.text = ''
-
-        self.steps_out_box = 0
+        self.episode_num += 1
+        self.cumulated_episode_reward = 0
 
     def step(self, action):
-        log_linear = formatter.colored_logs(round(float(action[0]), 2), 'obs')
-        log_angular = formatter.colored_logs(round(float(action[1]), 2), 'obs')
-        log.debug(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
 
-        """
-        Радар по позициям ведущего и ведомого
-        """
         self.leader_position, self.follower_position, self.follower_orientation = self._get_positions()
         self.leader_history = self.tracker.scan(self.leader_position, self.follower_position)
         self.radar_values = self.radar.scan(self.follower_position, self.follower_orientation, self.leader_history)
 
         obs = self._get_obs()
-        """"""
-
         self._is_done(self.leader_position, self.follower_position)
 
-        log_obs = formatter.colored_logs(list(map(lambda x: round(x, 2), obs)), 'obs')
-        log.debug(f'Observations: {log_obs}')
+        # rospy.logerr(self.is_in_box)
+        # rospy.logwarn(self.is_on_trace)
+        # rospy.logerr(self.follower_too_close)
+
+        rospy.logwarn(self.leader_history)
+        # rospy.logwarn(self.leader_factual_trajectory)
+        # rospy.logwarn(self.radar_values)
+
+        # rospy.logwarn(self.done)
 
         reward = self._compute_reward()
         self.cumulated_episode_reward += reward
 
-        log_reward = formatter.colored_logs(reward, 'yellow')
-        if self.is_in_box:
-            in_box = formatter.colored_logs(self.is_in_box, 'green')
-        else:
-            in_box = formatter.colored_logs(self.is_in_box, 'red')
-            self.steps_out_box += 1
-
-        if self.is_on_trace:
-            on_trace = formatter.colored_logs(self.is_on_trace, 'green')
-        else:
-            on_trace = formatter.colored_logs(self.is_on_trace, 'red')
-
-        if self.follower_too_close:
-            too_close = formatter.colored_logs(self.follower_too_close, 'red')
-        else:
-            too_close = formatter.colored_logs(self.follower_too_close, 'green')
-        log.debug(f'Step reward: {log_reward}, in_box: {in_box}, on_trace: {on_trace}, too_close: {too_close}')
-
-        if self.done:
-            log.info(f"Step count: {self.step_count}, steps are out box: {self.steps_out_box}")
-            log.info(f"Cumulative_reward: {np.round(self.cumulated_episode_reward, decimals=2)}")
+        # rospy.logerr(reward)
 
         return obs, reward, self.done, self.info
-
-    # TODO: функция получения и обработки информации с камеры
 
     def _get_positions(self):
         """
@@ -243,7 +210,7 @@ class ArcticEnv(RobotGazeboEnv):
         """
         Выбор дискретных или непрерывных действий
         """
-        if self.discrete_action:
+        if self.config.discrete_action:
             if action == 0:
                 discrete_action = (0.5, 0.0)
             elif action == 1:
@@ -254,10 +221,10 @@ class ArcticEnv(RobotGazeboEnv):
                 discrete_action = (0.0, 0.0)
 
             self.gz_publishers.move_base(discrete_action[0], discrete_action[1])
-            rospy.sleep(self.time_for_action)
+            rospy.sleep(self.config.time_for_action)
         else:
             self.gz_publishers.move_base(action[0], -action[1])
-            rospy.sleep(self.time_for_action)
+            rospy.sleep(self.config.time_for_action)
 
     def _is_done(self, leader_position, follower_position):
         self.done = False
@@ -270,26 +237,38 @@ class ArcticEnv(RobotGazeboEnv):
             "leader_status": "moving"
         }
 
-        leader_status = self.gz_subscribers.get_target_status()
-
-        try:
-            self.code, self.text = leader_status.status_list[-1].status, leader_status.status_list[-1].text
-            log.debug(f"Leader status: {self.code}, text: {self.text}")
-        except IndexError as e:
-            log.debug(f"Leader status trouble: {e}")
-
         self._trajectory_in_box()
         self._check_agent_position(self.follower_position, self.leader_position)
 
+        """Проверка завершения лидером маршрута???"""
+        # if distance.euclidean(self.leader.position, self.cur_target_point) < self.leader_pos_epsilon:
+        #     self.cur_target_id += 1
+        #     if self.cur_target_id >= len(self.trajectory):
+        #         self.leader_finished = True
+        #     else:
+        #         self.cur_target_point = self.trajectory[self.cur_target_id]
+
+        # if not self.leader_finished:
+        #     if self.leader_speed_regime is not None:
+        #         speed = self._process_leader_speed_regime()
+        #     else:
+        #         speed = self.leader.max_speed
+        #
+        #     if self.leader_acceleration_regime is not None:
+        #         acceleration = self._process_leader_acceleration_regime() / self.frames_per_step
+        #     else:
+        #         acceleration = 0
+        #     self.leader.move_to_the_point(self.cur_target_point, speed=speed + acceleration)
+        # else:
+        #     self.leader.command_forward(0)
+        #     self.leader.command_turn(0, 0)
+        #     info["leader_status"] = "finished"
+        """"""
         if self.saving_counter % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(leader_position)
-            self.follower_factual_trajectory.append(follower_position)
         self.saving_counter += 1
 
-        self.step_count += 1
-
         if self.step_count > self.warm_start:
-            # Низкая награда
             if self.cumulated_episode_reward < self.low_reward:
                 self.info["mission_status"] = "fail"
                 self.info["leader_status"] = "moving"
@@ -297,11 +276,6 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                log.error(self.info)
-
-                return 0
-
-            # ведомый далеко от ведущего
             if np.linalg.norm(follower_position - leader_position) > self.max_distance:
                 self.info["mission_status"] = "fail"
                 self.info["leader_status"] = "moving"
@@ -309,11 +283,6 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                log.error(self.info)
-
-                return 0
-
-            # ведомый слишком близко к ведущему
             if np.linalg.norm(follower_position - leader_position) < self.min_distance * self.close_coeff:
                 self.info["mission_status"] = "fail"
                 self.info["leader_status"] = "moving"
@@ -321,29 +290,13 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                log.error(self.info)
-
-                return 0
+        self.step_count += 1
 
         if self.step_count > self.max_steps:
             self.info["mission_status"] = "finished_by_time"
             self.info["leader_status"] = "moving"
             self.info["agent_status"] = "moving"
             self.done = True
-
-            log.error(self.info)
-
-            return 0
-
-        if self.code == 3 and self.is_in_box:
-            self.info["mission_status"] = "success"
-            self.info["leader_status"] = "finished"
-            self.info["agent_status"] = "finished"
-            self.done = True
-
-            log.info(self.info)
-
-            return 0
 
     def _compute_reward(self):
         """
