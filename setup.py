@@ -9,7 +9,14 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
-        'gym>=0.9.6',
-        'numpy>=1.15.0'
+        'ray[rllib]==1.12.1',
+        'pygame==2.1.2',
+        'pyhocon==0.3.60',
+        'opencv-python==4.5.4.60',
+        'rospkg==1.4.0',
+        'importlib-metadata==4.13.0',
+        'open3d==0.17.0',
+        'torch==1.13.1',
+        'flask==2.2.5'
     ]
 )

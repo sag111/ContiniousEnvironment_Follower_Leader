@@ -3,7 +3,6 @@ pygame==2.1.2
 pyhocon==0.3.60
 opencv-python==4.5.4.60
 rospkg==1.4.0
-rdflib==5.0.0
 importlib-metadata==4.13.0
 
 # Можно без него, но пока есть
