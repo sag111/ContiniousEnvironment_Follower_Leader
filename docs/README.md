@@ -9,7 +9,7 @@
 - [utils/imgs](../src/continuous_grid_arctic/utils/imgs) - спрайты для визуализации среды;
 
 ## Класс среды
-[Класс среды](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/continuous_grid_arctic/follow_the_leader_continuous_env.py#L33) содержит следующие параметры:
+[Класс среды](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/src/continuous_grid_arctic/follow_the_leader_continuous_env.py#L33) содержит следующие параметры:
 - Настройки визуализации: game_width, game_height, framerate, show_leader_path, show_leader_trajectory, show_rectangles, show_box, show_sensors, pixels_to_meter
 - Настройки окружения: 
   - глобальные: frames_per_step, random_frames_per_step, simulation_time_limit, max_steps, manual_control, early_stopping
@@ -17,7 +17,7 @@
   - настройки поведения роботов: leader_pos_epsilon, trajectory, step_grid, follower_sensors, leader_speed_regime, leader_acceleration_regime, discrete_action_space, constant_follower_speed, path_finding_algorythm, multiple_end_points, corridor_length, corridor_width, negative_speed, follower_speed_koeff, leader_speed_coeff, use_prev_obs, max_prev_obs
 - Настройки задачи: reward_config, min_distance, max_distance, max_dev, warm_start, aggregate_reward.
 
-Отдельное описание каждого параметра в [классе среды](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/continuous_grid_arctic/follow_the_leader_continuous_env.py#L33)
+Отдельное описание каждого параметра в [классе среды](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/src/continuous_grid_arctic/follow_the_leader_continuous_env.py#L33)
 
 ## Построение маршрутов
 В среде реализованы несколько вариантов построения маршрута движения для ведущего агента. 
