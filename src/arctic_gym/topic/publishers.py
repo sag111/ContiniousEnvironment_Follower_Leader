@@ -8,9 +8,10 @@ from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from actionlib_msgs.msg import GoalID
+from nav_msgs.msg import Path
 
 from pyhocon import ConfigTree
-from typing import Optional
+from typing import Optional, Any
 from math import sin, cos
 
 
@@ -32,6 +33,13 @@ class Publishers:
         self.target_cancel_action_pub = rospy.Publisher(config["topic.target_cancel"], GoalID, queue_size=1)
         # Управление роботом по координатам
         self.default_goal_pub = rospy.Publisher(config["topic.robot_goal"], PoseStamped, queue_size=1)
+
+        # Внешний топик, публикует путь робота
+        self.follower_path_pub = rospy.Publisher(config.topic.robot_path, Path, queue_size=1)
+        self.follower_path = Path()
+        # Внешний топик, публикует путь цели
+        self.target_path_pub = rospy.Publisher(config.topic.target_path, Path, queue_size=1)
+        self.target_path = Path()
 
     def set_camera_pitch(self, radian: float):
         """
@@ -78,7 +86,7 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def teleport(self, model: str, point: Optional[list, Point], quaternion: Optional[list, Quaternion]):
+    def teleport(self, model: str, point: Any, quaternion: Any):
         """
         Перемещение модели
 
@@ -214,6 +222,73 @@ class Publishers:
         Проверка соединения с топиком для движения робота по координатам
         """
         while self.default_goal_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+            try:
+                self.rate.sleep()
+            except rospy.ROSInterruptException:
+                pass
+
+    def update_follower_path(self, x: Optional[float] = None, y: Optional[float] = None):
+        """
+        Обновление пути робота
+
+        :param x: абсолютная координата X пути
+        :param y: абсолютная координата Y пути
+        """
+        self.follower_path.header.frame_id = "map"
+
+        pose_stamp = PoseStamped()
+        pose_stamp.header.frame_id = "map"
+        pose_stamp.header.stamp = rospy.Time.now()
+
+        if x and y:
+            pose_stamp.pose.position.x = x
+            pose_stamp.pose.position.y = y
+            self.follower_path.poses.append(pose_stamp)
+        else:
+            self.follower_path.poses.append(pose_stamp)
+            self.follower_path.poses.clear()
+
+        self._check_follower_path_pub_ready()
+        self.follower_path_pub.publish(self.follower_path)
+
+    def _check_follower_path_pub_ready(self):
+        """
+        Проверка соединения с топиком для публикации пути робота
+        """
+        while self.follower_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+            try:
+                self.rate.sleep()
+            except rospy.ROSInterruptException:
+                pass
+
+    def update_target_path(self, x: Optional[float] = None, y: Optional[float] = None):
+        """
+        Обновление пути цели
+
+        :param x: абсолютная координата X пути
+        :param y: абсолютная координата Y пути
+        """
+        self.target_path.header.frame_id = "map"
+
+        pose_stamp = PoseStamped()
+        pose_stamp.header.frame_id = "map"
+        pose_stamp.header.stamp = rospy.Time.now()
+
+        if x and y:
+            pose_stamp.pose.position.x = x
+            pose_stamp.pose.position.y = y
+            self.target_path.poses.append(pose_stamp)
+        else:
+            self.target_path.poses.clear()
+
+        self._check_target_path_pub_ready()
+        self.target_path_pub.publish(self.target_path)
+
+    def _check_target_path_pub_ready(self):
+        """
+        Проверка соединения с топиком для публикации пути цели
+        """
+        while self.target_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
                 self.rate.sleep()
             except rospy.ROSInterruptException:
