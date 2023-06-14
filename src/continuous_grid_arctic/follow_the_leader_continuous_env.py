@@ -909,7 +909,8 @@ class Game(gym.Env):
         self.follower.move()
 
         # определение столкновения ведомого с препятствиями
-        if self._collision_check(self.follower):
+        # if self._collision_check(self.follower):
+        if self._collision_check(self.follower) and self.step_count > 1:
             self.crash = True
             self.done = True
             info["mission_status"] = "fail"
