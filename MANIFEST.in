@@ -1,1 +1,1 @@
-include imgs/*.png
+include src/continuous_grid_arctic/imgs/*.png
