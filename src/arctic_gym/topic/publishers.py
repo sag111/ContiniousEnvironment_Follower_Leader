@@ -10,6 +10,7 @@ from geometry_msgs.msg import Quaternion
 from actionlib_msgs.msg import GoalID
 
 from pyhocon import ConfigTree
+from typing import Optional
 from math import sin, cos
 
 
@@ -32,9 +33,11 @@ class Publishers:
         # Управление роботом по координатам
         self.default_goal_pub = rospy.Publisher(config["topic.robot_goal"], PoseStamped, queue_size=1)
 
-    def set_camera_pitch(self, radian):
+    def set_camera_pitch(self, radian: float):
         """
         Управление углом наклона камеры
+
+        :param radian: угол в радианах
         """
         pitch_value = Float64()
         pitch_value.data = radian
@@ -53,9 +56,11 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def set_camera_yaw(self, radian):
+    def set_camera_yaw(self, radian: float):
         """
         Управление углом рыскания камеры
+
+        :param radian: угол в радианах
         """
         yaw_value = Float64()
         yaw_value.data = radian
@@ -73,9 +78,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def teleport(self, model, point, quaternion):
+    def teleport(self, model: str, point: Optional[list, Point], quaternion: Optional[list, Quaternion]):
         """
         Перемещение модели
+
+        :param model: название модели
+        :param point: координаты для перемещения
+        :param quaternion: угол поворота
         """
         try:
             point_msg = Point(*point)
@@ -107,9 +116,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_target(self, x_position, y_position, phi=0):
+    def move_target(self, x_position: float, y_position: float, phi: int = 0):
         """
         Управление целью
+
+        :param x_position: абсолютная координата X
+        :param y_position: абсолютная координата Y
+        :param phi: угол поворота в градусах
         """
         target_goal_value = PoseStamped()
         target_goal_value.header.frame_id = 'map'
@@ -133,9 +146,12 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_base(self, linear_speed, angular_speed):
+    def move_base(self, linear_speed: float, angular_speed: float):
         """
         Управление скоростью робота
+
+        :param linear_speed: линейная скорость
+        :param angular_speed: угловая скорость
         """
         cmd_vel_value = Twist()
         cmd_vel_value.linear.x = linear_speed
@@ -173,9 +189,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_default(self, x_position, y_position, phi=0):
+    def move_default(self, x_position: float, y_position: float, phi: int = 0):
         """
         Управление роботом по координатам
+
+        :param x_position: абсолютная координата X
+        :param y_position: абсолютная координата Y
+        :param phi: угол поворота в градусах
         """
         default_goal_value = PoseStamped()
         default_goal_value.header.frame_id = 'map'
