@@ -83,33 +83,33 @@ baseline)
 #### LeaderTrackDetector_vector
 Пример использования признаков радара:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/LeaderTrackDetector_vector_2.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/LeaderTrackDetector_vector_2.jpg" width="500">
 </p>
 
 #### LaserSensor
 Пример использования признаков лидара:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/LaserSensor.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/LaserSensor.jpg" width="500">
 </p>
 
 #### LeaderCorridor_lasers
 Пример использования признаков "лучевого сенсора" в базовой конфигурации с 7 лучами. Реагирует 
 на коридор и препятствия:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/LeaderCorridor_lasers.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/LeaderCorridor_lasers.jpg" width="500">
 </p>
 
 #### LeaderCorridor_lasers_v2
 Пример использования признаков "лучевого сенсора" с настраиваемым количеством лучей (по умолчанию 12) с реагированием 
 на коридор и препятствия:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/LeaderCorridor_lasers_v2.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/LeaderCorridor_lasers_v2.jpg" width="500">
 </p>
 
 #### LeaderObstacles_lasers
 Пример использования признаков "лучевого сенсора", который реагирует только на препятствия (по умолчанию 30 лучей):
 <p align="center">
-<img src="../continuous_grid_arctic/figures/LeaderObstacles_lasers.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/LeaderObstacles_lasers.jpg" width="500">
 </p>
 
 Сенсоры **LeaderCorridor_Prev_lasers_v2** и **LaserPrevSensor** аналогичны **LeaderCorridor_lasers_v2** 
