@@ -29,12 +29,12 @@
 
 Пример построения простого маршрута:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/easy_dstar.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/easy_dstar.jpg" width="500">
 </p>
 
 Пример построения сложного маршрута:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/hard_dstar.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/hard_dstar.jpg" width="500">
 </p>
 
 ## Добавление препятствий
@@ -44,11 +44,11 @@
 
 Пример добавления 35 препятствий:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/easy_dstar.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/easy_dstar.jpg" width="500">
 </p>
 Пример добавления 70 препятствий:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/easy_70.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/easy_70.jpg" width="500">
 </p>
 
 ### Динамические препятствия:
@@ -62,12 +62,12 @@
 
 Пример добавления 1 динамического препятствия:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/1_bear.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/1_bear.jpg" width="500">
 </p>
 
 Пример добавления 3 динамических препятствий:
 <p align="center">
-<img src="../continuous_grid_arctic/figures/3_bears.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/3_bears.jpg" width="500">
 </p>
 
 
@@ -113,12 +113,12 @@ if self.add_bear:
 
 Пример коридора с шириной 2 метра (corridor_width=1):
 <p align="center">
-<img src="../continuous_grid_arctic/figures/corridor_1_7.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/corridor_1_7.jpg" width="500">
 </p>
 
 Пример коридора с шириной 3 метра (corridor_width=1.5):
 <p align="center">
-<img src="../continuous_grid_arctic/figures/corridor_1.5_7.jpg" width="500">
+<img src="../src/continuous_grid_arctic/figures/corridor_1.5_7.jpg" width="500">
 </p>
 
 Добавление коридора происходит с помощью добавления сенсоров LeaderPositionsTracker или LeaderPositionsTracker_v2. 
