@@ -1017,7 +1017,7 @@ class Game(gym.Env):
             info["leader_status"] = "finished"
 
         # обработка столкновений лидера
-        if self._collision_check(self.leader):
+        if self._collision_check(self.leader) and self.step_count > 1:
             print("Лидер столкнулся с препятствием!")
             self.done = True
             info["mission_status"] = "fail"
