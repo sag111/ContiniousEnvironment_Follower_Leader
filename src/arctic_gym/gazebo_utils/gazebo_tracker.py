@@ -394,10 +394,13 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - follower_position)
 
+        import rospy
+        rospy.logerr(obs)
+
         self.laser_values_obs = obs
         self.laser_values_obs = (self.laser_values_obs / self.laser_length)
-        self.laser_values_obs[5] = self.laser_values_obs[5]*0.65
-        self.laser_values_obs[6] = self.laser_values_obs[6]*0.65
+        # self.laser_values_obs[5] = self.laser_values_obs[5]*0.65
+        # self.laser_values_obs[6] = self.laser_values_obs[6]*0.65
 
         print(' ')
         print(self.laser_values_obs)

@@ -13,8 +13,11 @@ from ray.rllib.examples.custom_metrics_and_callbacks import MyCallbacks
 SERVER_ADDRESS = 'localhost'
 SERVER_BASE_PORT = 9900
 PATH = os.path.join(os.path.dirname(__file__), "config", "FollowerContinuous", "PPO_dyn_obst.conf")
+# PATH = os.path.join(os.path.dirname(__file__), "config", "FollowerContinuous", "PPO_obst.conf")
+# CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000040", "checkpoint-40")
 CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000340", "checkpoint-340")
 # CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000600", "checkpoint-600")
+# CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000800", "checkpoint-800")
 
 
 def _input(ioctx):
@@ -64,7 +67,7 @@ if __name__ == '__main__':
     )
 
     configs = ConfigFactory.parse_file(PATH)
-    # config = configs.ppo_env4feats12_train5v6
+    # config = configs["ppo_featsv4"]
     # config["config"]["num_workers"] = 1
 
     CONFIG = configs["ppo_env4feats12_train5v6"].as_plain_ordered_dict()

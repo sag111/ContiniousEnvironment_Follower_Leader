@@ -56,7 +56,7 @@ def _go_to_the_leader(leader_pose):
     quaternion = data.pose.pose.orientation
     orientation = [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
     _, _, yaw = tf.transformations.euler_from_quaternion(orientation)
-    arctic_goal = [leader_pose[0] - 8 * np.cos(yaw), leader_pose[1] - 8 * np.sin(yaw)]
+    arctic_goal = [leader_pose[0] - 9 * np.cos(yaw), leader_pose[1] - 9 * np.sin(yaw)]
     env.pub.move_default(arctic_goal[0], arctic_goal[1], phi=np.rad2deg(yaw))
 
     code_to = _get_default_status()
@@ -71,15 +71,15 @@ if __name__ == '__main__':
     env_config = config.rl_agent.env_config
     env = arctic_env_maker(env_config)
 
-
     camera_flag = True
     count_lost = 0
 
-    obs = env.reset(move=False)
+    obs = env.reset(move=True)
+
     done = False
     rewards = 0
     lead_loss = False
-    pub_obs = np.zeros(7, dtype=np.float32)
+    pub_obs = np.ones(7, dtype=np.float32)
     info = {
         "mission_status": "in_progress",
         "agent_status": "None",
@@ -94,18 +94,22 @@ if __name__ == '__main__':
     lead_info = env.ssd_camera_objects
     lead_info = next((x for x in lead_info if x["name"] == "car"), None)
 
-    if lead_info == None or lead_info['length'] > 10:
-        follower_status = _go_to_the_leader(lead_pose)
-        env.pub.text_to_voice('Подъезжаю к машине')
-        while True:
-            code_to = _get_default_status()
-            follower_status = code_to
-            if follower_status == 3:
-                env.pub.move_target(50.0, -40.0, phi=90)
-                break
+    # if lead_info == None:
+    # follower_status = _go_to_the_leader(lead_pose)
+    # env.pub.text_to_voice('Подъезжаю к машине')
+    # while True:
+    #     code_to = _get_default_status()
+    #     follower_status = code_to
+    #     if follower_status == 3:
+    time.sleep(0.2)
+    env.pub.move_target(50.0, -40.0, phi=90)
+            # break
 
-    time.sleep(1)
-    env.pub.text_to_voice('Начинаю следовать за машиной')
+    # time.sleep(1)
+    # env.pub.text_to_voice('Начинаю следовать за машиной')
+
+    obs = env.reset(move=False)
+
     while not done:
         action = client.get_action(eid, obs)
 
@@ -130,7 +134,7 @@ if __name__ == '__main__':
                 env.pub.target_cancel_action()
 
         else:
-            action[0] *= 1.7
+            action[0] *= 1.1
 
         new_obs, reward, done, new_info = env.step(action)
         obs = new_obs
@@ -140,14 +144,14 @@ if __name__ == '__main__':
 
         if done:
             client.end_episode(eid, obs)
-            if info['mission_status'] == 'fail':
-                if info['agent_status'] == 'low_reward':
-                    env.pub.text_to_voice('Невозможно вернутся на маршрут следования')
-                elif info['agent_status'] == 'too_far_from_leader':
-                    env.pub.text_to_voice('Дистанция до машины слишком велика')
-            elif info['mission_status'] == 'safety system end':
-                env.pub.text_to_voice('Машина не обнаружена')
-            elif info['mission_status'] == 'success':
-                env.pub.text_to_voice('Следование завершено успешно')
+            # if info['mission_status'] == 'fail':
+            #     if info['agent_status'] == 'low_reward':
+            #         env.pub.text_to_voice('Невозможно вернутся на маршрут следования')
+            #     elif info['agent_status'] == 'too_far_from_leader':
+            #         env.pub.text_to_voice('Дистанция до машины слишком велика')
+            # elif info['mission_status'] == 'safety system end':
+            #     env.pub.text_to_voice('Машина не обнаружена')
+            # elif info['mission_status'] == 'success':
+            #     env.pub.text_to_voice('Следование завершено успешно')
 
     env.pub.set_camera_yaw(0)
