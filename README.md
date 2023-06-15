@@ -13,7 +13,7 @@
 
 - [Описание использования системы управления роботом](docs/Arctic.md)
 
-### Установка
+## Установка
 ```
 git clone https://github.com/sag111/continuous-grid-arctic
 cd continuous-grid-arctic
@@ -90,11 +90,7 @@ python main.py --manual
 </p>
 
 ## Примеры использования [3D среды](src/arctic_gym):
-Для демонстрации работы среды в ручном режиме работы необходимо запускать файл run.py:
-```
-python run.py 
-```
-
+Для демонстрации работы модели в 3D-среде необходимо ознакомиться с инструкцией [Arctic.md](docs%2FArctic.md)
 
 <p align="center">
 <img src="src/arctic_gym/figures/demo_gazebo.gif" width="500">
