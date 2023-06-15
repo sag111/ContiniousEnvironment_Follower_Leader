@@ -51,6 +51,7 @@ class GameObject():
 
     def put(self, position):
         self.position = np.array(position, dtype=np.float32)
+        self.rectangle = self.image.get_rect(center=self.position, width=self.width, height=self.height)
 
 
 class AbstractRobot(GameObject):
