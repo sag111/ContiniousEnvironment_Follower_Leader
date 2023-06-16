@@ -544,7 +544,7 @@ class Game(gym.Env):
 
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
 
-        self.follower.position = follower_start_position
+        self.follower.put(follower_start_position)
         self.follower.direction = follower_direction
         self.follower.start_direction = follower_direction
 
@@ -704,10 +704,10 @@ class Game(gym.Env):
             koeff = 150
             if i % 2 == 0:
                 bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
-                self.game_dynamic_list[i].position = bear_start_position
+                self.game_dynamic_list[i].put(bear_start_position)
             else:
                 bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
-                self.game_dynamic_list[i].position = bear_start_position
+                self.game_dynamic_list[i].put(bear_start_position)
 
     def _pos_bears_nearest_leader(self):
 
