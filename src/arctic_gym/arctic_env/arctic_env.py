@@ -147,8 +147,8 @@ class ArcticEnv(RobotGazeboEnv):
             # self.arctic_coords = [0.0, 30.0, 1.0]
             # self.target_coords = [12.0, 30.0, 1.0]
 
-            self.arctic_coords = [-2.0, -10.0, 0.4]
-            self.target_coords = [12.0, -10.0, 0.7]
+            self.arctic_coords = [0.0, -10.0, 0.3]
+            self.target_coords = [10.0, -10.0, 0.7]
 
             # self.arctic_coords = [40.0, 0.0, 1.0]
             # self.target_coords = [47.0, 0.0, 1.0]
@@ -277,6 +277,7 @@ class ArcticEnv(RobotGazeboEnv):
         log_angular = round(float(action[1]), 2)
         print(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
+
         self.follower_delta_position = self._get_delta_position()
         """
         Радар по позициям ведущего и ведомого
