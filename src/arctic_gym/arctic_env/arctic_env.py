@@ -161,10 +161,15 @@ class ArcticEnv(RobotGazeboEnv):
             self.follower_orientation)
 
         # Вызов основных функций
+        # Получение информации с SSD object detection
         self.ssd_camera_objects = self._get_ssd_lead_information(self.sub.get_from_follower_image())
+        # Получение точек лидара
         self._get_lidar_points()
+        # Получение расстояния до лидера и облако точек без точек лидера
         self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
+        # Получение информации о лидере с камеры
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
+        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
 
 
@@ -281,10 +286,15 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.update_follower_path(self.follower_position[0], self.follower_position[1])
         self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
         # Вызов основных функций
-        self.ssd_camera_objects = self._get_ssd_lead_information(self.sub.get_from_follower_image())
+        # Получение информации с SSD object detection
+        self.ssd_camera_objects = self._get_ssd_lead_information()
+        # Получение точек лидара
         self._get_lidar_points()
+        # Получение расстояния до лидера и облако точек без точек лидера
         self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
+        # Получение информации о лидере с камеры
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
+        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
 
 
@@ -416,6 +426,9 @@ class ArcticEnv(RobotGazeboEnv):
 
     @staticmethod
     def _get_four_points(x):
+        """
+        Функция округления и получения соседней точки в непосредственной близости от полученной
+        """
         coeff = 0.1
         a1 = [np.round(x[0], decimals=1), np.round(x[1], decimals=1)]
         a2 = [np.round(x[0] + coeff, decimals=1), np.round(x[1], decimals=1)]
@@ -516,19 +529,21 @@ class ArcticEnv(RobotGazeboEnv):
         print('OTHER POINTS', len(points_list)) # массив
         t1 = time.time()
 
-        #### Фильтрация
+        #### Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
         max_dist = self.laser.laser_length
         # max_dist = 4
+        # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
         xyz = [(x, y, z) for x, y, z in points_list if x**2 + y**2 <= max_dist**2]  # get xyz
         print('OTHER POINTS in radius', len(xyz))
 
         if len(xyz) > 0:
             t2 = time.time()
+            # Запись усеченного облака точек в файл формата pcd
             open3d_cloud.points = open3d.utility.Vector3dVector(np.array(xyz))
             open3d.io.write_point_cloud("test_pdal_1.pcd", open3d_cloud)
-
+            # Инференс запуска сегментации рельефа поверхности
             pc = (
                     pdal.Reader.pcd("test_pdal_1.pcd")
                     | pdal.Filter.csf(ignore="Classification[7:7]", threshold=0.6)
@@ -539,6 +554,7 @@ class ArcticEnv(RobotGazeboEnv):
             arr_fil = pc.arrays[0]
             print('after filtering', len(arr_fil))
 
+            # Окруление точек и запись их в список
             list_to_arr = list()
             for i in range(len(arr_fil)):
                 list_to_arr.append([np.round(arr_fil[i][0], decimals=1),
@@ -643,6 +659,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         # TODO : перепроверить и оптимизировать (в случае, если пробовать вариант с "закрытым" коридором)
         # if i[-1] in [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]:
+        # выделение точек ведущего из всего облака точек
         for i in self.lidar_points:
             if leader_info is not None:
                 angles_object = self._calculate_points_angles_objects(leader_info)
