@@ -96,14 +96,12 @@ if __name__ == '__main__':
 
     # if lead_info == None:
     # follower_status = _go_to_the_leader(lead_pose)
-    # env.pub.text_to_voice('Подъезжаю к машине')
     # while True:
     #     code_to = _get_default_status()
     #     follower_status = code_to
     #     if follower_status == 3:
-    time.sleep(0.2)
     env.pub.move_target(50.0, -40.0, phi=90)
-            # break
+    #         break
 
     # time.sleep(1)
     # env.pub.text_to_voice('Начинаю следовать за машиной')
@@ -112,6 +110,7 @@ if __name__ == '__main__':
 
     while not done:
         action = client.get_action(eid, obs)
+        # time.sleep(10)
 
         if info['leader_status'] == "moving" and count_lost >= 1:
             count_lost = 0
@@ -134,7 +133,7 @@ if __name__ == '__main__':
                 env.pub.target_cancel_action()
 
         else:
-            action[0] *= 1.1
+            action[0] *= 1.5
 
         new_obs, reward, done, new_info = env.step(action)
         obs = new_obs

@@ -8,8 +8,10 @@ from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from actionlib_msgs.msg import GoalID
+from nav_msgs.msg import Path
 
 from pyhocon import ConfigTree
+from typing import Optional, Any
 from math import sin, cos
 
 
@@ -32,9 +34,18 @@ class Publishers:
         # Управление роботом по координатам
         self.default_goal_pub = rospy.Publisher(config["topic.robot_goal"], PoseStamped, queue_size=1)
 
-    def set_camera_pitch(self, radian):
+        # Внешний топик, публикует путь робота
+        self.follower_path_pub = rospy.Publisher(config.topic.robot_path, Path, queue_size=1)
+        self.follower_path = Path()
+        # Внешний топик, публикует путь цели
+        self.target_path_pub = rospy.Publisher(config.topic.target_path, Path, queue_size=1)
+        self.target_path = Path()
+
+    def set_camera_pitch(self, radian: float):
         """
         Управление углом наклона камеры
+
+        :param radian: угол в радианах
         """
         pitch_value = Float64()
         pitch_value.data = radian
@@ -53,9 +64,11 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def set_camera_yaw(self, radian):
+    def set_camera_yaw(self, radian: float):
         """
         Управление углом рыскания камеры
+
+        :param radian: угол в радианах
         """
         yaw_value = Float64()
         yaw_value.data = radian
@@ -73,9 +86,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def teleport(self, model, point, quaternion):
+    def teleport(self, model: str, point: Any, quaternion: Any):
         """
         Перемещение модели
+
+        :param model: название модели
+        :param point: координаты для перемещения
+        :param quaternion: угол поворота
         """
         try:
             point_msg = Point(*point)
@@ -107,9 +124,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_target(self, x_position, y_position, phi=0):
+    def move_target(self, x_position: float, y_position: float, phi: int = 0):
         """
         Управление целью
+
+        :param x_position: абсолютная координата X
+        :param y_position: абсолютная координата Y
+        :param phi: угол поворота в градусах
         """
         target_goal_value = PoseStamped()
         target_goal_value.header.frame_id = 'map'
@@ -133,9 +154,12 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_base(self, linear_speed, angular_speed):
+    def move_base(self, linear_speed: float, angular_speed: float):
         """
         Управление скоростью робота
+
+        :param linear_speed: линейная скорость
+        :param angular_speed: угловая скорость
         """
         cmd_vel_value = Twist()
         cmd_vel_value.linear.x = linear_speed
@@ -173,9 +197,13 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def move_default(self, x_position, y_position, phi=0):
+    def move_default(self, x_position: float, y_position: float, phi: int = 0):
         """
         Управление роботом по координатам
+
+        :param x_position: абсолютная координата X
+        :param y_position: абсолютная координата Y
+        :param phi: угол поворота в градусах
         """
         default_goal_value = PoseStamped()
         default_goal_value.header.frame_id = 'map'
@@ -194,6 +222,73 @@ class Publishers:
         Проверка соединения с топиком для движения робота по координатам
         """
         while self.default_goal_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+            try:
+                self.rate.sleep()
+            except rospy.ROSInterruptException:
+                pass
+
+    def update_follower_path(self, x: Optional[float] = None, y: Optional[float] = None):
+        """
+        Обновление пути робота
+
+        :param x: абсолютная координата X пути
+        :param y: абсолютная координата Y пути
+        """
+        self.follower_path.header.frame_id = "map"
+
+        pose_stamp = PoseStamped()
+        pose_stamp.header.frame_id = "map"
+        pose_stamp.header.stamp = rospy.Time.now()
+
+        if x and y:
+            pose_stamp.pose.position.x = x
+            pose_stamp.pose.position.y = y
+            self.follower_path.poses.append(pose_stamp)
+        else:
+            self.follower_path.poses.append(pose_stamp)
+            self.follower_path.poses.clear()
+
+        self._check_follower_path_pub_ready()
+        self.follower_path_pub.publish(self.follower_path)
+
+    def _check_follower_path_pub_ready(self):
+        """
+        Проверка соединения с топиком для публикации пути робота
+        """
+        while self.follower_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+            try:
+                self.rate.sleep()
+            except rospy.ROSInterruptException:
+                pass
+
+    def update_target_path(self, x: Optional[float] = None, y: Optional[float] = None):
+        """
+        Обновление пути цели
+
+        :param x: абсолютная координата X пути
+        :param y: абсолютная координата Y пути
+        """
+        self.target_path.header.frame_id = "map"
+
+        pose_stamp = PoseStamped()
+        pose_stamp.header.frame_id = "map"
+        pose_stamp.header.stamp = rospy.Time.now()
+
+        if x and y:
+            pose_stamp.pose.position.x = x
+            pose_stamp.pose.position.y = y
+            self.target_path.poses.append(pose_stamp)
+        else:
+            self.target_path.poses.clear()
+
+        self._check_target_path_pub_ready()
+        self.target_path_pub.publish(self.target_path)
+
+    def _check_target_path_pub_ready(self):
+        """
+        Проверка соединения с топиком для публикации пути цели
+        """
+        while self.target_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
                 self.rate.sleep()
             except rospy.ROSInterruptException:

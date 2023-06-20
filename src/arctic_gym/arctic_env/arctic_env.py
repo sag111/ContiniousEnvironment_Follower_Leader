@@ -139,18 +139,16 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.set_camera_yaw(0)
         rospy.sleep(0.1)
 
-
-        # self.pub.reset_follower_path()
-        # self.pub.reset_target_path()
-        # self.pub.reset_target_cam_path()
+        self.pub.update_follower_path()
+        self.pub.update_target_path()
 
         if move:
             print('перемещение ведущего и ведомого в начальную позицию')
             # self.arctic_coords = [0.0, 30.0, 1.0]
             # self.target_coords = [12.0, 30.0, 1.0]
 
-            self.arctic_coords = [6.0, 0.0, 0.4]
-            self.target_coords = [12.0, 0.0, 0.7]
+            self.arctic_coords = [0.0, -10.0, 0.3]
+            self.target_coords = [10.0, -10.0, 0.7]
 
             # self.arctic_coords = [40.0, 0.0, 1.0]
             # self.target_coords = [47.0, 0.0, 1.0]
@@ -176,13 +174,13 @@ class ArcticEnv(RobotGazeboEnv):
 
 
         # Получение истории и корридора
-        # self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
-        #                                                                 self.follower_position,
-        #                                                                 self.follower_delta_position)
-        # # Получение точек препятствий и формирование obs
-        # self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
-        # self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
-        #                                     self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
+        self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
+                                                                        self.follower_position,
+                                                                        self.follower_delta_position)
+        # Получение точек препятствий и формирование obs
+        self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
+        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+                                            self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
         obs = self._get_obs()
         """"""
@@ -279,14 +277,17 @@ class ArcticEnv(RobotGazeboEnv):
         log_angular = round(float(action[1]), 2)
         print(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
+
         self.follower_delta_position = self._get_delta_position()
         """
         Радар по позициям ведущего и ведомого
         """
         self.leader_position, self.follower_position, self.follower_orientation = self._get_positions()
         self.roll_ang, self.pitch_ang, self.yaw_ang = tf.transformations.euler_from_quaternion(self.follower_orientation)
-        # self.pub.update_follower_path(self.follower_position[0], self.follower_position[1])
-        # self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
+
+        self.pub.update_follower_path(self.follower_position[0], self.follower_position[1])
+        self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
+
         # Вызов основных функций
         self.ssd_camera_objects = self._get_ssd_lead_information()
         self._get_lidar_points()

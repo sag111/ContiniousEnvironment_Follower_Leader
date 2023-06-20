@@ -301,7 +301,7 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
         follower_position = [0, 0]
 
         self.react_to_safe_corridor = True
-        self.react_to_green_zone = True
+        self.react_to_green_zone = False
         self.react_to_obstacles = True
 
         self.front_lasers_count = 5
@@ -314,7 +314,6 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
         print("DIRECTION", direction)
 
         follower_orientation = direction
-
 
         self.lasers_end_points.append(
             follower_position + rotateVector(np.array([self.laser_length, 0]), follower_orientation + 40))
@@ -393,9 +392,6 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
 
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - follower_position)
-
-        import rospy
-        rospy.logerr(obs)
 
         self.laser_values_obs = obs
         self.laser_values_obs = (self.laser_values_obs / self.laser_length)
