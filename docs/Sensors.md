@@ -22,6 +22,18 @@
    - **LaserPrevSensor** - (основной) "лучевой сенсор", аналогичен LeaderCorridor_Prev_lasers_v2. Однако, определяет ближайшее расстояние 
 только до препятствий.
 
+   - **LeaderCorridor_Prev_lasers_v2_compas** - новый "лучевой сенсор", аналогичен LeaderCorridor_Prev_lasers_v2, но с 
+возможность определять направления в формируемых признаках, исходный вектор, увеличивается длинной в 4 раза, и разбивается нулями
+в незадействованных сторонах. Пример OBSERVATION состоят из конкатенированных векторов признаков, которые формируется 
+следующим образом front = [1, 1, 0, 0, 0, 0, 0, 0], right = [0, 0, 1, 1, 0, 0, 0, 0], back = [0, 0, 0, 0, 1, 1, 0, 0], 
+left = [0, 0, 0, 0, 1, 1]. RES_OBS = np.concatenate((front, right, behind, left), axis=None)
+   - **LaserPrevSensor_compas** - новый "лучевой сенсор", по принципу работы аналогичен LaserPrevSensor, с указанием 
+направлением, как LeaderCorridor_Prev_lasers_v2_compas.
+
+**ВАЖНО:**
+На сенсоры LeaderCorridor_Prev_lasers_v2_compas и LaserPrevSensor_compas распрастраняются аналогичные правила, как и на 
+LeaderCorridor_Prev_lasers_v2 и LaserPrevSensor
+
 #### Устаревшие:
    - LaserSensor - "признаки лидара"
    - LeaderPositionsTracker - сенсор для формирования истории точек маршрута лидера (устаревший вариант)
