@@ -2066,24 +2066,33 @@ class TestGameManual(Game):
                              #     'sensor_name': 'FollowerInfo',
                              #     'speed_direction_param': 2
                              # },
-                             "LeaderCorridor_Prev_lasers_v2": {
-                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
+                            #  "LeaderCorridor_Prev_lasers_v2": {
+                            #      'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
+                            #      "react_to_obstacles": True,
+                            #      "front_lasers_count": 2,
+                            #      "back_lasers_count": 2,
+                            #      "react_to_safe_corridor": True,
+                            #      "react_to_green_zone": True,
+                            #      "laser_length": 150
+                            #  },
+                            #  "LaserPrevSensor": {
+                            #     'sensor_name': 'LaserPrevSensor',
+                            #     "react_to_obstacles": True,
+                            #     "front_lasers_count": 4,
+                            #     "back_lasers_count": 4,
+                            #     "react_to_safe_corridor": False,
+                            #     "react_to_green_zone": False,
+                            #     "laser_length": 150
+                            # },
+                             "LeaderCorridor_Prev_lasers_v2_compas": {
+                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2_compas',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 2,
-                                 "back_lasers_count": 2,
+                                 "front_lasers_count": 6,
+                                 "back_lasers_count": 6,
                                  "react_to_safe_corridor": True,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              },
-                             "LaserPrevSensor": {
-                                'sensor_name': 'LaserPrevSensor',
-                                "react_to_obstacles": True,
-                                "front_lasers_count": 4,
-                                "back_lasers_count": 4,
-                                "react_to_safe_corridor": False,
-                                "react_to_green_zone": False,
-                                "laser_length": 150
-                            }
                          }
                          )
 
