@@ -2093,6 +2093,15 @@ class TestGameManual(Game):
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              },
+                             "LaserPrevSensor_compas": {
+                                 'sensor_name': 'LaserPrevSensor_compas',
+                                 "react_to_obstacles": True,
+                                 "front_lasers_count": 12,
+                                 "back_lasers_count": 12,
+                                 "react_to_safe_corridor": False,
+                                 "react_to_green_zone": False,
+                                 "laser_length": 200
+                             }
                          }
                          )
 
