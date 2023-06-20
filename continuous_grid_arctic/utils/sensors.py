@@ -1246,8 +1246,9 @@ class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers):
 
             all_obs_arr = np.array(all_obs_list)
             # print(all_obs_arr)
-            # print('ALL CORIDOR OBS ARR: ', all_obs_arr)
-        return res_out
+#             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr)
+#             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr.shape)
+        return all_obs_arr
 
     def show(self, env):
         for laser_end_point in self.lasers_end_points:
@@ -1362,7 +1363,8 @@ class LaserPrevSensor_compas(LeaderCorridor_lasers):
                 all_obs_list.append(res_out)
 
             all_obs_arr = np.array(all_obs_list)
-            # print('ALL OBS ARR: ', all_obs_arr)
+#             print('ALL OBS ARR 2 : ', all_obs_arr)
+#             print('ALL OBS ARR 2 : ', all_obs_arr.shape)
 
         return all_obs_arr
 
