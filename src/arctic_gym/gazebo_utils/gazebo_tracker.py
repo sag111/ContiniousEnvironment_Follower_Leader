@@ -95,8 +95,8 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         max_distance = 24
         self.saving_period = 3
 
-        print('LEADER', leader_position)
-        print('FOLLOWER', follower_position)
+        # print('LEADER', leader_position)
+        # print('FOLLOWER', follower_position)
 
 
         # 1) Пересчет истории
@@ -143,7 +143,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
             second_point = self.leader_positions_hist[1]
             while first_point[0] < -0.3 and second_point[0] < -0.1:
             # while first_point[0] < -0.5 and second_point[0] < -0.3 and first_point[1] < -0.5 and second_point[0] < -0.3:
-                print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 1 ")
+            #     print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 1 ")
                 self.leader_positions_hist.popleft()
                 self.corridor.popleft()
                 if len(self.leader_positions_hist) > 2:
@@ -158,7 +158,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
             # # Если позиция лидера не изменилась с последнего обсерва, просто возвращаем, что есть, ничего не обновляем
             # if len(self.leader_positions_hist) > 0 and (self.leader_positions_hist[-1] == leader_position).all():
             if len(self.leader_positions_hist) > 0 and np.linalg.norm(cur_point - self.leader_positions_hist[-1]) < 1:
-                print('Popal в неизменяемую позицию лидера')
+                # print('Popal в неизменяемую позицию лидера')
                 if self.generate_corridor:
                     return self.leader_positions_hist, self.corridor
                 else:
@@ -178,7 +178,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                 last_dist = np.linalg.norm(last_point - follower_position)
                 current_point = leader_position.copy()
                 new_dist = np.linalg.norm(current_point - follower_position)
-                print("РАЗНИЦА МЕЖДУ ДВУМЯ ТОЧКАМИ НОВОЙ И ПОСЛЕДНЕЙ", new_dist)
+                # print("РАЗНИЦА МЕЖДУ ДВУМЯ ТОЧКАМИ НОВОЙ И ПОСЛЕДНЕЙ", new_dist)
                 if new_dist > last_dist and new_dist < 25:
                     self.leader_positions_hist.append(leader_position.copy())
 
@@ -189,7 +189,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                                    np.array(self.leader_positions_hist)[1:, :], axis=1)
             path_length = np.sum(dists)
             while path_length > max_distance:
-                print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 2")
+                # print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 2")
                 if len(self.leader_positions_hist) > 0:
                     self.leader_positions_hist.popleft()
                 if len(self.corridor) > 0:
@@ -218,7 +218,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                 self.corridor.append([right_border_dot, left_border_dot])
 
         self.saving_counter += 1
-        print("ИСТОРИЯ И КОРИДОР", self.leader_positions_hist)
+        # print("ИСТОРИЯ И КОРИДОР", self.leader_positions_hist)
         return self.leader_positions_hist, self.corridor
 
 
@@ -311,7 +311,7 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
 
         _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
         direction = np.degrees(yaw)
-        print("DIRECTION", direction)
+        # print("DIRECTION", direction)
 
         follower_orientation = direction
 
@@ -398,8 +398,8 @@ class GazeboLeaderPositionsCorridorLasers(LeaderCorridor_lasers):
         # self.laser_values_obs[5] = self.laser_values_obs[5]*0.65
         # self.laser_values_obs[6] = self.laser_values_obs[6]*0.65
 
-        print(' ')
-        print(self.laser_values_obs)
+        # print(' ')
+        # print(self.laser_values_obs)
         return self.laser_values_obs
 
 
