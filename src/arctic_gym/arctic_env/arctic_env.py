@@ -820,9 +820,9 @@ class ArcticEnv(RobotGazeboEnv):
                 return 0
             # Завершение следование, ведущий доехал (Local)
 
-            print(self.code)
-            print(np.linalg.norm(self.goal - leader_position))
-            print(np.linalg.norm(follower_position - leader_position))
+            # print(self.code)
+            # print(np.linalg.norm(self.goal - leader_position))
+            # print(np.linalg.norm(follower_position - leader_position))
 
             if self.code == 3 and np.linalg.norm(self.goal - leader_position) < 2 \
                     and np.linalg.norm(follower_position - leader_position) < 10:
