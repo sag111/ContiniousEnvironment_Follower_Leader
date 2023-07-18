@@ -724,7 +724,8 @@ class ArcticEnv(RobotGazeboEnv):
             self.code, self.text = leader_status.status_list[-1].status, leader_status.status_list[-1].text
             # print(f"Статус ведущего: {self.code}, {self.text}")
         except IndexError as e:
-            print(e)
+            self.code = 1
+            self.text = "None"
         #     print(f"Проблема получения статуса ведущего: {e}")
 
         # Информирование (global)
