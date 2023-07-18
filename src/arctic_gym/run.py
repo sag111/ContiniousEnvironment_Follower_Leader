@@ -94,33 +94,22 @@ if __name__ == '__main__':
     lead_info = env.ssd_camera_objects
     lead_info = next((x for x in lead_info if x["name"] == "car"), None)
 
-    # if lead_info == None:
-    # follower_status = _go_to_the_leader(lead_pose)
-    # while True:
-    #     code_to = _get_default_status()
-    #     follower_status = code_to
-    #     if follower_status == 3:
-    env.pub.move_target(50.0, -40.0, phi=90)
-    #         break
+    env.pub.move_target(50.0, -40.0, phi=0)
 
-    # time.sleep(1)
-    # env.pub.text_to_voice('Начинаю следовать за машиной')
-
-    obs = env.reset(move=False)
+    # obs = env.reset(move=False)
 
     while not done:
         action = client.get_action(eid, obs)
-        # time.sleep(10)
 
         if info['leader_status'] == "moving" and count_lost >= 1:
             count_lost = 0
-            env.pub.move_target(50.0, -40.0, phi=90)
+            env.pub.move_target(50.0, -40.0, phi=0)
 
         if info['agent_status'] == 'too_far_from_leader_info':
             count_lost += 1
             env.pub.target_cancel_action()
 
-        if info["agent_status"] == "too_close_to_leader" and info["leader_status"] == 'moving':
+        if info["agent_status"] == "too_close_to_leader":
             action[0] *= 0
 
         if info['leader_status'] == 'None':
@@ -133,7 +122,7 @@ if __name__ == '__main__':
                 env.pub.target_cancel_action()
 
         else:
-            action[0] *= 1.5
+            action[0] *= 1.10
 
         new_obs, reward, done, new_info = env.step(action)
         obs = new_obs
@@ -143,14 +132,5 @@ if __name__ == '__main__':
 
         if done:
             client.end_episode(eid, obs)
-            # if info['mission_status'] == 'fail':
-            #     if info['agent_status'] == 'low_reward':
-            #         env.pub.text_to_voice('Невозможно вернутся на маршрут следования')
-            #     elif info['agent_status'] == 'too_far_from_leader':
-            #         env.pub.text_to_voice('Дистанция до машины слишком велика')
-            # elif info['mission_status'] == 'safety system end':
-            #     env.pub.text_to_voice('Машина не обнаружена')
-            # elif info['mission_status'] == 'success':
-            #     env.pub.text_to_voice('Следование завершено успешно')
 
     env.pub.set_camera_yaw(0)
