@@ -124,14 +124,8 @@ class ArcticEnv(RobotGazeboEnv):
             np.ones(7, dtype=np.float32)
         )
 
-        self.pts = config.rl_agent.points
-
-        choice_pt = np.random.randint(len(self.pts))
-        # choice_pt = 10
-
-        pt = self.pts[choice_pt]
-
-        self.goal = pt[-2:]
+    def set_goal(self, point):
+        self.goal = point
 
     def reset(self, move=True):
 
@@ -186,7 +180,6 @@ class ArcticEnv(RobotGazeboEnv):
         obs = self._get_obs()
         """"""
         self._safe_zone()
-        # self.pub.move_target(self.goal[0], self.goal[1])
         self._is_done(self.leader_position, self.follower_position)
 
         return obs
@@ -276,7 +269,7 @@ class ArcticEnv(RobotGazeboEnv):
         # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         log_linear = round(float(action[0]), 2)
         log_angular = round(float(action[1]), 2)
-        # print(f'Actions: linear - {log_linear}, angular - {log_angular}')
+        print(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
 
         self.follower_delta_position = self._get_delta_position()
@@ -312,10 +305,10 @@ class ArcticEnv(RobotGazeboEnv):
         """"""
         self._is_done(self.leader_position, self.follower_position)
         log_obs = list(map(lambda x: round(x, 2), obs))
-        # print(f'Наблюдения: {log_obs}')
+        print(f'Наблюдения: {log_obs}')
         reward = self._compute_reward()
         self.cumulated_episode_reward += reward
-        # print(self.cumulated_episode_reward)
+        print(self.cumulated_episode_reward)
 
         log_reward = reward
         if self.is_in_box:
@@ -333,7 +326,7 @@ class ArcticEnv(RobotGazeboEnv):
             too_close = self.follower_too_close
         else:
             too_close = self.follower_too_close
-        # print(f'Награда за шаг: {log_reward}, в зоне следования: {in_box}, на пути: {on_trace}, слишком близко: {too_close}')
+        print(f'Награда за шаг: {log_reward}, в зоне следования: {in_box}, на пути: {on_trace}, слишком близко: {too_close}')
 
         # if self.done:
         #     # print(f"Количество шагов: {self.step_count}, шагов вне зоны следования: {self.steps_out_box}")
@@ -344,36 +337,36 @@ class ArcticEnv(RobotGazeboEnv):
 
     # TODO: функция получения и обработки информации с камеры
 
-    def _test_sys(self):
-        start_target = self.target_coords
-        start_arctic = self.arctic_coords
-        goal = self.goal
-        step_count = self.step_count
-        steps_out = self.steps_out_box
-        reward = np.round(self.cumulated_episode_reward, decimals=2)
-        info = self.info
-        leader_reward = self.count_leader_reward
-        leader_steps = self.count_leader_steps_reward
-
-        stop_count = self.count_stop_leader
-
-        d = {'col1': [start_target],
-             'col2': [start_arctic],
-             'col3': [goal],
-             'col4': [step_count],
-             'col5': [steps_out],
-             'col6': [reward],
-             'col7': [info],
-             'col8': [leader_reward],
-             'col9': [leader_steps],
-             'col10': [stop_count]}
-        df = pd.DataFrame(data=d)
-
-        df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_with_all.csv", index=False, mode='a',
-                  header=False)
-        #
-        # df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_without_9.csv", index=False, mode='a',
-        #           header=False)
+    # def _test_sys(self):
+    #     start_target = self.target_coords
+    #     start_arctic = self.arctic_coords
+    #     goal = self.goal
+    #     step_count = self.step_count
+    #     steps_out = self.steps_out_box
+    #     reward = np.round(self.cumulated_episode_reward, decimals=2)
+    #     info = self.info
+    #     leader_reward = self.count_leader_reward
+    #     leader_steps = self.count_leader_steps_reward
+    #
+    #     stop_count = self.count_stop_leader
+    #
+    #     d = {'col1': [start_target],
+    #          'col2': [start_arctic],
+    #          'col3': [goal],
+    #          'col4': [step_count],
+    #          'col5': [steps_out],
+    #          'col6': [reward],
+    #          'col7': [info],
+    #          'col8': [leader_reward],
+    #          'col9': [leader_steps],
+    #          'col10': [stop_count]}
+    #     df = pd.DataFrame(data=d)
+    #
+    #     df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_with_all.csv", index=False, mode='a',
+    #               header=False)
+    #     #
+    #     # df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_without_9.csv", index=False, mode='a',
+    #     #           header=False)
 
     def _get_positions(self):
         """
@@ -533,44 +526,44 @@ class ArcticEnv(RobotGazeboEnv):
 
         return fil_ob_1, fil_ob_2
 
-    def _test_lid_filters(self, all_points, after_filter, time_fil, all_time_fil):
-
-        start_target = self.target_coords
-        start_arctic = self.arctic_coords
-        goal = self.goal
-        step_count = self.step_count
-        steps_out = self.steps_out_box
-        reward = np.round(self.cumulated_episode_reward, decimals=2)
-        info = self.info
-        leader_reward = self.count_leader_reward
-        leader_steps = self.count_leader_steps_reward
-        stop_count = self.count_stop_leader
-
-
-
-
-
-        d = {'col1': [start_target],
-             'col2': [start_arctic],
-             'col3': [goal],
-             'col4': [step_count],
-             'col5': [steps_out],
-             'col6': [reward],
-             'col7': [info],
-             'col8': [leader_reward],
-             'col9': [leader_steps],
-             'col10': [stop_count],
-             'col11': [all_points],
-             'col12': [after_filter],
-             'col13': [time_fil],
-             'col14': [all_time_fil],
-             }
-
-        df = pd.DataFrame(data=d)
-        df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data_lid/csf.csv", index=False, mode='a',
-                  header=False)
-
-        return 0
+    # def _test_lid_filters(self, all_points, after_filter, time_fil, all_time_fil):
+    #
+    #     start_target = self.target_coords
+    #     start_arctic = self.arctic_coords
+    #     goal = self.goal
+    #     step_count = self.step_count
+    #     steps_out = self.steps_out_box
+    #     reward = np.round(self.cumulated_episode_reward, decimals=2)
+    #     info = self.info
+    #     leader_reward = self.count_leader_reward
+    #     leader_steps = self.count_leader_steps_reward
+    #     stop_count = self.count_stop_leader
+    #
+    #
+    #
+    #
+    #
+    #     d = {'col1': [start_target],
+    #          'col2': [start_arctic],
+    #          'col3': [goal],
+    #          'col4': [step_count],
+    #          'col5': [steps_out],
+    #          'col6': [reward],
+    #          'col7': [info],
+    #          'col8': [leader_reward],
+    #          'col9': [leader_steps],
+    #          'col10': [stop_count],
+    #          'col11': [all_points],
+    #          'col12': [after_filter],
+    #          'col13': [time_fil],
+    #          'col14': [all_time_fil],
+    #          }
+    #
+    #     df = pd.DataFrame(data=d)
+    #     df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data_lid/csf.csv", index=False, mode='a',
+    #               header=False)
+    #
+    #     return 0
 
     def _calculate_length_to_leader(self, camera_objects):
 
@@ -689,7 +682,6 @@ class ArcticEnv(RobotGazeboEnv):
         """
         Выбор дискретных или непрерывных действий
         """
-
         if self.discrete_action:
             if action == 0:
                 discrete_action = (0.5, 0.0)
@@ -821,9 +813,9 @@ class ArcticEnv(RobotGazeboEnv):
                 return 0
             # Завершение следование, ведущий доехал (Local)
 
-            # print(self.code)
-            # print(np.linalg.norm(self.goal - leader_position))
-            # print(np.linalg.norm(follower_position - leader_position))
+            print(self.code)
+            print(np.linalg.norm(self.goal - leader_position))
+            print(np.linalg.norm(follower_position - leader_position))
 
             if self.code == 3 and np.linalg.norm(self.goal - leader_position) < 2 \
                     and np.linalg.norm(follower_position - leader_position) < 10:
@@ -851,7 +843,6 @@ class ArcticEnv(RobotGazeboEnv):
 
             # Проверка на близость к ведущему
             if self.camera_lead_info['length'] < self.min_distance:
-                print(self.min_distance)
                 self.info["agent_status"] = "too_close_to_leader"
 
                 print(self.info)
@@ -863,7 +854,6 @@ class ArcticEnv(RobotGazeboEnv):
             # pus_obs[5] *= 0.65
             # pus_obs[6] *= 0.65
             # if list(obs[0:7]) == list(pus_obs)
-
 
         if self.info["leader_status"] == "moving":
             self.end_stop_count = 0
