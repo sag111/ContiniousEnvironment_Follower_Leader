@@ -845,6 +845,14 @@ class ArcticEnv(RobotGazeboEnv):
             if self.camera_lead_info['length'] < self.min_distance:
                 self.info["agent_status"] = "too_close_to_leader"
 
+                # Определение расстояния до ведущего определяется только по области машины в кадре
+                # без учета других объектов, возникает когда машина детектируется в области видимости
+                # но располагается за другим объектом из-за чего расстояние рассчитывается неправильно
+                self.end_stop_count += 1
+                if self.end_stop_count > 40:
+                    self.info["mission_status"] = "failed by obstacle in front of target"
+                    self.done = True
+
                 print(self.info)
 
                 return 0
