@@ -1,10 +1,12 @@
-import rospy
-import numpy as np
+import itertools
+import time
+import pandas as pd
 
+from datetime import datetime
 from pathlib import Path
 from pyhocon import ConfigFactory
 
-from src.arctic_gym import arctic_env_maker
+from src.arctic_gym.gazebo_utils.executor import Executor
 
 
 project_path = Path(__file__).resolve().parents[3]
@@ -15,28 +17,24 @@ config = ConfigFactory.parse_file(config_path)
 experiment_path = project_path.joinpath('config/experiment.conf')
 experiment = ConfigFactory.parse_file(experiment_path)
 
-rospy.init_node("rl_client", anonymous=True)
 
-env_config = config.rl_agent.env_config
-env = arctic_env_maker(env_config)
+exc = Executor(config)
 
-# env.pub.teleport(model="arctic_model", point=[70, -30, 0.3], quaternion=[0, 0, 0, 1])
-
-import itertools
-
-# перестановки точек для теста
-count = 0
+collects = []
 for pts in itertools.permutations(experiment['start_point'], 2):
-    print(pts)
+
+    exc.setup_position(pts[0], pts[1])
+
+    time.sleep(2)
+
+    meta = exc.follow(pts[1])
+
+    collects.append(meta)
 
 
-# Определение угла от начальной к конечной точке для правильной расстановки ведущего
-x0 = 50.0
-x1 = -40.0
+evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
+csv_path = project_path.joinpath("data/processed")
+csv_path.mkdir(parents=True, exist_ok=True)
 
-y0 = -41.0
-y1 = 30.0
-
-print(np.rad2deg(np.arctan2(y0 - y1, x1 - x0)))
-
-
+now = datetime.now()
+evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval.csv"), sep=';', index=False)
