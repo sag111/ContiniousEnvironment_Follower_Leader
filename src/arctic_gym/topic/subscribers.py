@@ -6,6 +6,7 @@ from sensor_msgs.msg import PointCloud2
 from control_msgs.msg import JointControllerState
 from actionlib_msgs.msg import GoalStatusArray
 from geometry_msgs.msg import TwistStamped
+from nav_msgs.msg import Path
 
 from pyhocon import ConfigTree
 
@@ -34,6 +35,12 @@ class Subscribers:
         # Статус робота
         self.robot_status_move_to_topic = config["topic.robot_status_move_to"]
         rospy.Subscriber(self.robot_status_move_to_topic, GoalStatusArray, self._move_to_status_callback)
+        # Путь ведущего
+        self.target_path_topic = config["topic.target_path"]
+        rospy.Subscriber(self.target_path_topic, Path, self._target_path_callback)
+        # Путь ведомого
+        self.robot_path_topic = config["topic.robot_path"]
+        rospy.Subscriber(self.robot_path_topic, Path, self._robot_path_callback)
 
         self.check_all_subscribers_ready()
 
@@ -100,6 +107,24 @@ class Subscribers:
         """
         return self.move_to_status
 
+    def _target_path_callback(self, data):
+        self.target_path = data
+
+    def get_target_path(self):
+        """
+        Получение пути ведущего
+        """
+        return self.target_path
+
+    def _robot_path_callback(self, data):
+        """
+        Получение пути ведомого
+        """
+        self.robot_path = data
+
+    def get_robot_path(self):
+        return self.robot_path
+
     def check_all_subscribers_ready(self):
         """
         Проверка подписок
@@ -110,6 +135,10 @@ class Subscribers:
         self._check_lidar_ready()
         self._check_follower_camera_yaw_ready()
         self._check_target_status_ready()
+        # print(1)
+        # self._check_target_path_ready()
+        # self._check_robot_path_ready()
+        # print(2)
 
     def _check_odom_ready(self):
         """
@@ -184,9 +213,31 @@ class Subscribers:
         self.move_to_status = None
         while self.move_to_status is None and not rospy.is_shutdown():
             try:
-                self.move_to_status = rospy.wait_for_message(self.robot_status_move_to_topic, TwistStamped)
+                self.move_to_status = rospy.wait_for_message(self.robot_status_move_to_topic, GoalStatusArray)
             except:
                 rospy.logerr(f"Current {self.robot_status_move_to_topic} no ready yet, retrying for getting status")
+
+    # def _check_target_path_ready(self):
+    #     """
+    #     Проверка получения пути ведущего
+    #     """
+    #     self.target_path = None
+    #     while self.target_path is None and not rospy.is_shutdown():
+    #         try:
+    #             self.target_path = rospy.wait_for_message(self.target_path_topic, Path)
+    #         except:
+    #             rospy.logerr(f"Current {self.target_path_topic} no ready yet, retrying for getting status")
+    #
+    # def _check_robot_path_ready(self):
+    #     """
+    #     Проверка получения пути ведомого
+    #     """
+    #     self.robot_path = None
+    #     while self.robot_path is None and not rospy.is_shutdown():
+    #         try:
+    #             self.robot_path = rospy.wait_for_message(self.robot_path_topic, Path)
+    #         except:
+    #             rospy.logerr(f"Current {self.robot_path_topic} no ready yet, retrying for getting status")
 
 
 if __name__ == '__main__':
