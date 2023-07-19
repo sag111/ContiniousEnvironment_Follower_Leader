@@ -17,6 +17,7 @@ config = ConfigFactory.parse_file(config_path)
 experiment_path = project_path.joinpath('config/experiment.conf')
 experiment = ConfigFactory.parse_file(experiment_path)
 
+now = datetime.now()
 
 exc = Executor(config)
 
@@ -25,16 +26,14 @@ for pts in itertools.permutations(experiment['start_point'], 2):
 
     exc.setup_position(pts[0], pts[1])
 
-    time.sleep(2)
+    time.sleep(3)
 
     meta = exc.follow(pts[1])
 
     collects.append(meta)
 
+    evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
+    csv_path = project_path.joinpath("data/processed")
+    csv_path.mkdir(parents=True, exist_ok=True)
 
-evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
-csv_path = project_path.joinpath("data/processed")
-csv_path.mkdir(parents=True, exist_ok=True)
-
-now = datetime.now()
-evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval.csv"), sep=';', index=False)
+    evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval.csv"), sep=';', index=False)
