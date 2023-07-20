@@ -12,19 +12,28 @@ import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box
 
-from src.continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
-from src.continuous_grid_arctic.utils.reward_constructor import Reward
-from src.continuous_grid_arctic.utils.astar import astar
-from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
-from src.continuous_grid_arctic.utils.rrt_star import RRTStar
-from src.continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
-from src.continuous_grid_arctic.utils.dstar import Map, Dstar
-from src.continuous_grid_arctic.utils.rrt import RRT
-
 try:
-    from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
+    from continuous_grid_arctic.utils.reward_constructor import Reward
+    from continuous_grid_arctic.utils.astar import astar
+    from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
+    from continuous_grid_arctic.utils.rrt_star import RRTStar
+    from continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
+    from continuous_grid_arctic.utils.dstar import Map, Dstar
+    from continuous_grid_arctic.utils.rrt import RRT
+    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 except:
+    from src.continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
+    from src.continuous_grid_arctic.utils.reward_constructor import Reward
+    from src.continuous_grid_arctic.utils.astar import astar
+    from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point, distance_to_rect
+    from src.continuous_grid_arctic.utils.rrt_star import RRTStar
+    from src.continuous_grid_arctic.utils.lqr_rrt_star import LQRRRTStar
+    from src.continuous_grid_arctic.utils.dstar import Map, Dstar
+    from src.continuous_grid_arctic.utils.rrt import RRT
     from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+
+    
 
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
@@ -544,7 +553,8 @@ class Game(gym.Env):
 
         follower_direction = angle_to_point(follower_start_position, self.leader.position)
 
-        self.follower.position = follower_start_position
+        # TODO: надо бы переименовать put на place
+        self.follower.put(follower_start_position)
         self.follower.direction = follower_direction
         self.follower.start_direction = follower_direction
 
@@ -704,10 +714,10 @@ class Game(gym.Env):
             koeff = 150
             if i % 2 == 0:
                 bear_start_position = (self.leader.position[0] + koeff, self.leader.position[1] - koeff)
-                self.game_dynamic_list[i].position = bear_start_position
+                self.game_dynamic_list[i].put(bear_start_position)
             else:
                 bear_start_position = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
-                self.game_dynamic_list[i].position = bear_start_position
+                self.game_dynamic_list[i].put(bear_start_position)
 
     def _pos_bears_nearest_leader(self):
 
@@ -909,8 +919,7 @@ class Game(gym.Env):
         self.follower.move()
 
         # определение столкновения ведомого с препятствиями
-        # if self._collision_check(self.follower):
-        if self._collision_check(self.follower) and self.step_count > 1:
+        if self._collision_check(self.follower):
             self.crash = True
             self.done = True
             info["mission_status"] = "fail"
@@ -1018,7 +1027,7 @@ class Game(gym.Env):
             info["leader_status"] = "finished"
 
         # обработка столкновений лидера
-        if self._collision_check(self.leader) and self.step_count > 1:
+        if self._collision_check(self.leader):
             print("Лидер столкнулся с препятствием!")
             self.done = True
             info["mission_status"] = "fail"
@@ -2067,24 +2076,42 @@ class TestGameManual(Game):
                              #     'sensor_name': 'FollowerInfo',
                              #     'speed_direction_param': 2
                              # },
-                             "LeaderCorridor_Prev_lasers_v2": {
-                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
+                            #  "LeaderCorridor_Prev_lasers_v2": {
+                            #      'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
+                            #      "react_to_obstacles": True,
+                            #      "front_lasers_count": 2,
+                            #      "back_lasers_count": 2,
+                            #      "react_to_safe_corridor": True,
+                            #      "react_to_green_zone": True,
+                            #      "laser_length": 150
+                            #  },
+                            #  "LaserPrevSensor": {
+                            #     'sensor_name': 'LaserPrevSensor',
+                            #     "react_to_obstacles": True,
+                            #     "front_lasers_count": 4,
+                            #     "back_lasers_count": 4,
+                            #     "react_to_safe_corridor": False,
+                            #     "react_to_green_zone": False,
+                            #     "laser_length": 150
+                            # },
+                             "LeaderCorridor_Prev_lasers_v2_compas": {
+                                 'sensor_name': 'LeaderCorridor_Prev_lasers_v2_compas',
                                  "react_to_obstacles": True,
-                                 "front_lasers_count": 2,
-                                 "back_lasers_count": 2,
+                                 "front_lasers_count": 6,
+                                 "back_lasers_count": 6,
                                  "react_to_safe_corridor": True,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
                              },
-                             "LaserPrevSensor": {
-                                'sensor_name': 'LaserPrevSensor',
-                                "react_to_obstacles": True,
-                                "front_lasers_count": 4,
-                                "back_lasers_count": 4,
-                                "react_to_safe_corridor": False,
-                                "react_to_green_zone": False,
-                                "laser_length": 150
-                            }
+                             "LaserPrevSensor_compas": {
+                                 'sensor_name': 'LaserPrevSensor_compas',
+                                 "react_to_obstacles": True,
+                                 "front_lasers_count": 12,
+                                 "back_lasers_count": 12,
+                                 "react_to_safe_corridor": False,
+                                 "react_to_green_zone": False,
+                                 "laser_length": 200
+                             }
                          }
                          )
 
