@@ -10,8 +10,10 @@ import sys
 import matplotlib.pyplot as plt
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../RRT/")
-
-from src.continuous_grid_arctic.utils.rrt import RRT
+try:
+    from continuous_grid_arctic.utils.rrt import RRT
+except:
+    from src.continuous_grid_arctic.utils.rrt import RRT
 
 #show_animation = False
 

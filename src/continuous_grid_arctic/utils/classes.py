@@ -3,8 +3,8 @@ from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
 try:
-    from utils.misc import angle_correction, angle_to_point
-    from utils.sensors import SENSOR_NAME_TO_CLASS
+    from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
+    from continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
 except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
     from src.continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
@@ -263,7 +263,8 @@ class RobotWithSensors(AbstractRobot):
             if sensor_name in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
             elif sensor_name in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
-                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2']:
+                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
+                                 'LeaderCorridor_Prev_lasers_v2_compas', 'LaserPrevSensor_compas']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
 
             elif sensor_name in ['FollowerInfo']:
@@ -271,6 +272,5 @@ class RobotWithSensors(AbstractRobot):
 
             else:
                 sensors_observes[sensor_name] = sensor.scan(env)
-
 
         return sensors_observes

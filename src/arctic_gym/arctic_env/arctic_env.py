@@ -161,10 +161,15 @@ class ArcticEnv(RobotGazeboEnv):
             self.follower_orientation)
 
         # Вызов основных функций
-        self.ssd_camera_objects = self._get_ssd_lead_information()
+        # Получение информации с SSD object detection
+        self.ssd_camera_objects = self._get_ssd_lead_information(self.sub.get_from_follower_image())
+        # Получение точек лидара
         self._get_lidar_points()
+        # Получение расстояния до лидера и облако точек без точек лидера
         self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
+        # Получение информации о лидере с камеры
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
+        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
 
 
@@ -283,11 +288,16 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
 
         # Вызов основных функций
+        # Получение информации с SSD object detection
         self.ssd_camera_objects = self._get_ssd_lead_information()
+        # Получение точек лидара
         self._get_lidar_points()
 
+        # Получение расстояния до лидера и облако точек без точек лидера
         self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
+        # Получение информации о лидере с камеры
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
+        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
 
 
@@ -402,6 +412,14 @@ class ArcticEnv(RobotGazeboEnv):
 
     @staticmethod
     def _get_xy_lead_from_length_phi(length_phi):
+        """
+        функция вычисления координат ведущего относительно ведомого на основе информации о расстоянии и угле отклонения
+        Args:
+            length_phi = ['length': 12, 'phi' : 0.1]
+        Returns:
+            Локальные координаты ведущего
+            [x, y]
+        """
         length = length_phi['length']
         phi = length_phi['phi']
         lead_x = length * cos(phi)
@@ -411,6 +429,9 @@ class ArcticEnv(RobotGazeboEnv):
 
     @staticmethod
     def _get_four_points(x):
+        """
+        Функция округления и получения соседней точки в непосредственной близости от полученной
+        """
         coeff = 0.1
         a1 = [np.round(x[0], decimals=1), np.round(x[1], decimals=1)]
         a2 = [np.round(x[0] + coeff, decimals=1), np.round(x[1], decimals=1)]
@@ -418,7 +439,14 @@ class ArcticEnv(RobotGazeboEnv):
 
     @staticmethod
     def _calculate_points_angles_objects(camera_object):
-
+        """
+        функция вычисления углов по значениям bounding box
+        Args:
+            camera_object = ['xmin': 120, 'ymin' : 100, 'xmax': 300 , 'ymax':400 ]
+        Returns:
+            Углы для ориентации объекта
+            [p_theta1, p_phi1, p_theta2, p_phi2]
+        """
         # camera_object = next((x for x in camera_object if x["name"] == "car"), None)
         xmin = camera_object['xmin']
         ymin = camera_object['ymin']
@@ -443,8 +471,24 @@ class ArcticEnv(RobotGazeboEnv):
         return angles_object
 
 
-    def _get_ssd_lead_information(self):
-        image = self.sub.get_from_follower_image()
+    def _get_ssd_lead_information(self, image):
+        """
+        функция отправляющая изображение с камеры на Flask сервер с object detection и получающая результаты
+        детектирования объектов
+        self.sub.get_from_follower_image() - обращается к топику ROS за изображением с камеры
+
+        Пользователю необходимо передавать в данную функцию собственной изображение в собственную модель
+        детектирования объектов посредством post запроса.
+        Метод используется в reset и step, в тех местах пользователю необходимо изменить подачу изображения или прописать
+        собственный топик ROS.
+
+        Args:
+            image = self.sub.get_from_follower_image()
+        Returns:
+            Результат детектирования
+            camera_objects = {}
+        """
+        # image = self.sub.get_from_follower_image()
         data = image.data
 
         # results = requests.post(config.object_det.send_data, data=data, timeout=15.0)
@@ -461,28 +505,48 @@ class ArcticEnv(RobotGazeboEnv):
 
 
     def _get_lidar_points(self):
-
+        """
+        функция обращается к топику лидара робота и получает облако точек.
+        Необходимо прописать топик для подключения к лидару ROS Gazebo.
+        """
         lidar = self.sub.get_lidar()
         self.lidar_points = pc2.read_points(lidar, skip_nans=False, field_names=("x", "y", "z", "ring"))
 
     def _get_obs_points(self, points_list):
+        """
+        Функция обрабатывающая облако точек лидара для веделения препятствий. Первоначально функция фильтрует точки
+        поверхности методом CSF (Cloth Simulation Filter), оставляя только точки препятствий. Далее, нормализует их
+        относительно локального положения ведомого. После, полученный список проэцируется на 2D плоскость, уменьшается
+        дискретность и округляются значения координат оставшихся точек. Список добавляется вторым соседними мнимыми точками
+        в непосредственной близости для формирования отрезков, которые в дальнейшем проверяются лидарными признаками
+        нейросетевой моделью.
+        Args:
+            points_list - облако точек лидара полунные в _get_lidar_points
+            points_list : pc2.read_points(lidar, skip_nans=False, field_names=("x", "y", "z", "ring"))
 
-        # print('OTHER POINTS', len(points_list)) # массив
+        Returns:
+            Списки спроецированных точек препятствий.
+            fil_ob_1 = np.array()
+            fil_ob_2 = np.array()
+        """
+        print('OTHER POINTS', len(points_list)) # массив
         t1 = time.time()
 
-        #### Фильтрация
+        #### Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
         max_dist = self.laser.laser_length
         # max_dist = 4
+        # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
         xyz = [(x, y, z) for x, y, z in points_list if x**2 + y**2 <= max_dist**2]  # get xyz
         # print('OTHER POINTS in radius', len(xyz))
 
         if len(xyz) > 0:
             t2 = time.time()
+            # Запись усеченного облака точек в файл формата pcd
             open3d_cloud.points = open3d.utility.Vector3dVector(np.array(xyz))
             open3d.io.write_point_cloud("test_pdal_1.pcd", open3d_cloud)
-
+            # Инференс запуска сегментации рельефа поверхности
             pc = (
                     pdal.Reader.pcd("test_pdal_1.pcd")
                     | pdal.Filter.csf(ignore="Classification[7:7]", threshold=0.6)
@@ -493,6 +557,7 @@ class ArcticEnv(RobotGazeboEnv):
             arr_fil = pc.arrays[0]
             # print('after filtering', len(arr_fil))
 
+            # Окруление точек и запись их в список
             list_to_arr = list()
             for i in range(len(arr_fil)):
                 list_to_arr.append([np.round(arr_fil[i][0], decimals=1),
@@ -567,6 +632,24 @@ class ArcticEnv(RobotGazeboEnv):
 
     def _calculate_length_to_leader(self, camera_objects):
 
+        """
+        Функция определения расстояния до ведущего на основе обработки результата детектирования объектов на изображении
+        и облака точек лидара. На основе полученных bounding box происходит сопоставление их с точками лидара, используя
+        результат функции calculate_points_angles_objects. В результате, из всего облака точек лидара происходит выделение
+        только точек лидара, использую BB и углы из calculate_points_angles_objects.
+        Далее, на основе полученной информации берется ближайшая точка, и на основе нее вычисляется расстояние до ведущего.
+        Также, из всего облака точек, удаляются точки ведущего и в дальнейшем не учитвваются в обработке препятствий.
+
+        Args:
+            camera_objects = np.array()
+
+        Returns:
+            Результат:length_to_leader - расстояние до ведущего, other_points - список облака точек без ведущего
+            length_to_leader = x
+            other_points = list([x, y, z])
+
+        """
+
         max_dist = 25
         length_to_leader = 50
         object_coord = []
@@ -579,6 +662,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         # TODO : перепроверить и оптимизировать (в случае, если пробовать вариант с "закрытым" коридором)
         # if i[-1] in [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]:
+        # выделение точек ведущего из всего облака точек
         for i in self.lidar_points:
             if leader_info is not None:
                 angles_object = self._calculate_points_angles_objects(leader_info)
@@ -602,7 +686,17 @@ class ArcticEnv(RobotGazeboEnv):
 
 
     def _get_camera_lead_info(self, camera_objects, length_to_leader):
+        """
+        Функция определения угла отклонения ведущего относительно ведомого на основе информации с камеры и расстоянии до
+        ведущего. Возвращает результат о расстояние и угле отклонения ведущего в локальных координатах
+        Args:
+            camera_objects = np.array()
+            length_to_leader = x
+        Returns:
+            Информация о расстоянии и угле отклонения до лидера
+            lead_results = {'length': x, 'phi': theta_new}
 
+        """
         info_lead = next((x for x in camera_objects if x["name"] == "car"), None)
         # print(info_lead)
         self.camera_leader_information = info_lead
@@ -635,7 +729,15 @@ class ArcticEnv(RobotGazeboEnv):
         return lead_results
 
     def _get_delta_position(self):
+        """
+        Функция определения перемещения за одну итерацию. Определяется перемещение ведомого по координатам x и y за один step.
+        Args:
 
+        Returns:
+            Информация о перемещении
+            follower_delta_info = {'delta_x': self.delta_cx, 'delta_y': self.delta_cy}
+
+        """
         follower_info_odom = self.sub.get_odom()
         follower_time = follower_info_odom.header.stamp.to_time()
 
@@ -699,6 +801,15 @@ class ArcticEnv(RobotGazeboEnv):
             rospy.sleep(self.time_for_action)
 
     def _is_done(self, leader_position, follower_position):
+        """
+        Функция проверки статусов выполнения задачи и нештатных ситуаций.
+        Args:
+            leader_position : [x, y]
+            follower_position : [x, y]
+        Returns:
+
+
+        """
         # TODO : проверить все состояния для системы безопасности
         self.done = False
         self.is_in_box = False

@@ -3,13 +3,17 @@ from collections import deque
 import numpy as np
 from gym import ObservationWrapper
 from gym.spaces import Box
-import cv2
+from warnings import warn
 try:
-    from utils.misc import rotateVector, calculateAngle
+    import cv2
+except:
+    warn("cv2 is not loaded, wrappers with images won't work correctly")
+try:
+    from continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
 except:
     from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
 
-from warnings import warn
+
 
 
 class MyFrameStack(ObservationWrapper):
@@ -127,6 +131,18 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor']:
                 features_number += env.follower_sensors['LaserPrevSensor']['back_lasers_count']
 
+        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower_sensors:
+            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
+                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['front_lasers_count'])
+            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
+                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['back_lasers_count'])
+
+        if 'LaserPrevSensor_compas' in self.follower_sensors:
+            if 'front_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
+                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['front_lasers_count'])
+            if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
+                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['back_lasers_count'])
+
         if 'FollowerInfo' in self.follower_sensors:
             if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
                 features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
@@ -205,6 +221,16 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             corridor_prev_obs_lasers = obs['LaserPrevSensor']
             corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor'].laser_length, 0, 1)
             # features_list.append(corridor_obs_lasers)
+            
+        # SENSORS WITH COMPAS
+
+        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower.sensors:
+            corridor_prev_lasers_v2 = obs['LeaderCorridor_Prev_lasers_v2_compas']
+            corridor_prev_lasers_v2 = np.clip(corridor_prev_lasers_v2 / self.follower.sensors['LeaderCorridor_Prev_lasers_v2_compas'].laser_length, 0, 1)
+
+        if 'LaserPrevSensor_compas' in self.follower.sensors:
+            corridor_prev_obs_lasers = obs['LaserPrevSensor_compas']
+            corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor_compas'].laser_length, 0, 1)
 
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
@@ -217,6 +243,8 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         if self.prev_obs_flag:
 #             concatenate_features_list = np.concatenate(features_list)
 #             self.observations_list = self.add_prev_obs(concatenate_features_list)
+            print("corridor_prev_lasers_v2 ", corridor_prev_lasers_v2.shape)
+            print("corridor_prev_obs_lasers ", corridor_prev_obs_lasers.shape)
             self.observations_list  = np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
         else:
             self.observations_list = np.concatenate(features_list)

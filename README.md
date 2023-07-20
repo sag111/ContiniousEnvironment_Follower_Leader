@@ -1,17 +1,19 @@
 # continuous-grid-arctic
 
-## 2d среда continuous-grid-arctic для обучения 
-В репозитории представлена реализация gym-среды решения задачи следования за лидером. В среде реализованы два агента: ведущий и ведомый, реализованы статические и динамические препятствия. 
+## 2D среда continuous-grid-arctic для обучения 
+В репозитории в [папке src/continuous_grid_arctic](src/continuous_grid_arctic) представлена реализация gym-среды решения задачи следования за лидером. В среде реализованы два агента: ведущий и ведомый, реализованы статические и динамические препятствия. 
 
 - [Описание основных классов среды](docs/README.md)
 - [Описание сенсоров](docs/Sensors.md)
 - [Описание врапперов](docs/Wrappers.md)
 
-## 3d среда arctic_gym для апробации
+## 3D среда arctic_gym для апробации
+В репозитории в [папке src/arctic_gym](src/arctic_gym) представлена реализация решения задачи следования за лидером 
+в 3D среде Gazebo. В папке представлен код, который можно подключить к собственной среде, реализованной в ROS Gazebo.
 
-- Описание 
+- [Описание использования системы управления роботом](docs/Arctic.md)
 
-### Установка
+## Установка
 ```
 git clone https://github.com/sag111/continuous-grid-arctic
 cd continuous-grid-arctic
@@ -61,7 +63,7 @@ pip install requirements.txt
 ```
 
 
-## Примеры использования 2D среды (continuous-grid-arctic):
+## Примеры использования [2D среды](src/continuous_grid_arctic):
 Для демонстрации работы среды в ручном режиме работы необходимо запускать файл main.py:
 ```
 python main.py --manual
@@ -75,8 +77,8 @@ python main.py --manual
 или до тех пор, пока агент не попадёт в аварию.
 
 В папке notebooks располагается два демонстрационных Jupyter блокнота. 
-1. [Env_demo](notebooks/Env_demo.ipynb) содержит демонстрационную программу для взаимодействия со средой
-2. [Ray_train_demo](notebooks/Ray_train_demo.ipynb) содержит демонстрационную программу для обучения агента и тестирования полученной модели 
+1. [Env_demo](src/continuous_grid_arctic/notebooks/Env_demo.ipynb) содержит демонстрационную программу для взаимодействия со средой
+2. [Ray_train_demo](src/continuous_grid_arctic/notebooks/Ray_train_demo.ipynb) содержит демонстрационную программу для обучения агента и тестирования полученной модели 
 с использованием библиотеки ray[rllib]
 
 Ниже представлено тестовое прохождение одного маршрута с использованием **LeaderPositionsTracker_v2**, 
@@ -87,12 +89,8 @@ python main.py --manual
 <img src="src/continuous_grid_arctic/figures/demo_video.gif" width="500">
 </p>
 
-## Примеры использования 3D среды (arctic_gym):
-Для демонстрации работы среды в ручном режиме работы необходимо запускать файл run.py:
-```
-python run.py 
-```
-
+## Примеры использования [3D среды](src/arctic_gym):
+Для демонстрации работы модели в 3D-среде необходимо ознакомиться с инструкцией [Arctic.md](docs%2FArctic.md)
 
 <p align="center">
 <img src="src/arctic_gym/figures/demo_gazebo.gif" width="500">
