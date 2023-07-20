@@ -5,50 +5,30 @@ import os
 import time
 
 import tf
-import threading
 import json
-import pandas as pd
 import rospy
 import numpy as np
 import requests
 import sensor_msgs.point_cloud2 as pc2
 
-import matplotlib.pyplot as plt
-
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-
 
 from math import atan, tan, sqrt, cos, sin
-from random import choice
 from gym.spaces import Discrete, Box
 from scipy.spatial import distance
-
-# from src.instruments.log.customlogger import logger
 
 from src.arctic_gym.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2, GazeboLeaderPositionsCorridorLasers
-
-
-
 from src.arctic_gym.utils.misc import rotateVector
 
 
-from pathlib import Path
-from pyhocon import ConfigFactory, ConfigTree
-
-
-project_path = Path(__file__).resolve().parents[3]
-config_path = project_path.joinpath('config/config.conf')
-config = ConfigFactory.parse_file(config_path)
-
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-# log, formatter = logger(name='arctic_env', level=config.logmode.arctic_env)
 
 
 class ArcticEnv(RobotGazeboEnv):
 
     def __init__(self, name,
+                 object_detection_endpoint,
                  discrete_action=False,
                  time_for_action=0.2,
                  trajectory_saving_period=3,
@@ -62,6 +42,8 @@ class ArcticEnv(RobotGazeboEnv):
                  close_coeff=0.6):
         # print('Запуск окружения арктики')
         super(ArcticEnv, self).__init__()
+
+        self.object_detection_endpoint = object_detection_endpoint
 
         self.discrete_action = discrete_action
         self.time_for_action = time_for_action
@@ -161,13 +143,9 @@ class ArcticEnv(RobotGazeboEnv):
             self.follower_orientation)
 
         # Вызов основных функций
-        # Получение информации с SSD object detection
-        self.ssd_camera_objects = self._get_ssd_lead_information(self.sub.get_from_follower_image())
-        # Получение точек лидара
-        self._get_lidar_points()
-        # Получение расстояния до лидера и облако точек без точек лидера
-        self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
-        # Получение информации о лидере с камеры
+        self.ssd_camera_objects = self.get_ssd_lead_information()
+        self.get_lidar_points()
+        self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
         # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
@@ -288,14 +266,10 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
 
         # Вызов основных функций
-        # Получение информации с SSD object detection
-        self.ssd_camera_objects = self._get_ssd_lead_information()
-        # Получение точек лидара
-        self._get_lidar_points()
+        self.ssd_camera_objects = self.get_ssd_lead_information()
+        self.get_lidar_points()
 
-        # Получение расстояния до лидера и облако точек без точек лидера
-        self.length_to_leader, self.other_points = self._calculate_length_to_leader(self.ssd_camera_objects)
-        # Получение информации о лидере с камеры
+        self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
         # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
@@ -470,9 +444,9 @@ class ArcticEnv(RobotGazeboEnv):
 
         return angles_object
 
-
-    def _get_ssd_lead_information(self, image):
+    def get_ssd_lead_information(self) -> dict:
         """
+        Получение информации о распознанных объектах с камеры робота
         функция отправляющая изображение с камеры на Flask сервер с object detection и получающая результаты
         детектирования объектов
         self.sub.get_from_follower_image() - обращается к топику ROS за изображением с камеры
@@ -481,34 +455,23 @@ class ArcticEnv(RobotGazeboEnv):
         детектирования объектов посредством post запроса.
         Метод используется в reset и step, в тех местах пользователю необходимо изменить подачу изображения или прописать
         собственный топик ROS.
-
-        Args:
-            image = self.sub.get_from_follower_image()
-        Returns:
-            Результат детектирования
-            camera_objects = {}
+        :return:
+            словарь объектов с их границами на изображении
         """
-        # image = self.sub.get_from_follower_image()
+        image = self.sub.get_from_follower_image()
         data = image.data
 
-        # results = requests.post(config.object_det.send_data, data=data, timeout=15.0)
-        results = requests.post('http://localhost:3333/detection', data=data, timeout=15.0)
-        # results = requests.post('http://localhost:6789/detection', data=data, timeout=15.0)
+        results = requests.post(self.object_detection_endpoint, data=data)
 
+        # ловим ошибки получения json
         try:
             results = json.loads(results.text)
         except json.decoder.JSONDecodeError:
-            print('Пустой JSON от сервиса распознавания объектов')
             results = {}
-        camera_objects = results
-        return camera_objects
 
+        return results
 
-    def _get_lidar_points(self):
-        """
-        функция обращается к топику лидара робота и получает облако точек.
-        Необходимо прописать топик для подключения к лидару ROS Gazebo.
-        """
+    def get_lidar_points(self):
         lidar = self.sub.get_lidar()
         self.lidar_points = pc2.read_points(lidar, skip_nans=False, field_names=("x", "y", "z", "ring"))
 
@@ -630,7 +593,7 @@ class ArcticEnv(RobotGazeboEnv):
     #
     #     return 0
 
-    def _calculate_length_to_leader(self, camera_objects):
+    def calculate_length_to_leader(self, camera_objects):
 
         """
         Функция определения расстояния до ведущего на основе обработки результата детектирования объектов на изображении
@@ -811,6 +774,9 @@ class ArcticEnv(RobotGazeboEnv):
 
         """
         # TODO : проверить все состояния для системы безопасности
+
+        print("STEP: {}".format(self.step_count))
+
         self.done = False
         self.is_in_box = False
         self.is_on_trace = False
@@ -908,6 +874,12 @@ class ArcticEnv(RobotGazeboEnv):
                 self.info["agent_status"] = "too_far_from_leader_info"
                 # self.crash = True
                 # self.done = True
+
+                # Зануляет скорость робота ???
+                self.end_stop_count += 1
+                if self.end_stop_count > 40:
+                    self.info["mission_status"] = "failed by something else"
+                    self.done = True
 
                 print(self.info)
 
