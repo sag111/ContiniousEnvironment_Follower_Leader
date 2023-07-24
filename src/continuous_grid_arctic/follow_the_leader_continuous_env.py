@@ -1286,8 +1286,8 @@ class Game(gym.Env):
 
         step_obs = 60 / self.step_grid
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
         self.wid = self.DISPLAY_WIDTH
         self.hit = self.DISPLAY_HEIGHT
@@ -1296,15 +1296,15 @@ class Game(gym.Env):
             int(self.leader.start_position[0] / self.step_grid), int(self.leader.start_position[1] / self.step_grid))
         # int(start)
         # start.tolist(start)
-        print(start)
+        #print(start)
         end = (int(self.finish_point[0] / self.step_grid), int(self.finish_point[1] / self.step_grid))
         # int(end)
-        print(end)
+        #print(end)
 
         wid = int(self.wid / self.step_grid)
-        print(wid)
+        #print(wid)
         hit = int(self.hit / self.step_grid)
-        print(hit)
+        #print(hit)
 
         # print(self.start)
         # print(self.end)
@@ -1359,15 +1359,15 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        print(self.leader.start_position)
-        print(self.finish_point)
+        #print(self.leader.start_position)
+        #print(self.finish_point)
 
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0] / self.step_grid,
                     self.obstacles[i].start_position[1] / self.step_grid,
                     (100 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        print(obstacle_list)
+        #print(obstacle_list)
 
         t_rrt = time.time()
 
@@ -1591,7 +1591,7 @@ class Game(gym.Env):
             # trajectory = path[::-1]
             for i in range(len(rx2)):
                 trajectory2.append((rx2[i], ry2[i]))
-            print(trajectory2)
+            #print(trajectory2)
 
             # работа dstar 3
             # start3 = [int(self.leader.start_position[0]/self.step_grid),
@@ -1609,7 +1609,7 @@ class Game(gym.Env):
             # trajectory = path[::-1]
             for i in range(len(rx3)):
                 trajectory3.append((rx3[i], ry3[i]))
-            print(trajectory3)
+            #print(trajectory3)
             trajectory = trajectory + trajectory2 + trajectory3
 
             # print(trajectory)

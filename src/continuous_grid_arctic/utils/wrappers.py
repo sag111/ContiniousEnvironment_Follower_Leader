@@ -243,8 +243,8 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         if self.prev_obs_flag:
 #             concatenate_features_list = np.concatenate(features_list)
 #             self.observations_list = self.add_prev_obs(concatenate_features_list)
-            print("corridor_prev_lasers_v2 ", corridor_prev_lasers_v2.shape)
-            print("corridor_prev_obs_lasers ", corridor_prev_obs_lasers.shape)
+            #print("corridor_prev_lasers_v2 ", corridor_prev_lasers_v2.shape)
+            #print("corridor_prev_obs_lasers ", corridor_prev_obs_lasers.shape)
             self.observations_list  = np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
         else:
             self.observations_list = np.concatenate(features_list)
@@ -271,6 +271,8 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         obs, rews, dones, infos = self.env.step(action)
         obs = self.observation(obs)
         return obs, rews, dones, infos
+
+
 
 
 class ContinuousObserveModifierPrev(ObservationWrapper):

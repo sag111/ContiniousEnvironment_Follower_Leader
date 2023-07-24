@@ -224,6 +224,10 @@ class LeaderPositionsTracker:
 
 
 class LeaderPositionsTracker_v2(LeaderPositionsTracker):
+    """
+    Вроде отличается от первой версии тем, что в начале симуляции корридор строится не по 2ум точкам (лидер, ведомый),  а 
+    создаётся последовательность точек между ними. + может начинать этот корридор за спиной у ведомого.
+    """
     def scan(self, env):
         # если сам сенсор отслеживает перемещение
         if self.saving_counter % self.saving_period == 0:
@@ -1139,9 +1143,12 @@ class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers):
 
         self.count_lasers = self.front_lasers_count + self.back_lasers_count
 
+        # почему именно 12?
         if self.count_lasers != 12:
-            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 12 front и 12 back, либо "
-                             "10 и 10=20, либо 18 и 18 = 36")
+            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
+            # раньше было это сообщение, но проверка была на 12. Некорректная рекомендация в сообщении об ошибке.
+            #raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 12 front и 12 back, либо "
+            #                 "10 и 10=20, либо 18 и 18 = 36")
 
 
         laser_period = 360/self.count_lasers
@@ -1156,6 +1163,7 @@ class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers):
 
         # # TODO: новый варинт отсчета сенсоров, чтобы направление было от -45 градусов
         # print("DIRECTION ", self.host_object.direction )
+        # нафига проверять, если чуть выше они были заданы равными?
         if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
             for i in range(self.count_lasers):
                 self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
@@ -1190,7 +1198,7 @@ class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers):
 
             all_obs_list = []
 
-            for i, corridor_lines_item in enumerate(env.history_corridor_laser_list):
+            for j, corridor_lines_item in enumerate(env.history_corridor_laser_list):
 
                 corridor_lines_item = np.array(corridor_lines_item)
 
