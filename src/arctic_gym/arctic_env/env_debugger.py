@@ -1,10 +1,12 @@
 import rospy
+import numpy as np
 import matplotlib.pyplot as plt
 import requests
 import json
 
 from pathlib import Path
 from pyhocon import ConfigFactory
+from math import atan, tan, sqrt, cos, sin
 
 from src.arctic_gym import arctic_env_maker
 from src.arctic_gym.arctic_env.arctic_env import ArcticEnv
