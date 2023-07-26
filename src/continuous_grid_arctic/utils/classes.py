@@ -49,7 +49,7 @@ class GameObject():
 
         self.blocks_vision = blocks_vision
 
-    def put(self, position):
+    def place_in_position(self, position):
         self.position = np.array(position, dtype=np.float32)
         self.rectangle = self.image.get_rect(center=self.position, width=self.width, height=self.height)
 
@@ -235,13 +235,18 @@ class RobotWithSensors(AbstractRobot):
                          max_rotation_speed, max_speed_change, max_rotation_speed_change, start_direction,
                          blocks_vision)
         self.sensors = {}
-        # TODO: Чтобы можно было несколько сенсоров одного типа, надо в качестве ключей использовать имена, и добавлять поле - класс
-        # например если надо будет отслеживание истории позиций лидера с поеданием точек и без для разных целей
         for k in sensors:
             if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 if 'LeaderPositionsTracker' not in sensors.keys() and "LeaderPositionsTracker_v2" not in sensors.keys():
                     raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
-            self.sensors[k] = SENSOR_NAME_TO_CLASS[k](self, **sensors[k])
+            if k in SENSOR_NAME_TO_CLASS:
+                sensorClass = SENSOR_NAME_TO_CLASS[k]
+            elif "sensor_class" in sensors[k]:
+                sensorClass = SENSOR_NAME_TO_CLASS[sensors[k].pop("sensor_class")]
+            else:
+                raise ValueError(f"Sensor class is undefined: {k}")
+            self.sensors[k] = sensorClass(self, **sensors[k])
+        print(self.sensors)
 
     def use_sensors(self, env):
         sensors_observes = dict()
@@ -264,7 +269,11 @@ class RobotWithSensors(AbstractRobot):
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
             elif sensor_name in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
                                  'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
-                                 'LeaderCorridor_Prev_lasers_v2_compas', 'LaserPrevSensor_compas']:
+                                 'LaserPrevSensor_v2_compas']:
+                sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
+            elif type(sensor).__name__ in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
+                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
+                                 'LaserPrevSensor_v2_compas']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
 
             elif sensor_name in ['FollowerInfo']:
