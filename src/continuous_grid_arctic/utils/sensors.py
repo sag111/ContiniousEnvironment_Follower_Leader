@@ -18,7 +18,6 @@ class LaserSensor():
 
     def __init__(self,
                  host_object,
-                 sensor_name,
                  available_angle=360,
                  angle_step=10,  # в градусах
                  points_number=20,  # число пикселей,
@@ -32,7 +31,6 @@ class LaserSensor():
                  ):  # в секундах? Пока не используется
 
         self.host_object = host_object
-        self.sensor_name = sensor_name
         self.return_only_distances = return_only_distances
 
         self.available_angle = min(360, available_angle)
@@ -148,14 +146,12 @@ class LeaderPositionsTracker:
 
     def __init__(self,
                  host_object,
-                 sensor_name,
                  eat_close_points=True,
                  max_point=5000,
                  saving_period=5,
                  generate_corridor=True,
                  start_corridor_behind_follower=False
                  ):
-        self.sensor_name = sensor_name
         self.host_object = host_object
         self.max_point = max_point
         self.eat_close_points = eat_close_points
@@ -336,14 +332,12 @@ class LeaderTrackDetector_vector:
 
     def __init__(self,
                  host_object,
-                 sensor_name,
                  position_sequence_length=100,
                  detectable_positions="new"):
         """
         :param host_object: робот пресследователь, на котором работает этот сенсор
         :param position_sequence_length: длина последовательности, которая будет использоваться радаром
         """
-        self.sensor_name = sensor_name
         self.host_object = host_object
         self.position_sequence_length = position_sequence_length
         self.vecs_values = np.zeros((self.position_sequence_length, 2), dtype=np.float32)
@@ -388,7 +382,6 @@ class LeaderTrackDetector_radar:
 
     def __init__(self,
                  host_object,
-                 sensor_name,
                  position_sequence_length=100,
                  detectable_positions="old",
                  radar_sectors_number=180):
@@ -397,7 +390,6 @@ class LeaderTrackDetector_radar:
         :param position_sequence_length: длина последовательности, которая будет использоваться радаром
         :param radar_sectors_number: количество секторов в радаре
         """
-        self.sensor_name = sensor_name
         self.host_object = host_object
         self.detectable_positions = detectable_positions
         self.position_sequence_length = position_sequence_length
@@ -478,9 +470,8 @@ class GreenBoxBorderSensor(LaserSensor):
     def __init__(self, host_object, **kwargs):
         raise ValueError("Для использования нужно раскомментировать в среде вызов self._get_green_zone_border_points("
                          "). Закомментировал, потому что замедляет симмуляцию")
-        self.sensor_name = 'GreenBox_Border_Sensor'
 
-        super().__init__(host_object, self.sensor_name, **kwargs)
+        super().__init__(host_object, **kwargs)
 
     def scan(self, env):
         """строит поля точек лидара.
@@ -556,7 +547,6 @@ class GreenBoxBorderSensor(LaserSensor):
 class LeaderCorridor_lasers:
     def __init__(self,
                  host_object,
-                 sensor_name,
                  react_to_safe_corridor=True,
                  react_to_obstacles=False,
                  react_to_green_zone=False,
@@ -566,12 +556,10 @@ class LeaderCorridor_lasers:
         """
 
         :param host_object: робот, на котором висит сенсор
-        :param sensor_name: название сенсора. Важно, если  несколько одинаковых
         :param react_to_obstacles: должны ли лазеры реагировать на препятствия
         :param react_to_green_zone: должны ли лазеры реагировать на переднюю из заднюю границы зеленой зоны
         """
         self.host_object = host_object
-        self.sensor_name = sensor_name
         # TODO: сделать гибкую настройку лазеров
         # assert front_lasers_count in [3, 5]
         # assert back_lasers_count in [0, 2]
@@ -909,14 +897,11 @@ class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers):
 class FollowerInfo:
     def __init__(self,
                  host_object,
-                 sensor_name,
                  speed_direction_param=2):
         """
         :param host_object: робот, на котором висит сенсор
-        :param sensor_name: название сенсора. Важно, если  несколько одинаковых
         """
         self.host_object = host_object
-        self.sensor_name = sensor_name
         self.speed_direction_param = speed_direction_param
 
     def scan(self, env):
@@ -1278,7 +1263,7 @@ class LaserPrevSensor_v2_compas(LeaderCorridor_lasers):
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
-SENSOR_NAME_TO_CLASS = {
+SENSOR_CLASSNAME_TO_CLASS = {
     "LaserSensor": LaserSensor,
     "LeaderPositionsTracker": LeaderPositionsTracker,
     "LeaderPositionsTracker_v2": LeaderPositionsTracker_v2,

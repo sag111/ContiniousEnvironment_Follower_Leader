@@ -4,10 +4,10 @@ import numpy as np
 from scipy.spatial import distance
 try:
     from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
-    from continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
+    from continuous_grid_arctic.utils.sensors import SENSOR_CLASSNAME_TO_CLASS
 except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
-    from src.continuous_grid_arctic.utils.sensors import SENSOR_NAME_TO_CLASS
+    from src.continuous_grid_arctic.utils.sensors import SENSOR_CLASSNAME_TO_CLASS
     
 import json
 
@@ -239,10 +239,10 @@ class RobotWithSensors(AbstractRobot):
             if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 if 'LeaderPositionsTracker' not in sensors.keys() and "LeaderPositionsTracker_v2" not in sensors.keys():
                     raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
-            if k in SENSOR_NAME_TO_CLASS:
-                sensorClass = SENSOR_NAME_TO_CLASS[k]
+            if k in SENSOR_CLASSNAME_TO_CLASS:
+                sensorClass = SENSOR_CLASSNAME_TO_CLASS[k]
             elif "sensor_class" in sensors[k]:
-                sensorClass = SENSOR_NAME_TO_CLASS[sensors[k].pop("sensor_class")]
+                sensorClass = SENSOR_CLASSNAME_TO_CLASS[sensors[k].pop("sensor_class")]
             else:
                 raise ValueError(f"Sensor class is undefined: {k}")
             self.sensors[k] = sensorClass(self, **sensors[k])
@@ -263,20 +263,16 @@ class RobotWithSensors(AbstractRobot):
                 leader_positions_hist = self.sensors['LeaderPositionsTracker_v2'].scan(env)
 
         for sensor_name, sensor in self.sensors.items():
-            if sensor_name == 'LeaderPositionsTracker':
+            if type(sensor).__name__ == 'LeaderPositionsTracker':
                 continue
-            if sensor_name in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
+            if type(sensor).__name__ in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
-            elif sensor_name in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
-                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
-                                 'LaserPrevSensor_v2_compas']:
-                sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
             elif type(sensor).__name__ in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
                                  'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
                                  'LaserPrevSensor_v2_compas']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
 
-            elif sensor_name in ['FollowerInfo']:
+            elif type(sensor).__name__ in ['FollowerInfo']:
                 sensors_observes[sensor_name] = sensor.scan(env)
 
             else:

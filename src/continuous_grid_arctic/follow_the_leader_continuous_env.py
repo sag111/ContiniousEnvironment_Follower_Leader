@@ -1998,18 +1998,15 @@ class TestGameManual(Game):
                          random_frames_per_step=[2, 20],
                          follower_sensors={
                              'LeaderPositionsTracker_v2': {
-                                 'sensor_name': 'LeaderPositionsTracker_v2',
                                  'eat_close_points': True,
                                  'saving_period': 8,
                                  'start_corridor_behind_follower':True
                                  },
                              # 'LeaderTrackDetector_radar': {
-                             #     'sensor_name': 'LeaderTrackDetector_radar',
                              #     'position_sequence_length': 100,
                              #     'radar_sectors_number': 7,
                              #     'detectable_positions': 'near'},
                              # "LeaderCorridor_lasers": {
-                             #     'sensor_name': 'LeaderCorridor_lasers',
                              #     "react_to_obstacles": True,
                              #     "front_lasers_count": 5,
                              #     "back_lasers_count": 2,
@@ -2017,7 +2014,6 @@ class TestGameManual(Game):
                              #     "laser_length": 150
                              # }
                              # "LeaderCorridor_lasers_v2": {
-                             #     'sensor_name': 'LeaderCorridor_lasers_v2',
                              #     "react_to_obstacles": True,
                              #     "front_lasers_count": 6,
                              #     "back_lasers_count": 6,
@@ -2026,7 +2022,6 @@ class TestGameManual(Game):
                              #     "laser_length": 150
                              # },
                              # "LeaderObstacles_lasers": {
-                             #     'sensor_name': 'LeaderObstacles_lasers',
                              #     "react_to_obstacles": True,
                              #     "front_lasers_count": 15,
                              #     "back_lasers_count": 15,
@@ -2035,7 +2030,6 @@ class TestGameManual(Game):
                              #     "laser_length": 150
                              # },
                              # "Leader_Dyn_Obstacles_lasers": {
-                             #     'sensor_name': 'Leader_Dyn_Obstacles_lasers',
                              #     "react_to_obstacles": True,
                              #     "front_lasers_count": 15,
                              #     "back_lasers_count": 15,
@@ -2045,11 +2039,9 @@ class TestGameManual(Game):
                              #
                              # },
                              # "FollowerInfo": {
-                             #     'sensor_name': 'FollowerInfo',
                              #     'speed_direction_param': 2
                              # },
                             #  "LeaderCorridor_Prev_lasers_v2": {
-                            #      'sensor_name': 'LeaderCorridor_Prev_lasers_v2',
                             #      "react_to_obstacles": True,
                             #      "front_lasers_count": 2,
                             #      "back_lasers_count": 2,
@@ -2058,7 +2050,6 @@ class TestGameManual(Game):
                             #      "laser_length": 150
                             #  },
                             #  "LaserPrevSensor": {
-                            #     'sensor_name': 'LaserPrevSensor',
                             #     "react_to_obstacles": True,
                             #     "front_lasers_count": 4,
                             #     "back_lasers_count": 4,
@@ -2067,7 +2058,6 @@ class TestGameManual(Game):
                             #     "laser_length": 150
                             # },
                              "LaserPrevSensor_v2_compas_all": {
-                                 'sensor_name': 'LaserPrevSensor_v2_compas_all',
                                  "sensor_class": "LaserPrevSensor_v2_compas",
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 6,
@@ -2079,7 +2069,6 @@ class TestGameManual(Game):
                                  "max_prev_obs": 5
                              },
                              "LaserPrevSensor_v2_compas_obst": {
-                                 'sensor_name': 'LaserPrevSensor_v2_compas_obst',
                                  "sensor_class": "LaserPrevSensor_v2_compas",
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 12,
