@@ -2066,7 +2066,8 @@ class TestGameManual(Game):
                                  "react_to_green_zone": True,
                                  "laser_length": 150,
                                  "use_prev_obs": True,
-                                 "max_prev_obs": 5
+                                 "max_prev_obs": 5,
+                                 "pad_sectors": True
                              },
                              "LaserPrevSensor_v2_compas_obst": {
                                  "sensor_class": "LaserPrevSensor_v2_compas",
@@ -2077,7 +2078,8 @@ class TestGameManual(Game):
                                  "react_to_green_zone": False,
                                  "laser_length": 200,
                                  "use_prev_obs": True,
-                                 "max_prev_obs": 5
+                                 "max_prev_obs": 5,
+                                 "pad_sectors": True
                              }
                          }
                          )

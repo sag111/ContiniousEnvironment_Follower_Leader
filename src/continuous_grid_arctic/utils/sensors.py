@@ -1126,10 +1126,11 @@ class LaserPrevSensor(LeaderCorridor_lasers):
 
 class LaserPrevSensor_v2_compas(LeaderCorridor_lasers):
 
-    def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, **kwargs):
+    def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, pad_sectors=True, **kwargs):
         super(LaserPrevSensor_v2_compas, self).__init__(*args, **kwargs)
         self.use_prev_obs = use_prev_obs
         self.max_prev_obs = max_prev_obs
+        self.pad_sectors = pad_sectors
 
         self.reset()
 
@@ -1215,27 +1216,30 @@ class LaserPrevSensor_v2_compas(LeaderCorridor_lasers):
                 for i, collide in enumerate(self.lasers_collides_item):
                     obs_item[i] = np.linalg.norm(collide - self.host_object.position)
 
-                front = np.zeros(len(obs_item))
-                right = np.zeros(len(obs_item))
-                behind = np.zeros(len(obs_item))
-                left = np.zeros(len(obs_item))
+                if self.pad_sectors:
+                    front = np.zeros(len(obs_item))
+                    right = np.zeros(len(obs_item))
+                    behind = np.zeros(len(obs_item))
+                    left = np.zeros(len(obs_item))
 
-                lasers_in_sector = self.count_lasers / 4
-                for i in range(len(obs_item)):
-                    if i < lasers_in_sector:
-                        front[i] = obs_item[i]
-                    elif lasers_in_sector <= i < 2 * lasers_in_sector:
-                        right[i] = obs_item[i]
-                    elif 2 * lasers_in_sector <= i < 3 * lasers_in_sector:
-                        behind[i] = obs_item[i]
-                    else:
-                        left[i] = obs_item[i]
+                    lasers_in_sector = self.count_lasers / 4
+                    for i in range(len(obs_item)):
+                        if i < lasers_in_sector:
+                            front[i] = obs_item[i]
+                        elif lasers_in_sector <= i < 2 * lasers_in_sector:
+                            right[i] = obs_item[i]
+                        elif 2 * lasers_in_sector <= i < 3 * lasers_in_sector:
+                            behind[i] = obs_item[i]
+                        else:
+                            left[i] = obs_item[i]
 
-                # front = np.array([obs_item[0], obs_item[1], 0, 0, 0, 0, 0, 0, 0, 0, 0, obs_item[11]])
-                # right = np.array([0, 0, obs_item[2], obs_item[3], obs_item[4], 0, 0, 0, 0, 0, 0, 0])
-                # behind = np.array([0, 0, 0, 0, 0, obs_item[5], obs_item[6], obs_item[7], 0, 0, 0, 0])
-                # left = np.array([0, 0, 0, 0, 0, 0, 0, 0, obs_item[8], obs_item[9], obs_item[10], 0])
-                res_out = np.concatenate((front, right, behind, left), axis=None)
+                    # front = np.array([obs_item[0], obs_item[1], 0, 0, 0, 0, 0, 0, 0, 0, 0, obs_item[11]])
+                    # right = np.array([0, 0, obs_item[2], obs_item[3], obs_item[4], 0, 0, 0, 0, 0, 0, 0])
+                    # behind = np.array([0, 0, 0, 0, 0, obs_item[5], obs_item[6], obs_item[7], 0, 0, 0, 0])
+                    # left = np.array([0, 0, 0, 0, 0, 0, 0, 0, obs_item[8], obs_item[9], obs_item[10], 0])
+                    res_out = np.concatenate((front, right, behind, left), axis=None)
+                else:
+                    res_out = obs_item
 
                 all_obs_list.append(res_out)
 
