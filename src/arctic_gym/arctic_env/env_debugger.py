@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import requests
 import json
+import cv2
 
 from pathlib import Path
 from pyhocon import ConfigFactory
@@ -17,45 +18,12 @@ class DebugEnv(ArcticEnv):
     def __init__(self, name, **config):
         super(DebugEnv, self).__init__(name, **config)
 
-    @staticmethod
-    def _calculate_points_angles_objects(camera_object):
-        """
-        функция вычисления углов по значениям bounding box
-        Args:
-            camera_object = ['xmin': 120, 'ymin' : 100, 'xmax': 300 , 'ymax':400 ]
-        Returns:
-            Углы для ориентации объекта
-            [p_theta1, p_phi1, p_theta2, p_phi2]
-        """
-        # camera_object = next((x for x in camera_object if x["name"] == "car"), None)
-        xmin = camera_object['xmin']
-        ymin = camera_object['ymin']
-        xmax = camera_object['xmax']
-        ymax = camera_object['ymax']
-
-        # xcent = (xmin + xmax)/2
-        # ycent = (ymin + ymax)/2
-
-        xmin = xmin - 20
-        xmax = xmax + 20
-        # ymin = ycent - 20
-        # ymax = ycent + 20
-
-        p_theta1 = atan((2 * xmin - 640) / 640 * tan(80 / 2))
-        p_phi1 = atan(-((2 * ymin - 480) / 480) * tan(64 / 2))  # phi
-        p_theta2 = atan((2 * xmax - 640) / 640 * tan(80 / 2))  # theta
-        p_phi2 = atan(-((2 * ymax - 480) / 480) * tan(64 / 2))  # phi
-
-        angles_object = [p_theta1, p_phi1, p_theta2, p_phi2]
-
-        return angles_object
-
-    def get_ssd_lead_information(self) -> dict:
+    def get_ssd_lead_information(self) -> list:
         """
         Получение информации о распознанных объектах с камеры робота
 
         :return:
-            словарь объектов с их границами на изображении
+            список объектов с их границами на изображении
         """
         image = self.sub.get_from_follower_image()
         data = image.data
@@ -66,63 +34,135 @@ class DebugEnv(ArcticEnv):
         try:
             results = json.loads(results.text)
         except json.decoder.JSONDecodeError:
-            results = {}
+            results = []
 
         return results
 
-    def calculate_length_to_leader(self, camera_objects):
-
+    @staticmethod
+    def calculate_points_angles_objects(obj: dict,
+                                        width: int = 640,
+                                        height: int = 480,
+                                        hov: float = 80.0,
+                                        fov: float = 64.0) -> dict:
         """
-        Функция определения расстояния до ведущего на основе обработки результата детектирования объектов на изображении
-        и облака точек лидара. На основе полученных bounding box происходит сопоставление их с точками лидара, используя
-        результат функции calculate_points_angles_objects. В результате, из всего облака точек лидара происходит выделение
-        только точек лидара, использую BB и углы из calculate_points_angles_objects.
-        Далее, на основе полученной информации берется ближайшая точка, и на основе нее вычисляется расстояние до ведущего.
-        Также, из всего облака точек, удаляются точки ведущего и в дальнейшем не учитвваются в обработке препятствий.
+        Вычисление углов по значениям bounding box, вычисления основано на цилиндрической системе координат,
+        центр изображения - центр системы координат
 
-        Args:
-            camera_objects = np.array()
+        :param obj: словарь объекта с ключами name - имя объекта; xmin, xmax, ymin, ymax - координаты bounding box
+        :param width: ширина изображения в пикселях
+        :param height: высота изображения в пикселях
+        :param hov: горизонтальный угол обзора камеры
+        :param fov: вертикальный угол обзора камеры
 
-        Returns:
-            Результат:length_to_leader - расстояние до ведущего, other_points - список облака точек без ведущего
-            length_to_leader = x
-            other_points = list([x, y, z])
-
+        :return:
+            Словарь с граничными углами области объекта по вертикали (phi1, phi2) и горизонтали (theta1, theta2)
         """
 
-        max_dist = 25
-        length_to_leader = 50
-        object_coord = []
-        leader_info = next((x for x in camera_objects if x["name"] == "car"), None)
+        xmin = obj['xmin']
+        xmax = obj['xmax']
+        ymin = obj['ymin']
+        ymax = obj['ymax']
 
-        other_points = list()
+        theta1 = atan((2 * xmin - width) / width * tan(hov / 2))
+        theta2 = atan((2 * xmax - width) / width * tan(hov / 2))
 
-        camera_yaw_state_info = self.sub.get_camera_yaw_state()
-        camera_yaw = camera_yaw_state_info.process_value
+        phi1 = atan(-((2 * ymin - height) / height) * tan(fov / 2))
+        phi2 = atan(-((2 * ymax - height) / height) * tan(fov / 2))
 
-        # TODO : перепроверить и оптимизировать (в случае, если пробовать вариант с "закрытым" коридором)
-        # if i[-1] in [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]:
-        # выделение точек ведущего из всего облака точек
-        for i in self.lidar_points:
-            if leader_info is not None:
-                angles_object = self._calculate_points_angles_objects(leader_info)
-                if i[0] ** 2 + i[1] ** 2 <= max_dist ** 2\
-                        and (tan(np.deg2rad(-40))+tan(camera_yaw)) * i[0] <= i[1] <= (tan(np.deg2rad(40))+tan(camera_yaw)) * i[0] \
-                        and ((tan(angles_object[2])+tan(camera_yaw)) * i[0]) <= i[1] <= ((tan(angles_object[0])+tan(camera_yaw)) * i[0]) \
-                        and (tan(angles_object[3]) * i[0]) <= i[2] <= (tan(angles_object[1]) * i[0]):
-                    object_coord.append(i)
+        return {
+            "theta1": theta1,
+            "theta2": theta2,
+            "phi1": phi1,
+            "phi2": phi2
+        }
 
-                    if sqrt(i[0] ** 2 + i[1] ** 2 + i[2] ** 2) <= length_to_leader:
-                        length_to_leader = sqrt(i[0] ** 2 + i[1] ** 2 + i[2] ** 2)
-                elif i[0] ** 2 + i[1] ** 2 >= 1:
-                    other_points.append([i[0], i[1], i[2]])
-            elif i[0] ** 2 + i[1] ** 2 >= 1:
-                other_points.append([i[0], i[1], i[2]])
-                length_to_leader = None
+    def calculate_lidar_points_inside(self, angles: dict, lidar: list, maxd: int = 50) -> dict:
+        """
+        Вычисление точек лидара находящихся внутри и снаружи области ограниченной углами angles
 
-        # print(f'Расстояние до ведущего, определенное с помощью лидара: {length_to_leader}')
+        :param angles: словарь с углами theta1, theta2, phi1, phi2
+        :param lidar: облако точек лидара
+        :param maxd: максимальное "видимое" расстояние для точек лидара
 
-        return length_to_leader, other_points
+        :return:
+            Словарь с координатами точек лидара: in - точки внутри области, out - точки снаружи области
+        """
+        camera_yaw = self.sub.get_camera_yaw_state().process_value
+
+        points_inside = []
+        points_outside = []
+        for i in lidar:
+            dist = np.linalg.norm(i[:2])
+
+            k1_x = (tan(np.deg2rad(-40)) + tan(camera_yaw)) * i[0]
+            k2_x = (tan(np.deg2rad(40)) + tan(camera_yaw)) * i[0]
+
+            theta2_x = (tan(angles["theta2"]) + tan(camera_yaw)) * i[0]
+            theta1_x = (tan(angles["theta1"]) + tan(camera_yaw)) * i[0]
+
+            phi2_x = tan(angles["phi2"]) * i[0]
+            phi1_x = tan(angles["phi1"]) * i[0]
+
+            if dist <= maxd and k1_x <= i[1] <= k2_x and theta2_x <= i[1] <= theta1_x and phi2_x <= i[2] <= phi1_x:
+                points_inside.append(list(i))
+            elif 2 <= dist <= maxd:
+                points_outside.append(list(i))
+
+        return {
+            "in": points_inside,
+            "out": points_outside
+        }
+
+    def calculate_car_distance_v1(self, detected: list):
+        """
+        Определение расстояния до машины. Выбираем bounding box машины и пересекающиеся с ней объекты, вырезаем точки
+        лидара, которые располагаются в области пересекающихся объектов, по оставшимся точкам вычисляем расстояние
+
+        :param detected: список распознанных объектов, каждый объект представляет собой словарь со следующими ключами
+            name - имя объекта; xmin, xmax, ymin, ymax - координаты bounding box
+        """
+
+        cars = [x for x in detected if x['name'] == "car"]
+
+        # если определилось несколько машин, находим машину с наибольшей площадью bounding box
+        max_square = 0
+        car = {}
+        for one in cars:
+            detected.remove(one)
+            square = (one['xmax'] - one['xmin']) * (one['ymax'] - one['ymin'])
+
+            if square > max_square:
+                car = one
+                max_square = square
+
+        crossed_objects = [car, ]
+        for obj in detected:
+            x1_c = car['xmin']
+            x2_c = car['xmax']
+            y1_c = car['ymin']
+            y2_c = car['ymax']
+
+            x1_o = obj['xmin']
+            x2_o = obj['xmax']
+            y1_o = obj['ymin']
+            y2_o = obj['ymax']
+
+            # находим пересечение bounding box объектов с bounding box машины:
+            if (x1_c < x2_o and x2_c > x1_o) and (y1_c < y2_o and y2_c > y1_o):
+                crossed_objects.append(obj)
+
+        self.get_lidar_points()
+        lidar = list(self.lidar_points)
+
+        obj_inside = []
+        for obj in crossed_objects:
+            angles = self.calculate_points_angles_objects(obj)
+            lidar_points = self.calculate_lidar_points_inside(angles, lidar)
+
+            points = np.array(lidar_points['in'])
+            points = np.delete(points, 3, axis=1)
+
+            obj_inside.append(points)
 
 
 if __name__ == '__main__':
@@ -134,9 +174,5 @@ if __name__ == '__main__':
 
     env = arctic_env_maker(config.rl_agent.debug_config)
 
-    objects = env.get_ssd_lead_information()
-    env.get_lidar_points()
-
-    length, other = env.calculate_length_to_leader(objects)
-
-    print(length)
+    det = env.get_ssd_lead_information()
+    env.calculate_car_distance_v1(det)
