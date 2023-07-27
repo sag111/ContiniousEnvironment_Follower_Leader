@@ -9,6 +9,7 @@ import json
 import rospy
 import numpy as np
 import requests
+import matplotlib.pyplot as plt
 import sensor_msgs.point_cloud2 as pc2
 
 
@@ -144,7 +145,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         # Вызов основных функций
         self.ssd_camera_objects = self.get_ssd_lead_information()
-        self.get_lidar_points()
+        # self.get_lidar_points()
         self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
         # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
@@ -267,7 +268,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         # Вызов основных функций
         self.ssd_camera_objects = self.get_ssd_lead_information()
-        self.get_lidar_points()
+        # self.get_lidar_points()
 
         self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
         self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
@@ -412,37 +413,47 @@ class ArcticEnv(RobotGazeboEnv):
         return a1, a2
 
     @staticmethod
-    def _calculate_points_angles_objects(camera_object):
+    def _calculate_points_angles_objects(obj: dict,
+                                        width: int = 640,
+                                        height: int = 480,
+                                        hov: float = 80.0,
+                                        fov: float = 64.0,
+                                        scale: int = 20) -> dict:
         """
-        функция вычисления углов по значениям bounding box
-        Args:
-            camera_object = ['xmin': 120, 'ymin' : 100, 'xmax': 300 , 'ymax':400 ]
-        Returns:
-            Углы для ориентации объекта
-            [p_theta1, p_phi1, p_theta2, p_phi2]
+        Вычисление углов по значениям bounding box, вычисления основано на цилиндрической системе координат,
+        центр изображения - центр системы координат
+
+        :param obj: словарь объекта с ключами name - имя объекта; xmin, xmax, ymin, ymax - координаты bounding box
+        :param width: ширина изображения в пикселях
+        :param height: высота изображения в пикселях
+        :param hov: горизонтальный угол обзора камеры
+        :param fov: вертикальный угол обзора камеры
+        :param scale: расширение границ bounding box по горизонтали
+
+        :return:
+            Словарь с граничными углами области объекта по вертикали (phi1, phi2) и горизонтали (theta1, theta2)
         """
-        # camera_object = next((x for x in camera_object if x["name"] == "car"), None)
-        xmin = camera_object['xmin']
-        ymin = camera_object['ymin']
-        xmax = camera_object['xmax']
-        ymax = camera_object['ymax']
 
-        # xcent = (xmin + xmax)/2
-        # ycent = (ymin + ymax)/2
+        xmin = obj['xmin']
+        xmax = obj['xmax']
+        ymin = obj['ymin']
+        ymax = obj['ymax']
 
-        xmin = xmin - 20
-        xmax = xmax + 20
-        # ymin = ycent - 20
-        # ymax = ycent + 20
+        xmin -= scale
+        xmax += scale
 
-        p_theta1 = atan((2 * xmin - 640) / 640 * tan(80 / 2))
-        p_phi1 = atan(-((2 * ymin - 480) / 480) * tan(64 / 2))  # phi
-        p_theta2 = atan((2 * xmax - 640) / 640 * tan(80 / 2))  # theta
-        p_phi2 = atan(-((2 * ymax - 480) / 480) * tan(64 / 2))  # phi
+        theta1 = atan((2 * xmin - width) / width * tan(hov / 2))
+        theta2 = atan((2 * xmax - width) / width * tan(hov / 2))
 
-        angles_object = [p_theta1, p_phi1, p_theta2, p_phi2]
+        phi1 = atan(-((2 * ymin - height) / height) * tan(fov / 2))
+        phi2 = atan(-((2 * ymax - height) / height) * tan(fov / 2))
 
-        return angles_object
+        return {
+            "theta1": theta1,
+            "theta2": theta2,
+            "phi1": phi1,
+            "phi2": phi2
+        }
 
     def get_ssd_lead_information(self) -> dict:
         """
@@ -593,6 +604,7 @@ class ArcticEnv(RobotGazeboEnv):
     #
     #     return 0
 
+
     def calculate_length_to_leader(self, camera_objects):
 
         """
@@ -646,7 +658,6 @@ class ArcticEnv(RobotGazeboEnv):
         # print(f'Расстояние до ведущего, определенное с помощью лидара: {length_to_leader}')
 
         return length_to_leader, other_points
-
 
     def _get_camera_lead_info(self, camera_objects, length_to_leader):
         """
