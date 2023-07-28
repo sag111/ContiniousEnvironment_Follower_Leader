@@ -22,13 +22,16 @@ now = datetime.now()
 exc = Executor(config)
 
 collects = []
-for pts in itertools.permutations(experiment['start_point'], 2):
+for pts in experiment["easy"]:
 
-    exc.setup_position(pts[0], pts[1])
+    start = pts[:3]
+    finish = pts[3:]
+
+    exc.setup_position(start, finish)
 
     time.sleep(3)
 
-    meta = exc.follow(pts[1])
+    meta = exc.follow(finish)
 
     collects.append(meta)
 
@@ -36,4 +39,4 @@ for pts in itertools.permutations(experiment['start_point'], 2):
     csv_path = project_path.joinpath("data/processed")
     csv_path.mkdir(parents=True, exist_ok=True)
 
-    evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval.csv"), sep=';', index=False)
+    evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval_easy.csv"), sep=';', index=False)
