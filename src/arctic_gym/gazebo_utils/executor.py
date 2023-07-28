@@ -26,6 +26,9 @@ class Executor:
         :param target_distance: расстояние между ведомым и ведущим в стартовой точке
 
         """
+        self.env.pub.target_cancel_action()
+        self.env.pub.set_camera_yaw(0)
+
         point_a = np.array(point_a)
         point_b = np.array(point_b)
 
