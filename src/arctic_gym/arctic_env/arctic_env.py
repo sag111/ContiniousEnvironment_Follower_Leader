@@ -1,6 +1,6 @@
+import numpy
 import open3d
 import pdal
-
 import os
 import time
 
@@ -38,7 +38,7 @@ class ArcticEnv(RobotGazeboEnv):
                  max_distance=25.0,
                  leader_pos_epsilon=1.25,
                  max_dev=1.5,
-                 max_steps=5000,
+                 max_steps=400,
                  low_reward=-200,
                  close_coeff=0.6):
         # print('Запуск окружения арктики')
@@ -320,39 +320,6 @@ class ArcticEnv(RobotGazeboEnv):
 
         return obs, reward, self.done, self.info
 
-    # TODO: функция получения и обработки информации с камеры
-
-    # def _test_sys(self):
-    #     start_target = self.target_coords
-    #     start_arctic = self.arctic_coords
-    #     goal = self.goal
-    #     step_count = self.step_count
-    #     steps_out = self.steps_out_box
-    #     reward = np.round(self.cumulated_episode_reward, decimals=2)
-    #     info = self.info
-    #     leader_reward = self.count_leader_reward
-    #     leader_steps = self.count_leader_steps_reward
-    #
-    #     stop_count = self.count_stop_leader
-    #
-    #     d = {'col1': [start_target],
-    #          'col2': [start_arctic],
-    #          'col3': [goal],
-    #          'col4': [step_count],
-    #          'col5': [steps_out],
-    #          'col6': [reward],
-    #          'col7': [info],
-    #          'col8': [leader_reward],
-    #          'col9': [leader_steps],
-    #          'col10': [stop_count]}
-    #     df = pd.DataFrame(data=d)
-    #
-    #     df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_with_all.csv", index=False, mode='a',
-    #               header=False)
-    #     #
-    #     # df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data/steps_without_9.csv", index=False, mode='a',
-    #     #           header=False)
-
     def _get_positions(self):
         """
         Получение информации о позиции, направлении и скорости ведущего и ведомго
@@ -418,7 +385,7 @@ class ArcticEnv(RobotGazeboEnv):
                                         height: int = 480,
                                         hov: float = 80.0,
                                         fov: float = 64.0,
-                                        scale: int = 20) -> dict:
+                                        scale: int = 10) -> dict:
         """
         Вычисление углов по значениям bounding box, вычисления основано на цилиндрической системе координат,
         центр изображения - центр системы координат
@@ -565,47 +532,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         return fil_ob_1, fil_ob_2
 
-    # def _test_lid_filters(self, all_points, after_filter, time_fil, all_time_fil):
-    #
-    #     start_target = self.target_coords
-    #     start_arctic = self.arctic_coords
-    #     goal = self.goal
-    #     step_count = self.step_count
-    #     steps_out = self.steps_out_box
-    #     reward = np.round(self.cumulated_episode_reward, decimals=2)
-    #     info = self.info
-    #     leader_reward = self.count_leader_reward
-    #     leader_steps = self.count_leader_steps_reward
-    #     stop_count = self.count_stop_leader
-    #
-    #
-    #
-    #
-    #
-    #     d = {'col1': [start_target],
-    #          'col2': [start_arctic],
-    #          'col3': [goal],
-    #          'col4': [step_count],
-    #          'col5': [steps_out],
-    #          'col6': [reward],
-    #          'col7': [info],
-    #          'col8': [leader_reward],
-    #          'col9': [leader_steps],
-    #          'col10': [stop_count],
-    #          'col11': [all_points],
-    #          'col12': [after_filter],
-    #          'col13': [time_fil],
-    #          'col14': [all_time_fil],
-    #          }
-    #
-    #     df = pd.DataFrame(data=d)
-    #     df.to_csv("~/arctic_build/robots_HRI/arctic_gym/arctic_env/data_lid/csf.csv", index=False, mode='a',
-    #               header=False)
-    #
-    #     return 0
-
-
-    def calculate_length_to_leader(self, camera_objects):
+    def calculate_length_to_leader(self, detected):
 
         """
         Функция определения расстояния до ведущего на основе обработки результата детектирования объектов на изображении
@@ -624,38 +551,123 @@ class ArcticEnv(RobotGazeboEnv):
             other_points = list([x, y, z])
 
         """
+        start = time.time()
+
+        camera_objects = detected.copy()
+
+        cars = [x for x in camera_objects if x['name'] == "car"]
 
         max_dist = 25
         length_to_leader = 50
-        object_coord = []
-        leader_info = next((x for x in camera_objects if x["name"] == "car"), None)
+        other_points = []
 
-        other_points = list()
+        # если нет машины передаем все точки лидара как препятствия
+        if cars == []:
+            self.get_lidar_points()
+            length_to_leader = None
+            for i in self.lidar_points:
+                dist = np.linalg.norm(i[:3])
+                if dist >= 1:
+                    other_points.append(i[:3])
 
-        camera_yaw_state_info = self.sub.get_camera_yaw_state()
-        camera_yaw = camera_yaw_state_info.process_value
+            return length_to_leader, other_points
 
-        # TODO : перепроверить и оптимизировать (в случае, если пробовать вариант с "закрытым" коридором)
-        # if i[-1] in [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]:
+        # если определилось несколько машин, находим машину с наибольшей площадью bounding box
+        max_square = 0
+        car = {}
+        for one in cars:
+            camera_objects.remove(one)
+            square = (one['xmax'] - one['xmin']) * (one['ymax'] - one['ymin'])
+
+            if square > max_square:
+                car = one
+                max_square = square
+
+        # находим пересечение bounding box объектов с bounding box машины:
+        crossed_objects = [car, ]
+        for obj in camera_objects:
+            x1_c = car['xmin']
+            x2_c = car['xmax']
+            y1_c = car['ymin']
+            y2_c = car['ymax']
+
+            x1_o = obj['xmin']
+            x2_o = obj['xmax']
+            y1_o = obj['ymin']
+            y2_o = obj['ymax']
+
+            if (x1_c < x2_o and x2_c > x1_o) and (y1_c < y2_o and y2_c > y1_o):
+                crossed_objects.append(obj)
+
+        camera_yaw = self.sub.get_camera_yaw_state().process_value
+
         # выделение точек ведущего из всего облака точек
-        for i in self.lidar_points:
-            if leader_info is not None:
-                angles_object = self._calculate_points_angles_objects(leader_info)
-                if i[0] ** 2 + i[1] ** 2 <= max_dist ** 2\
-                        and (tan(np.deg2rad(-40))+tan(camera_yaw)) * i[0] <= i[1] <= (tan(np.deg2rad(40))+tan(camera_yaw)) * i[0] \
-                        and ((tan(angles_object[2])+tan(camera_yaw)) * i[0]) <= i[1] <= ((tan(angles_object[0])+tan(camera_yaw)) * i[0]) \
-                        and (tan(angles_object[3]) * i[0]) <= i[2] <= (tan(angles_object[1]) * i[0]):
-                    object_coord.append(i)
+        self.get_lidar_points()
+        lidar_pts = list(self.lidar_points).copy()
 
-                    if sqrt(i[0] ** 2 + i[1] ** 2 + i[2] ** 2) <= length_to_leader:
-                        length_to_leader = sqrt(i[0] ** 2 + i[1] ** 2 + i[2] ** 2)
-                elif i[0] ** 2 + i[1] ** 2 >= 1:
-                    other_points.append([i[0], i[1], i[2]])
-            elif i[0] ** 2 + i[1] ** 2 >= 1:
-                other_points.append([i[0], i[1], i[2]])
-                length_to_leader = None
+        obj_inside = []
+        for obj in crossed_objects:
+            object_coord = []
+            for i in lidar_pts:
+                angles = self._calculate_points_angles_objects(obj)
 
-        # print(f'Расстояние до ведущего, определенное с помощью лидара: {length_to_leader}')
+                dist = np.linalg.norm(i[:3])
+
+                k1_x = (tan(np.deg2rad(-40)) + tan(camera_yaw)) * i[0]
+                k2_x = (tan(np.deg2rad(40)) + tan(camera_yaw)) * i[0]
+
+                theta2_x = (tan(angles["theta2"]) + tan(camera_yaw)) * i[0]
+                theta1_x = (tan(angles["theta1"]) + tan(camera_yaw)) * i[0]
+
+                phi2_x = tan(angles["phi2"]) * i[0]
+                phi1_x = tan(angles["phi1"]) * i[0]
+
+                if dist <= max_dist and k1_x <= i[1] <= k2_x and theta2_x <= i[1] <= theta1_x and phi2_x <= i[2] <= phi1_x:
+                    object_coord.append(i[:3])
+
+                    # if dist <= length_to_leader:
+                    #     length_to_leader = dist
+                elif dist >= 1 and obj["name"]:
+                    other_points.append(i[:3])
+
+            # Отсутствие точек object_coord в области объекта
+            try:
+                object_coord = np.array(object_coord)
+                norms = np.linalg.norm(object_coord, axis=1)
+                obj_inside.append({"name": obj["name"], "data": dict(zip(norms, object_coord))})
+            except numpy.AxisError:
+              pass
+
+        # ловим момент когда не выделились лучи лидара, возвращаем расстояние до ведущего - None
+        try:
+            car_data = obj_inside[0]["data"]
+        except IndexError:
+            length_to_leader = None
+
+            return length_to_leader, other_points
+
+        # удаляем точки лидара других объектов, которые пересекаются с bounding box машины
+        outside_car_bb = {}
+        for other_data in obj_inside[1:]:
+            car_keys = np.array(list(car_data.keys()))
+            other_keys = np.array(list(other_data["data"].keys()))
+
+            intersections = np.intersect1d(car_keys, other_keys)
+            for inter in intersections:
+                outside_car_bb[inter] = car_data.pop(inter)
+
+        # если объекты перекрыли все лучи лидара
+        if car_data == {}:
+            car_data = outside_car_bb
+
+        # по гистограмме определяем расстояние, которое встречается чаще остальных
+        count, distance, _ = plt.hist(car_data.keys())
+        idx = np.argmax(count)
+        length_to_leader = distance[idx]
+
+        print("DISTANCE: {}".format(length_to_leader))
+
+        print("TIME: {}".format(time.time() - start))
 
         return length_to_leader, other_points
 
@@ -678,7 +690,7 @@ class ArcticEnv(RobotGazeboEnv):
         camera_yaw_state_info = self.sub.get_camera_yaw_state()
         camera_yaw = camera_yaw_state_info.process_value
 
-        if bool(info_lead):
+        if bool(info_lead) and length_to_leader is not None:
             y = (info_lead['xmin'] + info_lead['xmax']) / 2
             x = length_to_leader + 2.1
             hfov = 80
