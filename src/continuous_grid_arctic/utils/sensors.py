@@ -18,6 +18,7 @@ class LaserSensor():
 
     def __init__(self,
                  host_object,
+                 sensor_name="LaserSensor",
                  available_angle=360,
                  angle_step=10,  # в градусах
                  points_number=20,  # число пикселей,
@@ -146,6 +147,7 @@ class LeaderPositionsTracker:
 
     def __init__(self,
                  host_object,
+                 sensor_name="LeaderPositionsTracker",
                  eat_close_points=True,
                  max_point=5000,
                  saving_period=5,
@@ -332,6 +334,7 @@ class LeaderTrackDetector_vector:
 
     def __init__(self,
                  host_object,
+                 sensor_name="LeaderTrackDetector_vector",
                  position_sequence_length=100,
                  detectable_positions="new"):
         """
@@ -382,6 +385,7 @@ class LeaderTrackDetector_radar:
 
     def __init__(self,
                  host_object,
+                 sensor_name="LeaderTrackDetector_radar",
                  position_sequence_length=100,
                  detectable_positions="old",
                  radar_sectors_number=180):
@@ -547,6 +551,7 @@ class GreenBoxBorderSensor(LaserSensor):
 class LeaderCorridor_lasers:
     def __init__(self,
                  host_object,
+                 sensor_name="LeaderCorridor_lasers",
                  react_to_safe_corridor=True,
                  react_to_obstacles=False,
                  react_to_green_zone=False,
@@ -897,6 +902,7 @@ class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers):
 class FollowerInfo:
     def __init__(self,
                  host_object,
+                 sensor_name="FollowerInfo",
                  speed_direction_param=2):
         """
         :param host_object: робот, на котором висит сенсор
@@ -1131,18 +1137,18 @@ class LaserPrevSensor_v2_compas(LeaderCorridor_lasers):
         self.use_prev_obs = use_prev_obs
         self.max_prev_obs = max_prev_obs
         self.pad_sectors = pad_sectors
-
+        self.count_lasers = self.front_lasers_count + self.back_lasers_count
         self.reset()
+        if self.count_lasers not in [12, 24, 20, 36]:
+            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
+        self.laser_period = 360 / self.count_lasers
 
     def scan(self, env, corridor):
-        self.count_lasers = self.front_lasers_count + self.back_lasers_count
 
         # Не знаю, почему такие числа, слава задавал ограничение, но я не понял, почему.
         # Возможно, чтобы 360 делилось без остатка
-        if self.count_lasers not in [12, 24, 20, 36]:
-            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
 
-        laser_period = 360 / self.count_lasers
+
         self.lasers_collides = []
         self.lasers_end_points = []
 
@@ -1156,7 +1162,7 @@ class LaserPrevSensor_v2_compas(LeaderCorridor_lasers):
         for i in range(self.count_lasers):
             self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                                                    (self.host_object.direction - 45) +
-                                                                                   i * laser_period))
+                                                                                   i * self.laser_period))
 
         if len(corridor) > 1:
             obstacles_lines = list()

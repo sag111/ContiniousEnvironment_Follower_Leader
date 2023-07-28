@@ -239,13 +239,16 @@ class RobotWithSensors(AbstractRobot):
             if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 if 'LeaderPositionsTracker' not in sensors.keys() and "LeaderPositionsTracker_v2" not in sensors.keys():
                     raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
-            if k in SENSOR_CLASSNAME_TO_CLASS:
+            if "sensor_class" in sensors[k]:
+                sensorClass = SENSOR_CLASSNAME_TO_CLASS[sensors[k]["sensor_class"]]
+            elif k in SENSOR_CLASSNAME_TO_CLASS:
                 sensorClass = SENSOR_CLASSNAME_TO_CLASS[k]
-            elif "sensor_class" in sensors[k]:
-                sensorClass = SENSOR_CLASSNAME_TO_CLASS[sensors[k].pop("sensor_class")]
             else:
                 raise ValueError(f"Sensor class is undefined: {k}")
-            self.sensors[k] = sensorClass(self, **sensors[k])
+            sensor_args =  sensors[k].copy()
+            if "sensor_class" in sensor_args:
+                sensor_args.pop("sensor_class")
+            self.sensors[k] = sensorClass(self, **sensor_args)
         print(self.sensors)
 
     def use_sensors(self, env):

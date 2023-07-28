@@ -74,12 +74,12 @@ class MyFrameStack(ObservationWrapper):
 
 class ContinuousObserveModifier_v0(ObservationWrapper):
 
-    def __init__(self, env, action_values_range=None, lz4_compress=False):
+    def __init__(self, env, action_values_range=None, lz4_compress=False, use_prev_obs=False, max_prev_obs=0):
         super().__init__(env)
         self.observations_list = None
         features_number = 0
-        self.prev_obs_flag = env.env.use_prev_obs
-        self.num_prev_obs = env.env.max_prev_obs
+        self.use_prev_obs = use_prev_obs
+        self.max_prev_obs = max_prev_obs
 
         # этот должен быть -1:1
         if 'LeaderTrackDetector_vector' in self.follower_sensors:
@@ -130,19 +130,19 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
                 features_number += env.follower_sensors['LaserPrevSensor']['front_lasers_count']
             if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor']:
                 features_number += env.follower_sensors['LaserPrevSensor']['back_lasers_count']
-
-        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
-                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['front_lasers_count'])
-            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
-                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['back_lasers_count'])
-
-        if 'LaserPrevSensor_compas' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
-                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['front_lasers_count'])
-            if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
-                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['back_lasers_count'])
-
+        # надо бы для всех наверно сделать в цикле
+        for sensor_name, sensor_config in env.follower_sensors.items():
+            if sensor_config["sensor_class"]=="LaserPrevSensor_v2_compas":
+                if sensor_config["pad_sectors"]:
+                    if 'front_lasers_count' in sensor_config:
+                        features_number += (4*sensor_config['front_lasers_count'])
+                    if 'back_lasers_count' in sensor_config:
+                        features_number += (4*sensor_config['back_lasers_count'])
+                else:
+                    if 'front_lasers_count' in sensor_config:
+                        features_number += sensor_config['front_lasers_count']
+                    if 'back_lasers_count' in sensor_config:
+                        features_number += sensor_config['back_lasers_count']
         if 'FollowerInfo' in self.follower_sensors:
             if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
                 features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
@@ -158,9 +158,9 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
                 features_number += lidar_points_number * 2
 
         self.features_number_num = features_number
-        if self.prev_obs_flag:
-            self.observation_space = Box(-np.ones([self.num_prev_obs, features_number]),
-                                         np.ones([self.num_prev_obs, features_number]))
+        if self.use_prev_obs:
+            self.observation_space = Box(-np.ones([self.max_prev_obs, features_number]),
+                                         np.ones([self.max_prev_obs, features_number]))
         else:
             self.observation_space = Box(-np.ones(features_number),
                                          np.ones(features_number))
@@ -223,14 +223,13 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             # features_list.append(corridor_obs_lasers)
             
         # SENSORS WITH COMPAS
-
-        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower.sensors:
-            corridor_prev_lasers_v2 = obs['LeaderCorridor_Prev_lasers_v2_compas']
-            corridor_prev_lasers_v2 = np.clip(corridor_prev_lasers_v2 / self.follower.sensors['LeaderCorridor_Prev_lasers_v2_compas'].laser_length, 0, 1)
-
-        if 'LaserPrevSensor_compas' in self.follower.sensors:
-            corridor_prev_obs_lasers = obs['LaserPrevSensor_compas']
-            corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor_compas'].laser_length, 0, 1)
+        # надо бы для всех наверно сделать в цикле
+        for sensor_name in sorted(self.follower_sensors.keys()):
+            sensor_config = self.follower_sensors[sensor_name]
+            if sensor_config["sensor_class"]=="LaserPrevSensor_v2_compas":
+                laserPrevSensor_v2_compas_obs = obs[sensor_name]
+                laserPrevSensor_v2_compas_obs = np.clip(laserPrevSensor_v2_compas_obs / self.follower.sensors[sensor_name].laser_length, 0, 1)
+                features_list.append(laserPrevSensor_v2_compas_obs)
 
         if 'LaserSensor' in self.follower_sensors:
             lidar_sensed_points = obs['LaserSensor']
@@ -240,12 +239,12 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
             lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors["LaserSensor"].range * self.PIXELS_TO_METER), -1, 1)
             features_list.append(lidar_sensed_points)
 
-        if self.prev_obs_flag:
+        if self.use_prev_obs:
 #             concatenate_features_list = np.concatenate(features_list)
 #             self.observations_list = self.add_prev_obs(concatenate_features_list)
             #print("corridor_prev_lasers_v2 ", corridor_prev_lasers_v2.shape)
             #print("corridor_prev_obs_lasers ", corridor_prev_obs_lasers.shape)
-            self.observations_list  = np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
+            self.observations_list  = np.concatenate(features_list, axis=1)
         else:
             self.observations_list = np.concatenate(features_list)
         return self.observations_list
