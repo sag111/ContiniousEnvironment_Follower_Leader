@@ -288,8 +288,12 @@ class ArcticEnv(RobotGazeboEnv):
 
         # Получение точек препятствий и формирование obs
         self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
+
         self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
                                             self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
+
+        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+                                                    self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
         obs = self._get_obs()
         """"""
@@ -766,10 +770,13 @@ class ArcticEnv(RobotGazeboEnv):
         """
         Observations среды
         """
-        obs_dict = dict()
-        obs_dict["LeaderCorridor_Prev_lasers_v2_compas"] = self.laser_values
+        corridor_prev_lasers_v2 = self.laser_values
+        corridor_prev_lasers_v2 = np.clip(corridor_prev_lasers_v2 / self.laser.laser_length, 0, 1)
 
-        return np.array(obs_dict["LeaderCorridor_Prev_lasers_v2_compas"], dtype=np.float32)
+        corridor_prev_obs_lasers = self.laser_aux_values
+        corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.laser_aux.laser_length, 0, 1)
+
+        return np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
 
     def _set_action(self, action):
         """
