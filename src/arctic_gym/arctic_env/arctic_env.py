@@ -17,10 +17,11 @@ from math import atan, tan, sqrt, cos, sin
 from gym.spaces import Discrete, Box
 from scipy.spatial import distance
 
-from src.arctic_gym.utils.reward_constructor import Reward
+from src.continuous_grid_arctic.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2, GazeboLeaderPositionsCorridorLasers
-from src.arctic_gym.utils.misc import rotateVector
+from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2_compas, GazeboLaserPrevSensor_compas
+from src.continuous_grid_arctic.utils.misc import rotateVector
 
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -41,11 +42,9 @@ class ArcticEnv(RobotGazeboEnv):
                  max_steps=400,
                  low_reward=-200,
                  close_coeff=0.6):
-        # print('Запуск окружения арктики')
         super(ArcticEnv, self).__init__()
 
         self.object_detection_endpoint = object_detection_endpoint
-
         self.discrete_action = discrete_action
         self.time_for_action = time_for_action
         self.trajectory_saving_period = trajectory_saving_period
@@ -68,25 +67,28 @@ class ArcticEnv(RobotGazeboEnv):
         self.leader_history_v2 = self.tracker_v2.leader_positions_hist
         self.corridor_v2 = self.tracker_v2.corridor
 
+        self.laser = GazeboCorridor_Prev_lasers_v2_compas(host_object="arctic_robot",
+                                                          sensor_name='LeaderCorridor_Prev_lasers_v2_compas',
+                                                          react_to_green_zone=True,
+                                                          react_to_safe_corridor=True,
+                                                          react_to_obstacles=True,
+                                                          front_lasers_count=6,
+                                                          back_lasers_count=6,
+                                                          laser_length=100)
 
-        self.laser = GazeboLeaderPositionsCorridorLasers(max_distance=self.max_distance,
-                                                         host_object="arctic_robot",
-                                                         sensor_name='LeaderCorridor_lasers',
-                                                         react_to_green_zone=True,
-                                                         react_to_safe_corridor=True,
-                                                         react_to_obstacles=False,
-                                                         front_lasers_count=5,
-                                                         back_lasers_count=2,
-                                                         position_sequence_length=100)
-
-        self.laser_values = self.laser.laser_values_obs
-        # print(self.laser_values)
+        self.laser_aux = GazeboLaserPrevSensor_compas(host_object="arctic_robot",
+                                                      sensor_name='LaserPrevSensor_compas',
+                                                      react_to_green_zone=True,
+                                                      react_to_safe_corridor=True,
+                                                      react_to_obstacles=True,
+                                                      front_lasers_count=12,
+                                                      back_lasers_count=12,
+                                                      laser_length=100)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
         self.follower_position = None
         self.follower_orientation = None
-
 
         self.leader_position_delta = None
         self.follower_position_delta = [0, 0]
@@ -151,15 +153,18 @@ class ArcticEnv(RobotGazeboEnv):
         # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
         self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
 
-
         # Получение истории и корридора
         self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
                                                                         self.follower_position,
                                                                         self.follower_delta_position)
         # Получение точек препятствий и формирование obs
         self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
+
         self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
                                             self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
+
+        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+                                                    self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
         obs = self._get_obs()
         """"""
@@ -762,9 +767,9 @@ class ArcticEnv(RobotGazeboEnv):
         Observations среды
         """
         obs_dict = dict()
-        obs_dict["LeaderCorridor_lasers"] = self.laser_values
+        obs_dict["LeaderCorridor_Prev_lasers_v2_compas"] = self.laser_values
 
-        return np.array(obs_dict["LeaderCorridor_lasers"], dtype=np.float32)
+        return np.array(obs_dict["LeaderCorridor_Prev_lasers_v2_compas"], dtype=np.float32)
 
     def _set_action(self, action):
         """
