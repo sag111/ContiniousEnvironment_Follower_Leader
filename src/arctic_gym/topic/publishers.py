@@ -35,10 +35,10 @@ class Publishers:
         self.default_goal_pub = rospy.Publisher(config["topic.robot_goal"], PoseStamped, queue_size=1)
 
         # Внешний топик, публикует путь робота
-        self.follower_path_pub = rospy.Publisher(config.topic.robot_path, Path, queue_size=1)
+        self.follower_path_pub = rospy.Publisher(config["topic.robot_path"], Path, queue_size=1)
         self.follower_path = Path()
         # Внешний топик, публикует путь цели
-        self.target_path_pub = rospy.Publisher(config.topic.target_path, Path, queue_size=1)
+        self.target_path_pub = rospy.Publisher(config["topic.target_path"], Path, queue_size=1)
         self.target_path = Path()
 
     def set_camera_pitch(self, radian: float):
