@@ -434,7 +434,7 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
 
         self.history_corridor_laser_hist = []
 
-    def scan(self, follower_position, follower_orientation, laser_history, corridor, cur_object_points_1, cur_object_points_2):
+    def scan(self, follower_position, follower_orientation, history, corridor, cur_object_points_1, cur_object_points_2):
 
         # Расчет угла рыскания ведомого
         _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
@@ -493,19 +493,14 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
 
             # Проверка лазерами на пересечение
             corridor_lines = np.array(corridor_lines, dtype=np.float32)
-
             # TODO : отправка в историю значений всех линей объектов
 
-            try:
-                self.history_corridor_laser_hist.pop(0)
-            except IndexError:
-                pass
-
-            self.history_corridor_laser_hist.append(corridor_lines)
+            history.pop(0)
+            history.append(corridor_lines)
 
             all_obs_list = []
 
-            for j, corridor_lines_item in enumerate(self.history_corridor_laser_hist):
+            for j, corridor_lines_item in enumerate(history):
 
                 corridor_lines_item = np.array(corridor_lines_item)
 
@@ -596,7 +591,7 @@ class GazeboLaserPrevSensor_compas(LaserPrevSensor_compas):
 
         self.history_obstacles_list = []
 
-    def scan(self, follower_position, follower_orientation, laser_history, corridor, cur_object_points_1, cur_object_points_2):
+    def scan(self, follower_position, follower_orientation, history, corridor, cur_object_points_1, cur_object_points_2):
 
         # Расчет угла рыскания ведомого
         _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
@@ -646,19 +641,14 @@ class GazeboLaserPrevSensor_compas(LaserPrevSensor_compas):
             # TODO : отправка в историю значений всех линей объектов
 
             # print("1111", corridor_lines.shape)
-
             # print(type(env.history_obstacles_list))
 
-            try:
-                self.history_obstacles_list.pop(0)
-            except IndexError:
-                pass
-
-            self.history_obstacles_list.append(corridor_lines)
+            history.pop(0)
+            history.append(corridor_lines)
 
             all_obs_list = []
 
-            for i, corridor_lines_item in enumerate(self.history_obstacles_list):
+            for i, corridor_lines_item in enumerate(history):
 
                 corridor_lines_item = np.array(corridor_lines_item)
 
