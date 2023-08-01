@@ -114,6 +114,10 @@ class ArcticEnv(RobotGazeboEnv):
 
     def reset(self, move=True):
 
+        zeros_item = [np.zeros((1, 2, 2)) for _ in range(5)]
+        self.history_obstacles_list = zeros_item
+        self.history_corridor_laser_list = zeros_item
+
         self.pub.set_camera_pitch(0)
         self.pub.set_camera_yaw(0)
 
@@ -160,10 +164,10 @@ class ArcticEnv(RobotGazeboEnv):
         # Получение точек препятствий и формирование obs
         self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
 
-        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.history_corridor_laser_list,
                                             self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
-        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.history_obstacles_list,
                                                     self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
         obs = self._get_obs()
@@ -289,17 +293,19 @@ class ArcticEnv(RobotGazeboEnv):
         # Получение точек препятствий и формирование obs
         self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
 
-        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.history_corridor_laser_list,
                                             self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
-        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.leader_history_v2,
+        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.history_obstacles_list,
                                                     self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
 
         obs = self._get_obs()
+
+        print(obs)
         """"""
         self._is_done(self.leader_position, self.follower_position)
-        log_obs = list(map(lambda x: round(x, 2), obs))
-        print(f'Наблюдения: {log_obs}')
+        # log_obs = list(map(lambda x: round(x, 2), obs))
+        # print(f'Наблюдения: {log_obs}')
         reward = self._compute_reward()
         self.cumulated_episode_reward += reward
         print(self.cumulated_episode_reward)
