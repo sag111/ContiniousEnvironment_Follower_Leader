@@ -106,8 +106,8 @@ class Executor:
                     self.env.pub.target_cancel_action()
 
             else:
-                action[0] *= 3
-                action[1] *= 2
+                action[0] *= 2.0
+                action[1] *= 1.75
 
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
