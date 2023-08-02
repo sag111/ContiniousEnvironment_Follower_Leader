@@ -808,7 +808,7 @@ class ArcticEnv(RobotGazeboEnv):
             self.pub.move_base(discrete_action[0], discrete_action[1])
             rospy.sleep(self.time_for_action)
         else:
-            self.pub.move_base(action[0], -action[1])
+            self.pub.move_base(action[0], action[1])
             rospy.sleep(self.time_for_action)
 
     def _is_done(self, leader_position, follower_position):
