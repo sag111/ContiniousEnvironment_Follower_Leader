@@ -498,8 +498,7 @@ class ArcticEnv(RobotGazeboEnv):
         #### Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
-        max_dist = self.laser.laser_length
-        # max_dist = 4
+        max_dist = 4
         # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
         xyz = [(x, y, z) for x, y, z in points_list if x**2 + y**2 <= max_dist**2]  # get xyz
         # print('OTHER POINTS in radius', len(xyz))
