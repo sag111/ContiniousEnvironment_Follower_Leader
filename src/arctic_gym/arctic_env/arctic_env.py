@@ -19,7 +19,7 @@ from scipy.spatial import distance
 
 from src.continuous_grid_arctic.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
-from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2, GazeboLeaderPositionsCorridorLasers
+from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2_compas, GazeboLaserPrevSensor_compas
 from src.continuous_grid_arctic.utils.misc import rotateVector
 
