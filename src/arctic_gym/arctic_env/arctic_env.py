@@ -289,6 +289,7 @@ class ArcticEnv(RobotGazeboEnv):
         # Получение истории и корридора
         self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
                                                                         self.follower_position,
+                                                                        self.follower_orientation,
                                                                         self.follower_delta_position)
 
         # Получение точек препятствий и формирование obs
