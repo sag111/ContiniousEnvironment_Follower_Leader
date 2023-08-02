@@ -114,6 +114,8 @@ class ArcticEnv(RobotGazeboEnv):
 
     def reset(self, move=True):
 
+        self.pub.update_corridor([])
+
         zeros_item = [np.zeros((1, 2, 2)) for _ in range(5)]
         self.history_obstacles_list = zeros_item
         self.history_corridor_laser_list = zeros_item
@@ -308,7 +310,6 @@ class ArcticEnv(RobotGazeboEnv):
 
         obs = self._get_obs()
 
-        print(obs)
         """"""
         self._is_done(self.leader_position, self.follower_position)
         # log_obs = list(map(lambda x: round(x, 2), obs))
