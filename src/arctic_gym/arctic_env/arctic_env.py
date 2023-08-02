@@ -74,7 +74,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                           react_to_obstacles=True,
                                                           front_lasers_count=6,
                                                           back_lasers_count=6,
-                                                          laser_length=100)
+                                                          laser_length=16)
 
         self.laser_aux = GazeboLaserPrevSensor_compas(host_object="arctic_robot",
                                                       sensor_name='LaserPrevSensor_compas',
@@ -83,7 +83,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                       react_to_obstacles=True,
                                                       front_lasers_count=12,
                                                       back_lasers_count=12,
-                                                      laser_length=100)
+                                                      laser_length=5)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
