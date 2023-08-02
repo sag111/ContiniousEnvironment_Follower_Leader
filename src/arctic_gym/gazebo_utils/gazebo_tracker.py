@@ -2,12 +2,9 @@ import tf
 import numpy as np
 
 from math import cos, sin, radians
-from scipy.spatial import distance
 
-from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle, angle_correction
-from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker
+from src.continuous_grid_arctic.utils.misc import rotateVector, angle_correction
 from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker_v2
-from src.continuous_grid_arctic.utils.sensors import LeaderTrackDetector_radar
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_lasers
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_Prev_lasers_v2_compas
 from src.continuous_grid_arctic.utils.sensors import LaserPrevSensor_compas
@@ -40,10 +37,13 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         delta_cy = delta['delta_y']
         follower_position = [0, 0]
         self.generate_corridor = True
+        # ширина коридора
         self.max_dev = 2
         # self.max_dev = 35
         leader_max_speed = 1.0 # TODO : потом посмотреть и перенести все в конфиг
-        max_distance = 24
+
+        # длина коридора
+        max_distance = 30
         self.saving_period = 3
 
         # print('LEADER', leader_position)
