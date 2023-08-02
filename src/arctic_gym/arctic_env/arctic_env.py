@@ -292,6 +292,11 @@ class ArcticEnv(RobotGazeboEnv):
                                                                         self.follower_orientation,
                                                                         self.follower_delta_position)
 
+        # рисуем коридор
+        cor = np.array(self.corridor_v2) + self.follower_position
+        self.pub.update_corridor(cor)
+
+
         # Получение точек препятствий и формирование obs
         self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
 
