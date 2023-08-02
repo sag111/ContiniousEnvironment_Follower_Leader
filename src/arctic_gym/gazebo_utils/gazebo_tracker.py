@@ -290,23 +290,26 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
                 lasers_values_item = []
                 self.lasers_collides_item = []
                 for laser_end_point in self.lasers_end_points:
-                    rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :],
-                                                          corridor_lines_item[:, 1, :],
-                                                          np.array([follower_position]),
-                                                          np.array([laser_end_point]))
-                    intersected_line_item = corridor_lines_item[rez]
-                    if len(intersected_line_item) > 0:
-                        x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
-                                                                intersected_line_item[:, 1, :],
-                                                                np.array([follower_position]),
-                                                                np.array([laser_end_point]))
-                        # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
-                        # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
-                        exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
-                        norms = np.linalg.norm(x - follower_position, axis=1)
-                        lasers_values_item.append(np.min(norms))
-                        closest_dot_idx = np.argmin(np.linalg.norm(x - follower_position, axis=1))
-                        self.lasers_collides_item.append(x[closest_dot_idx])
+                    if corridor_lines_item != []:
+                        rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :],
+                                                              corridor_lines_item[:, 1, :],
+                                                              np.array([follower_position]),
+                                                              np.array([laser_end_point]))
+                        intersected_line_item = corridor_lines_item[rez]
+                        if len(intersected_line_item) > 0:
+                            x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
+                                                                    intersected_line_item[:, 1, :],
+                                                                    np.array([follower_position]),
+                                                                    np.array([laser_end_point]))
+                            # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                            # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                            exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
+                            norms = np.linalg.norm(x - follower_position, axis=1)
+                            lasers_values_item.append(np.min(norms))
+                            closest_dot_idx = np.argmin(np.linalg.norm(x - follower_position, axis=1))
+                            self.lasers_collides_item.append(x[closest_dot_idx])
+                        else:
+                            self.lasers_collides_item.append(laser_end_point)
                     else:
                         self.lasers_collides_item.append(laser_end_point)
 
@@ -438,23 +441,26 @@ class GazeboLaserPrevSensor_compas(LaserPrevSensor_compas):
                 lasers_values_item = []
                 self.lasers_collides_item = []
                 for laser_end_point in self.lasers_end_points:
-                    rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :],
-                                                          corridor_lines_item[:, 1, :],
-                                                          np.array([follower_position]),
-                                                          np.array([laser_end_point]))
-                    intersected_line_item = corridor_lines_item[rez]
-                    if len(intersected_line_item) > 0:
-                        x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
-                                                                intersected_line_item[:, 1, :],
-                                                                np.array([follower_position]),
-                                                                np.array([laser_end_point]))
-                        # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
-                        # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
-                        exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
-                        norms = np.linalg.norm(x - follower_position, axis=1)
-                        lasers_values_item.append(np.min(norms))
-                        closest_dot_idx = np.argmin(np.linalg.norm(x - follower_position, axis=1))
-                        self.lasers_collides_item.append(x[closest_dot_idx])
+                    if corridor_lines_item != []:
+                        rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :],
+                                                              corridor_lines_item[:, 1, :],
+                                                              np.array([follower_position]),
+                                                              np.array([laser_end_point]))
+                        intersected_line_item = corridor_lines_item[rez]
+                        if len(intersected_line_item) > 0:
+                            x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
+                                                                    intersected_line_item[:, 1, :],
+                                                                    np.array([follower_position]),
+                                                                    np.array([laser_end_point]))
+                            # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                            # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                            exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
+                            norms = np.linalg.norm(x - follower_position, axis=1)
+                            lasers_values_item.append(np.min(norms))
+                            closest_dot_idx = np.argmin(np.linalg.norm(x - follower_position, axis=1))
+                            self.lasers_collides_item.append(x[closest_dot_idx])
+                        else:
+                            self.lasers_collides_item.append(laser_end_point)
                     else:
                         self.lasers_collides_item.append(laser_end_point)
 
