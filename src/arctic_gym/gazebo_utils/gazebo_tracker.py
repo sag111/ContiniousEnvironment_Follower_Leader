@@ -1,7 +1,10 @@
 import tf
 import numpy as np
 
-from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
+from math import cos, sin, radians
+from scipy.spatial import distance
+
+from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle, angle_correction
 from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker
 from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker_v2
 from src.continuous_grid_arctic.utils.sensors import LeaderTrackDetector_radar
@@ -19,7 +22,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                                                               sensor_name,
                                                               saving_period=saving_period)
 
-    def scan(self, leader_position, follower_position, delta):
+    def scan(self, leader_position, follower_position, follower_orientation, delta):
         """
         Версия сохранения координат для Gazebo, без построения корридора
         Args:
@@ -28,6 +31,10 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         Returns:
             История позиций ведущего робота
         """
+
+        _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
+        direction = np.degrees(yaw)
+        follower_orientation = direction
 
         delta_cx = delta['delta_x']
         delta_cy = delta['delta_y']
@@ -108,14 +115,31 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                     return self.leader_positions_hist
         # 4) достраивание точек вначале симуляции плюс добавление в историю
             if len(self.leader_positions_hist) == 0 and self.saving_counter == 0:
+                point_start_distance_behind_follower = 50
+                point_start_position_theta = angle_correction(follower_orientation + 180)
+                point_behind_follower = np.array(
+                    (point_start_distance_behind_follower * cos(radians(point_start_position_theta)),
+                     point_start_distance_behind_follower * sin(radians(point_start_position_theta)))) \
+                                        + follower_position
+
+                first_dots_for_follower_count = 10
+                # first_dots_for_follower_count = int(
+                #     distance.euclidean(point_behind_follower, env.leader.position) / (
+                #             self.saving_period * 5 * env.leader.max_speed))
+
+                self.leader_positions_hist.extend(np.array(x) for x in
+                                                  zip(np.linspace(point_behind_follower[0], leader_position[0],
+                                                                  first_dots_for_follower_count),
+                                                      np.linspace(point_behind_follower[1], leader_position[1],
+                                                                  first_dots_for_follower_count)))
                 # first_dots_for_follower_count = int(distance.euclidean(follower_position, leader_position) /
                 #                                     (self.saving_period * 1.5 * leader_max_speed))
-                first_dots_for_follower_count = 5
-                self.leader_positions_hist.extend(np.array(x) for x in
-                                                    zip(np.linspace(follower_position[0], leader_position[0],
-                                                                    first_dots_for_follower_count),
-                                                        np.linspace(follower_position[1], leader_position[1],
-                                                                    first_dots_for_follower_count)))
+                # first_dots_for_follower_count = 5
+                # self.leader_positions_hist.extend(np.array(x) for x in
+                #                                     zip(np.linspace(follower_position[0], leader_position[0],
+                #                                                     first_dots_for_follower_count),
+                #                                         np.linspace(follower_position[1], leader_position[1],
+                #                                                     first_dots_for_follower_count)))
             else:
                 last_point = self.leader_positions_hist[-1]
                 last_dist = np.linalg.norm(last_point - follower_position)
