@@ -9,6 +9,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from actionlib_msgs.msg import GoalID
 from nav_msgs.msg import Path
+from visualization_msgs.msg import MarkerArray, Marker
 
 from pyhocon import ConfigTree
 from typing import Optional, Any
@@ -40,6 +41,9 @@ class Publishers:
         # Внешний топик, публикует путь цели
         self.target_path_pub = rospy.Publisher(config["topic.target_path"], Path, queue_size=1)
         self.target_path = Path()
+
+        # Внешний топик для границ коридора
+        self.corridor_marker_pub = rospy.Publisher("/external/corridor", MarkerArray, queue_size=1)
 
     def set_camera_pitch(self, radian: float):
         """
@@ -289,6 +293,50 @@ class Publishers:
         Проверка соединения с топиком для публикации пути цели
         """
         while self.target_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+            try:
+                self.rate.sleep()
+            except rospy.ROSInterruptException:
+                pass
+
+    def update_corridor(self, corridor):
+
+        markers = []
+        idx = 0
+        for pair in corridor:
+            for point in pair:
+                mark = Marker()
+
+                mark.header.frame_id = "map"
+                mark.id = idx
+                mark.type = 1
+
+                mark.pose.position.x = point[0]
+                mark.pose.position.y = point[1]
+
+                mark.pose.orientation.w = 1.0
+
+                mark.scale.x = 0.1
+                mark.scale.y = 0.1
+                mark.scale.z = 0.1
+
+                mark.color.r = 0.5
+                mark.color.a = 1
+
+                markers.append(mark)
+
+                idx += 1
+
+        mark_array = MarkerArray()
+        mark_array.markers = markers
+
+        self._check_corridor_marker_pub_ready()
+        self.corridor_marker_pub.publish(mark_array)
+
+    def _check_corridor_marker_pub_ready(self):
+        """
+        Проверка соединения с топиком для коридора
+        """
+        while self.corridor_marker_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
                 self.rate.sleep()
             except rospy.ROSInterruptException:
