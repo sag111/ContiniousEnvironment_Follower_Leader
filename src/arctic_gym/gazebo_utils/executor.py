@@ -16,7 +16,7 @@ class Executor:
 
         self.client = PolicyClient(config.rl_agent.get_weights, inference_mode='remote')
 
-    def setup_position(self, point_a: list, point_b: list, target_distance: float = 10):
+    def setup_position(self, point_a: list, point_b: list, target_distance: float = 12):
         """
         Перемещение ведущего и ведомого в позицию point_a
         Вычисление угла поворота в точку point_b
@@ -57,10 +57,10 @@ class Executor:
         start = self.env.sub.get_odom().pose
         point_a = [start.pose.position.x, start.pose.position.y, start.pose.position.z]
 
-        try:
-            self.env.pub.move_target(*point_b[:2], self.phi)
-        except AttributeError:
-            self.env.pub.move_target(*point_b[:2], 0)
+        # try:
+        self.env.pub.move_target(*point_b[:2], self.phi)
+        # except AttributeError:
+        #     self.env.pub.move_target(*point_b[:2], 0)
 
         self.env.set_goal(point_b[:2])
 
@@ -84,10 +84,10 @@ class Executor:
 
             if info['leader_status'] == "moving" and count_lost >= 1:
                 count_lost = 0
-                try:
-                    self.env.pub.move_target(*point_b[:2], self.phi)
-                except AttributeError:
-                    self.env.pub.move_target(*point_b[:2], 0)
+                # try:
+                self.env.pub.move_target(*point_b[:2], self.phi)
+                # except AttributeError:
+                #     self.env.pub.move_target(*point_b[:2], 0)
 
             if info['agent_status'] == 'too_far_from_leader_info':
                 count_lost += 1
@@ -106,8 +106,7 @@ class Executor:
                     self.env.pub.target_cancel_action()
 
             else:
-                action[0] *= 2.0
-                action[1] *= 1.75
+                action[0] *= 2
 
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
