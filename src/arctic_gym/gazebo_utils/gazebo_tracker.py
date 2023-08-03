@@ -43,7 +43,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         leader_max_speed = 1.0 # TODO : потом посмотреть и перенести все в конфиг
 
         # длина коридора
-        max_distance = 30
+        max_distance = 50
         self.saving_period = 3
 
         # print('LEADER', leader_position)
@@ -122,7 +122,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                      point_start_distance_behind_follower * sin(radians(point_start_position_theta)))) \
                                         + follower_position
 
-                first_dots_for_follower_count = 10
+                first_dots_for_follower_count = 25
                 # first_dots_for_follower_count = int(
                 #     distance.euclidean(point_behind_follower, env.leader.position) / (
                 #             self.saving_period * 5 * env.leader.max_speed))
@@ -155,6 +155,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
             dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
                                    np.array(self.leader_positions_hist)[1:, :], axis=1)
             path_length = np.sum(dists)
+
             while path_length > max_distance:
                 # print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 2")
                 if len(self.leader_positions_hist) > 0:
@@ -186,6 +187,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
 
         self.saving_counter += 1
         # print("ИСТОРИЯ И КОРИДОР", self.leader_positions_hist)
+
         return self.leader_positions_hist, self.corridor
 
 
@@ -218,7 +220,6 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
         self.history_corridor_laser_hist = []
 
     def scan(self, follower_position, follower_orientation, history, corridor, cur_object_points_1, cur_object_points_2):
-
         # Расчет угла рыскания ведомого
         _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
         direction = np.degrees(yaw)
@@ -253,6 +254,7 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
         if len(corridor) > 1:
             corridor_lines = list()
             if self.react_to_safe_corridor:
+
                 for i in range(len(corridor) - 1):
                     corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
                     corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
@@ -274,8 +276,9 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
                     else:
                         corridor_lines.append([cur_object_points_1[i], cur_object_points_2[i]])
 
-            # Проверка лазерами на пересечение
             corridor_lines = np.array(corridor_lines, dtype=np.float32)
+            print("CORIDOR_LINE: {}".format(corridor_lines.shape))
+
             # TODO : отправка в историю значений всех линей объектов
 
             history.pop(0)
@@ -283,6 +286,7 @@ class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas)
 
             all_obs_list = []
 
+            # Проверка лазерами на пересечение
             for j, corridor_lines_item in enumerate(history):
 
                 corridor_lines_item = np.array(corridor_lines_item)
