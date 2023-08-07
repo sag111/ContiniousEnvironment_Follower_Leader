@@ -2065,8 +2065,7 @@ class TestGameManual(Game):
                              "LeaderCorridor_lasers_compas": {
                                  "sensor_class": "LeaderCorridor_lasers_compas",
                                  "react_to_obstacles": False,
-                                 "front_lasers_count": 6,
-                                 "back_lasers_count": 6,
+                                 "lasers_count": 12,
                                  "react_to_safe_corridor": True,
                                  "react_to_green_zone": True,
                                  "laser_length": 150,

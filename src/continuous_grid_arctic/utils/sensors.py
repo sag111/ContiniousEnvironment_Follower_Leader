@@ -12,7 +12,6 @@ except:
 
 import pandas as pd
 
-#TODO: добавить сенсор с распознаванием, в какую из границ корридора упирается лазер
 #TODO: пофиксить корридор так, как я сделал это с 2дкартой по лидару
 #TODO: запустить эксперимент где один признак реагирует только на корридор, другой тойько на препятствия
 
@@ -231,7 +230,7 @@ class LeaderPositionsTracker:
 
 class LeaderPositionsTracker_v2(LeaderPositionsTracker):
     """
-    Вроде отличается от первой версии тем, что в начале симуляции корридор строится не по 2ум точкам (лидер, ведомый),  а 
+    Вроде отличается от первой версии тем, что в начале симуляции корридор строится не по 2ум точкам (лидер, ведомый),  а
     создаётся последовательность точек между ними. + может начинать этот корридор за спиной у ведомого.
     """
 
@@ -579,8 +578,8 @@ class LeaderCorridor_lasers:
         """
         self.host_object = host_object
         # TODO: сделать гибкую настройку лазеров
-        # assert front_lasers_count in [3, 5]
-        # assert back_lasers_count in [0, 2]
+        assert front_lasers_count in [3, 5]
+        assert back_lasers_count in [0, 2]
         self.front_lasers_count = front_lasers_count
         self.back_lasers_count = back_lasers_count
         self.laser_length = laser_length
@@ -724,17 +723,39 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
      нулевого угла (вероятно первый луч идёт прямо перед ведомым) создаются по кругу, заполняя 360 градусов.
      В остальном всё тоже самое
     """
-    def scan(self, env, corridor):
-        self.count_lasers = self.front_lasers_count + self.back_lasers_count
-        laser_period = 360 / self.count_lasers
+    def __init__(self,
+                 host_object,
+                 sensor_name="LeaderCorridor_lasers",
+                 react_to_safe_corridor=True,
+                 react_to_obstacles=False,
+                 react_to_green_zone=False,
+                 lasers_count=12,
+                 laser_length=100):
+        """
 
+        :param host_object: робот, на котором висит сенсор
+        :param react_to_obstacles: должны ли лазеры реагировать на препятствия. может иметь значения True,False,"dynamic","static"
+        :param react_to_green_zone: должны ли лазеры реагировать на переднюю из заднюю границы зеленой зоны
+        """
+        self.host_object = host_object
+        self.lasers_count = lasers_count
+        if self.lasers_count not in [12, 24, 20, 36]:
+            raise ValueError("Недопустимое количество лучей лазеров, должно быть 12,24,20 или 36")
+        self.laser_period = 360 / lasers_count
+        self.laser_length = laser_length
+        self.lasers_end_points = []
+        self.lasers_collides = []
+        self.react_to_safe_corridor = react_to_safe_corridor
+        self.react_to_obstacles = react_to_obstacles
+        self.react_to_green_zone = react_to_green_zone
+
+    def scan(self, env, corridor):
         self.lasers_collides = []
         self.lasers_end_points = []
-        # print("!!!!!!!!!!!!!!!!!!!!!!!",self.front_lasers_count+self.back_lasers_count)
-        if self.front_lasers_count + self.back_lasers_count == self.count_lasers:
-            for i in range(self.count_lasers):
-                self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-                                                                                       self.host_object.direction + i * laser_period))
+
+        for i in range(self.lasers_count):
+            self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                                                   self.host_object.direction + i * self.laser_period))
 
         if len(corridor) > 1:
             corridor_lines = self.collect_obstacle_edges(env, corridor)
@@ -761,19 +782,19 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
-        obs = np.ones(self.count_lasers, dtype=np.float32) * self.laser_length
+        obs = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
         for i, collide in enumerate(self.lasers_collides):
             obs[i] = np.linalg.norm(collide - self.host_object.position)
         return obs
 
 
-class LeaderObstacles_lasers(LeaderCorridor_lasers):
+class LeaderObstacles_lasers(LeaderCorridor_lasers_v2):
     def __init__(self):
         raise ValueError("Устаревший класс, используйте вместо этого LeaderCorridor_lasers_v2 с флагами "
                          "react_to_safe_corridor=False и react_to_green_zone=False")
 
 
-class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers):
+class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers_v2):
     def __init__(self):
         raise ValueError("Устаревший класс, используйте вместо этого LeaderCorridor_lasers_v2 с флагами "
                          "react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles='dynamic'")
@@ -803,23 +824,25 @@ class FollowerInfo:
     def show(self, env):
         return 0
 
-class LaserPrevSensor(LeaderCorridor_lasers):
+class LaserPrevSensor(LeaderCorridor_lasers_v2):
     def __init__(self):
         raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами "
                         "react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles=True и "
                         "first_laser_angle_offset=0")
 
-class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers):
+class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers_v2):
     def __init__(self):
         raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами react_to_safe_corridor=True и react_to_green_zone=True, react_to_obstacles=True")
-class LaserPrevSensor_compas(LeaderCorridor_lasers):
+
+class LaserPrevSensor_compas(LeaderCorridor_lasers_v2):
     def __init__(self):
         raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles=True")
+
 #######################################
 #### add compas in this sensors
 #######################################
 
-class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
+class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
     """
     Отличается от LeaderCorridor_lasers_v2 тем, что хранит историю положений препятствий и
     лазеры реагируют не только на текущее положение границ препятствий, но и на старые.
@@ -831,11 +854,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
         self.max_prev_obs = max_prev_obs
         self.pad_sectors = pad_sectors
         self.first_laser_angle_offset = first_laser_angle_offset
-        self.count_lasers = self.front_lasers_count + self.back_lasers_count
         self.reset()
-        if self.count_lasers not in [12, 24, 20, 36]:
-            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
-        self.laser_period = 360 / self.count_lasers
         self.lasers_collides_item_history = []
 
     def scan(self, env, corridor):
@@ -843,7 +862,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
         self.lasers_end_points = []
         self.lasers_collides_item_history = []
 
-        for i in range(self.count_lasers):
+        for i in range(self.lasers_count):
             self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                                                    (self.host_object.direction + self.first_laser_angle_offset) +
                                                                                    i * self.laser_period))
@@ -883,7 +902,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
                         self.lasers_collides_item.append(laser_end_point)
                 self.lasers_collides_item_history.append(self.lasers_collides_item.copy())
 
-                obs_item = np.ones(self.count_lasers, dtype=np.float32) * self.laser_length
+                obs_item = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
                 for i, collide in enumerate(self.lasers_collides_item):
                     obs_item[i] = np.linalg.norm(collide - self.host_object.position)
 
@@ -893,7 +912,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
                     behind = np.zeros(len(obs_item))
                     left = np.zeros(len(obs_item))
 
-                    lasers_in_sector = self.count_lasers / 4
+                    lasers_in_sector = self.lasers_count / 4
                     for i in range(len(obs_item)):
                         if i < lasers_in_sector:
                             front[i] = obs_item[i]
@@ -949,16 +968,8 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
      какие из лазеров упираются у переднюю/заднюю/левую/правую стенки коридора.
      Реагирует только на коридор
     """
-    def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, first_laser_angle_offset=-45, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(LeaderCorridor_lasers_compas, self).__init__(*args, **kwargs)
-        self.use_prev_obs = use_prev_obs
-        self.max_prev_obs = max_prev_obs
-        self.first_laser_angle_offset = first_laser_angle_offset
-        self.count_lasers = self.front_lasers_count + self.back_lasers_count
-        self.reset()
-        if self.count_lasers not in [12, 24, 20, 36]:
-            raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
-        self.laser_period = 360 / self.count_lasers
         self.lasers_collides_item_history = []
         self.lasers_collides_corridor_orientation_history = []
         self.lasers_collides_corridor_orientation = []
@@ -996,7 +1007,7 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
         self.lasers_collides_item_history = []
         self.lasers_collides_corridor_orientation_history = []
 
-        for i in range(self.count_lasers):
+        for i in range(self.lasers_count):
             self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                                                    (self.host_object.direction + self.first_laser_angle_offset) +
                                                                                    i * self.laser_period))
@@ -1038,24 +1049,24 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
                 self.lasers_collides_item_history.append(self.lasers_collides_item.copy())
                 self.lasers_collides_corridor_orientation_history.append(self.lasers_collides_corridor_orientation.copy())
 
-                obs_item = np.zeros(self.count_lasers*5, dtype=np.float32) * self.laser_length
-                obs_item[:self.count_lasers] = 1
+                obs_item = np.zeros(self.lasers_count*5, dtype=np.float32) * self.laser_length
+                obs_item[:self.lasers_count] = 1
                 for i, (collide, orientation) in enumerate(zip(self.lasers_collides_item, self.lasers_collides_corridor_orientation)):
                     if (orientation == 0).all():
                         obs_item[i] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
                     elif orientation[0] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.count_lasers*1] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
+                        obs_item[i + self.lasers_count*1] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
                     elif orientation[1] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.count_lasers*2] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
+                        obs_item[i + self.lasers_count*2] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
                     elif orientation[2] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.count_lasers * 3] = np.linalg.norm(
+                        obs_item[i + self.lasers_count * 3] = np.linalg.norm(
                             collide - self.host_object.position) / self.laser_length
                     elif orientation[3] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.count_lasers * 4] = np.linalg.norm(
+                        obs_item[i + self.lasers_count * 4] = np.linalg.norm(
                             collide - self.host_object.position) / self.laser_length
                 all_obs_list.append(obs_item)
             all_obs_arr = np.array(all_obs_list)
@@ -1066,7 +1077,6 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
 
     def reset(self):
         zeros_item = np.zeros([1, 2, 2])
-        self.history_obstacles_list = list()
         self.history_obstacles_list = list()
         for i in range(self.max_prev_obs):
             self.history_obstacles_list.append((zeros_item, np.zeros((1, 4))))
