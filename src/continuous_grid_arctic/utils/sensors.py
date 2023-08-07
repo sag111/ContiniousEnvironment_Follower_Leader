@@ -12,6 +12,9 @@ except:
 
 import pandas as pd
 
+#TODO: добавить сенсор с распознаванием, в какую из границ корридора упирается лазер
+#TODO: пофиксить корридор так, как я сделал это с 2дкартой по лидару
+#TODO: запустить эксперимент где один признак реагирует только на корридор, другой тойько на препятствия
 
 class LaserSensor():
     """
@@ -621,6 +624,39 @@ class LeaderCorridor_lasers:
         num = np.sum(np.multiply(dap, dp), axis=1)
         return (num[:, np.newaxis] / denom) * db + b1
 
+    def collect_obstacle_edges(self, env, corridor):
+        obstacle_lines = list()
+        if self.react_to_safe_corridor:
+            for i in range(len(corridor) - 1):
+                obstacle_lines.append([corridor[i][0], corridor[i + 1][0]])
+                obstacle_lines.append([corridor[i][1], corridor[i + 1][1]])
+        if self.react_to_green_zone:
+            obstacle_lines.append([corridor[0][0], corridor[0][1]])
+            obstacle_lines.append([corridor[-1][0], corridor[-1][1]])
+        if self.react_to_obstacles != False:
+            # TODO : проверка списка динам препятствий
+            if self.react_to_obstacles == "dynamic":
+                obstacles_list = env.game_dynamic_list
+            elif self.react_to_obstacles == "static":
+                obstacles_list = env.game_object_list
+            elif self.react_to_obstacles == "all":
+                obstacles_list = env.game_object_list + env.game_dynamic_list
+            elif type(self.react_to_obstacles) == bool and self.react_to_obstacles:
+                obstacles_list = env.game_object_list + env.game_dynamic_list
+            else:
+                ValueError("Надо указать, на какие именно препятствия должен реагировать сенсор. Задать "
+                           "react_to_obstacles равным одному из значений: True, 'all', 'dynamic', 'static'")
+            for cur_object in (obstacles_list):
+                if cur_object is env.follower:
+                    continue
+                if cur_object.blocks_vision:
+                    obstacle_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
+                    obstacle_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
+                    obstacle_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
+                    obstacle_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
+        obstacle_lines = np.array(obstacle_lines, dtype=np.float32)
+        return obstacle_lines
+
     def scan(self, env, corridor):
         self.lasers_collides = []
         self.lasers_end_points = []
@@ -645,33 +681,7 @@ class LeaderCorridor_lasers:
                 self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                          self.host_object.direction + 150))
         if len(corridor) > 1:
-            corridor_lines = list()
-            if self.react_to_safe_corridor:
-                for i in range(len(corridor) - 1):
-                    corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
-                    corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
-            if self.react_to_green_zone:
-                corridor_lines.append([corridor[0][0], corridor[0][1]])
-                corridor_lines.append([corridor[-1][0], corridor[-1][1]])
-            if self.react_to_obstacles!=False:
-                # TODO : проверка списка динам препятствий
-                if self.react_to_obstacles=="dynamic":
-                    obstacles_list =  env.game_dynamic_list
-                elif self.react_to_obstacles=="dynamic":
-                    obstacles_list = env.game_object_list
-                elif self.react_to_obstacles == "all":
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                elif type(self.react_to_obstacles)==bool and self.react_to_obstacles:
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                for cur_object in (obstacles_list):
-                    if cur_object is env.follower:
-                        continue
-                    if cur_object.blocks_vision:
-                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
-                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
-                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
-                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
-            corridor_lines = np.array(corridor_lines, dtype=np.float32)
+            corridor_lines = self.collect_obstacle_edges(env, corridor)
             lasers_values = []
             self.lasers_collides = []
             for laser_end_point in self.lasers_end_points:
@@ -727,34 +737,7 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
                                                                                        self.host_object.direction + i * laser_period))
 
         if len(corridor) > 1:
-            corridor_lines = list()
-            if self.react_to_safe_corridor:
-                for i in range(len(corridor) - 1):
-                    corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
-                    corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
-            if self.react_to_green_zone:
-                corridor_lines.append([corridor[0][0], corridor[0][1]])
-                corridor_lines.append([corridor[-1][0], corridor[-1][1]])
-            if self.react_to_obstacles!=False:
-                # TODO : проверка списка динам препятствий
-                if self.react_to_obstacles=="dynamic":
-                    obstacles_list =  env.game_dynamic_list
-                elif self.react_to_obstacles=="dynamic":
-                    obstacles_list = env.game_object_list
-                elif self.react_to_obstacles == "all":
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                elif type(self.react_to_obstacles)==bool and self.react_to_obstacles:
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                for cur_object in (obstacles_list):
-                    if cur_object is env.follower:
-                        continue
-                    if cur_object.blocks_vision:
-                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
-                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
-                        corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
-                        corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
-            # Проверка лазерами на пересечение
-            corridor_lines = np.array(corridor_lines, dtype=np.float32)
+            corridor_lines = self.collect_obstacle_edges(env, corridor)
             lasers_values = []
             self.lasers_collides = []
             for laser_end_point in self.lasers_end_points:
@@ -837,9 +820,13 @@ class LaserPrevSensor_compas(LeaderCorridor_lasers):
 #######################################
 
 class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
+    """
+    Отличается от LeaderCorridor_lasers_v2 тем, что хранит историю положений препятствий и
+    лазеры реагируют не только на текущее положение границ препятствий, но и на старые.
+    """
 
     def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, pad_sectors=True, first_laser_angle_offset=-45, **kwargs):
-        super(LaserPrevSensor_v2_compas, self).__init__(*args, **kwargs)
+        super(LeaderCorridor_Prev_lasers_v2, self).__init__(*args, **kwargs)
         self.use_prev_obs = use_prev_obs
         self.max_prev_obs = max_prev_obs
         self.pad_sectors = pad_sectors
@@ -865,37 +852,9 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
             self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                                                    (self.host_object.direction + self.first_laser_angle_offset) +
                                                                                    i * self.laser_period))
-
+        # TODO: Исправить, не работает проверка на столкновение лазеров с препятствиями, если пустой коридор
         if len(corridor) > 1:
-            obstacles_lines = list()
-            if self.react_to_safe_corridor:
-                for i in range(len(corridor) - 1):
-                    obstacles_lines.append([corridor[i][0], corridor[i + 1][0]])
-                    obstacles_lines.append([corridor[i][1], corridor[i + 1][1]])
-            if self.react_to_green_zone:
-                obstacles_lines.append([corridor[0][0], corridor[0][1]])
-                obstacles_lines.append([corridor[-1][0], corridor[-1][1]])
-            if self.react_to_obstacles!=False:
-                # TODO : проверка списка динам препятствий
-                if self.react_to_obstacles=="dynamic":
-                    obstacles_list =  env.game_dynamic_list
-                elif self.react_to_obstacles=="dynamic":
-                    obstacles_list = env.game_object_list
-                elif self.react_to_obstacles == "all":
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                elif type(self.react_to_obstacles)==bool and self.react_to_obstacles:
-                    obstacles_list = env.game_object_list + env.game_dynamic_list
-                for cur_object in (obstacles_list):
-                    if cur_object is env.follower:
-                        continue
-                    if cur_object.blocks_vision:
-                        obstacles_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
-                        obstacles_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
-                        obstacles_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
-                        obstacles_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
-            # Проверка лазерами на пересечение
-            corridor_lines = np.array(obstacles_lines, dtype=np.float32)
-
+            corridor_lines = self.collect_obstacle_edges(env, corridor)
             # TODO : отправка в историю значений всех линей объектов
             self.history_obstacles_list.pop(0)
             self.history_obstacles_list.append(corridor_lines)
@@ -972,12 +931,12 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
             self.history_obstacles_list.append(zeros_item)
 
     def show(self, env):
+        # TODO: Добавить отрисовку исторических точек
         for laser_end_point in self.lasers_end_points:
             pygame.draw.line(env.gameDisplay, (200, 100, 100), self.host_object.position, laser_end_point)
 
         # for laser_collide in self.lasers_collides:
         #     pygame.draw.circle(env.gameDisplay, (0, 100, 64), laser_collide, 5)
-
         for laser_collide in self.lasers_collides_item:
             pygame.draw.circle(env.gameDisplay, (200, 20, 64), laser_collide, 5)
 

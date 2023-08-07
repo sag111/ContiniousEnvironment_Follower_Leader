@@ -14,7 +14,8 @@ except:
     from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
 
 
-
+# TODO: убрать лишние сенсоры из врапперов
+# TODO: Сделать 2 отдельных враппера, для признаков с векторами и для признаков с матрицами
 
 class MyFrameStack(ObservationWrapper):
     r"""Observation wrapper that stacks the observations in a rolling manner.
