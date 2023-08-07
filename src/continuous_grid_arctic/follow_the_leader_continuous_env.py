@@ -34,7 +34,6 @@ except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 
-
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
 # как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
 # совпадающие ключи перезаписываются
@@ -1776,10 +1775,16 @@ class Game(gym.Env):
 
             if not self.constant_follower_speed:
                 if event.key == pygame.K_UP:
-                    follower.command_forward(follower.speed + self.PIXELS_TO_METER)
+                    if follower.speed < 0:
+                        follower.command_forward(0)
+                    else:
+                        follower.command_forward(follower.speed + self.PIXELS_TO_METER)
 
                 if event.key == pygame.K_DOWN:
-                    follower.command_forward(follower.speed - self.PIXELS_TO_METER)
+                    if follower.speed > 0:
+                        follower.command_forward(0)
+                    else:
+                        follower.command_forward(follower.speed - self.PIXELS_TO_METER)
 
     def _get_obs(self):
         """Возвращает наблюдения (observations) среды каждый шаг (step)"""
@@ -2057,8 +2062,8 @@ class TestGameManual(Game):
                             #     "react_to_green_zone": False,
                             #     "laser_length": 150
                             # },
-                             "LaserPrevSensor_v2_compas_all": {
-                                 "sensor_class": "LaserPrevSensor_v2_compas",
+                             "LaserPrevSensor_v2_all": {
+                                 "sensor_class": "LeaderCorridor_Prev_lasers_v2",
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 6,
                                  "back_lasers_count": 6,
@@ -2069,8 +2074,8 @@ class TestGameManual(Game):
                                  "max_prev_obs": 5,
                                  "pad_sectors": True
                              },
-                             "LaserPrevSensor_v2_compas_obst": {
-                                 "sensor_class": "LaserPrevSensor_v2_compas",
+                             "LaserPrevSensor_v2_obst": {
+                                 "sensor_class": "LeaderCorridor_Prev_lasers_v2",
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 12,
                                  "back_lasers_count": 12,

@@ -836,18 +836,13 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
         if self.count_lasers not in [12, 24, 20, 36]:
             raise ValueError("Недопустимое количество лучей лазеров, должно быть установлено 6 front и 6 back")
         self.laser_period = 360 / self.count_lasers
+        self.lasers_collides_item_history = []
 
     def scan(self, env, corridor):
         self.lasers_collides = []
         self.lasers_end_points = []
+        self.lasers_collides_item_history = []
 
-        # if self.front_lasers_count+self.back_lasers_count == self.count_lasers:
-        #     for i in range(self.count_lasers):
-        #         self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
-        #                                                        self.host_object.direction + i*laser_period))
-
-        # # TODO: новый варинт отсчета сенсоров, чтобы направление было от -45 градусов
-        # print("DIRECTION ", self.host_object.direction )
         for i in range(self.count_lasers):
             self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
                                                                                    (self.host_object.direction + self.first_laser_angle_offset) +
@@ -855,7 +850,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
         # TODO: Исправить, не работает проверка на столкновение лазеров с препятствиями, если пустой коридор
         if len(corridor) > 1:
             corridor_lines = self.collect_obstacle_edges(env, corridor)
-            # TODO : отправка в историю значений всех линей объектов
+            # Сейчас в истории хранятся все грани препятствий, а не только пересеченные
             self.history_obstacles_list.pop(0)
             self.history_obstacles_list.append(corridor_lines)
 
@@ -886,6 +881,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
                         self.lasers_collides_item.append(x[closest_dot_idx])
                     else:
                         self.lasers_collides_item.append(laser_end_point)
+                self.lasers_collides_item_history.append(self.lasers_collides_item.copy())
 
                 obs_item = np.ones(self.count_lasers, dtype=np.float32) * self.laser_length
                 for i, collide in enumerate(self.lasers_collides_item):
@@ -917,7 +913,6 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
                     res_out = obs_item
 
                 all_obs_list.append(res_out)
-
             all_obs_arr = np.array(all_obs_list)
             # print(all_obs_arr)
         #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr)
@@ -931,14 +926,20 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers):
             self.history_obstacles_list.append(zeros_item)
 
     def show(self, env):
-        # TODO: Добавить отрисовку исторических точек
         for laser_end_point in self.lasers_end_points:
             pygame.draw.line(env.gameDisplay, (200, 100, 100), self.host_object.position, laser_end_point)
 
         # for laser_collide in self.lasers_collides:
         #     pygame.draw.circle(env.gameDisplay, (0, 100, 64), laser_collide, 5)
-        for laser_collide in self.lasers_collides_item:
-            pygame.draw.circle(env.gameDisplay, (200, 20, 64), laser_collide, 5)
+        #for laser_collide in self.lasers_collides_item:
+        #    pygame.draw.circle(env.gameDisplay, (200, 20, 64), laser_collide, 5)
+        for i, lasers_collides_item in enumerate(self.lasers_collides_item_history):
+            if i==len(self.lasers_collides_item_history)-1:
+                for laser_collide in lasers_collides_item:
+                    pygame.draw.circle(env.gameDisplay, (200, 20, 64), laser_collide, 5)
+            else:
+                for laser_collide in lasers_collides_item:
+                    pygame.draw.circle(env.gameDisplay, (255, 75, 110), laser_collide, 3)
 
 
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
