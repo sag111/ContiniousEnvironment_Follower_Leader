@@ -39,7 +39,7 @@ class ArcticEnv(RobotGazeboEnv):
                  max_distance=25.0,
                  leader_pos_epsilon=1.25,
                  max_dev=1.5,
-                 max_steps=400,
+                 max_steps=1000,
                  low_reward=-200,
                  close_coeff=0.6):
         super(ArcticEnv, self).__init__()
@@ -74,7 +74,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                           react_to_obstacles=True,
                                                           front_lasers_count=6,
                                                           back_lasers_count=6,
-                                                          laser_length=8)
+                                                          laser_length=4)
 
         self.laser_aux = GazeboLaserPrevSensor_compas(host_object="arctic_robot",
                                                       sensor_name='LaserPrevSensor_compas',
@@ -83,7 +83,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                       react_to_obstacles=True,
                                                       front_lasers_count=12,
                                                       back_lasers_count=12,
-                                                      laser_length=8)
+                                                      laser_length=4)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
@@ -857,6 +857,8 @@ class ArcticEnv(RobotGazeboEnv):
 
         self.step_count += 1
 
+        self.info["step_count"] = self.step_count
+
         # Для индикации завершения миссии ведущего
         # print(f"Статус ведущего: {self.code}, {self.text}")
         if self.code == 3:
@@ -878,7 +880,7 @@ class ArcticEnv(RobotGazeboEnv):
             self.crash = True
             self.done = True
 
-            # print(self.info)
+            print(self.info)
 
             return 0
 
@@ -900,7 +902,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
 
@@ -912,7 +914,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.crash = True
                 self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
 
@@ -930,7 +932,7 @@ class ArcticEnv(RobotGazeboEnv):
                     self.info["mission_status"] = "failed by something else"
                     self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
             # Превысило максимальное количество шагов
@@ -940,7 +942,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.info["agent_status"] = "moving"
                 self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
             # Завершение следование, ведущий доехал (Local)
@@ -956,7 +958,7 @@ class ArcticEnv(RobotGazeboEnv):
                 self.info["agent_status"] = "finished"
                 self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
 
@@ -969,7 +971,7 @@ class ArcticEnv(RobotGazeboEnv):
                     self.info["mission_status"] = "safety system end"
                     self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
 
@@ -985,7 +987,7 @@ class ArcticEnv(RobotGazeboEnv):
                     self.info["mission_status"] = "failed by obstacle in front of target"
                     self.done = True
 
-                # print(self.info)
+                print(self.info)
 
                 return 0
 
@@ -997,7 +999,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         if self.info["leader_status"] == "moving":
             self.end_stop_count = 0
-            # print(self.info)
+            print(self.info)
             return 0
 
 
