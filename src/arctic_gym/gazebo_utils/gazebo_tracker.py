@@ -38,12 +38,12 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         follower_position = [0, 0]
         self.generate_corridor = True
         # ширина коридора
-        self.max_dev = 2
+        self.max_dev = 2.5
         # self.max_dev = 35
         leader_max_speed = 1.0 # TODO : потом посмотреть и перенести все в конфиг
 
         # длина коридора
-        max_distance = 50
+        max_distance = 30
         self.saving_period = 3
 
         # print('LEADER', leader_position)
@@ -87,20 +87,21 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
             right_left_new = zip(right_border_new, left_border_new)
             self.corridor.extend(right_left_new)
 
-        if len(self.corridor) > 2 and len(self.leader_positions_hist) > 2 \
-                and self.saving_counter % self.saving_period == 0:
-            first_point = self.leader_positions_hist[0]
-            second_point = self.leader_positions_hist[1]
-            while first_point[0] < -0.3 and second_point[0] < -0.1:
-            # while first_point[0] < -0.5 and second_point[0] < -0.3 and first_point[1] < -0.5 and second_point[0] < -0.3:
-            #     print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 1 ")
-                self.leader_positions_hist.popleft()
-                self.corridor.popleft()
-                if len(self.leader_positions_hist) > 2:
-                    first_point = self.leader_positions_hist[0]
-                    second_point = self.leader_positions_hist[1]
-                else:
-                    break
+        # Баг с удалением коридора
+        # if len(self.corridor) > 2 and len(self.leader_positions_hist) > 2 \
+        #         and self.saving_counter % self.saving_period == 0:
+        #     first_point = self.leader_positions_hist[0]
+        #     second_point = self.leader_positions_hist[1]
+        #     while first_point[0] < -0.3 and second_point[0] < -0.1:
+        #     # while first_point[0] < -0.5 and second_point[0] < -0.3 and first_point[1] < -0.5 and second_point[0] < -0.3:
+        #     #     print("УДАЛИЛИ УДАЛИЛ УДАЛИЛ УДАЛИЛ УДАЛИЛ МЕТОД 1 ")
+        #         self.leader_positions_hist.popleft()
+        #         self.corridor.popleft()
+        #         if len(self.leader_positions_hist) > 2:
+        #             first_point = self.leader_positions_hist[0]
+        #             second_point = self.leader_positions_hist[1]
+        #         else:
+        #             break
 
         if self.saving_counter % self.saving_period == 0:
         #  3) Проверка на изменение позиции ведущего
@@ -115,14 +116,14 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                     return self.leader_positions_hist
         # 4) достраивание точек вначале симуляции плюс добавление в историю
             if len(self.leader_positions_hist) == 0 and self.saving_counter == 0:
-                point_start_distance_behind_follower = 50
+                point_start_distance_behind_follower = 10
                 point_start_position_theta = angle_correction(follower_orientation + 180)
                 point_behind_follower = np.array(
                     (point_start_distance_behind_follower * cos(radians(point_start_position_theta)),
                      point_start_distance_behind_follower * sin(radians(point_start_position_theta)))) \
                                         + follower_position
 
-                first_dots_for_follower_count = 25
+                first_dots_for_follower_count = 10
                 # first_dots_for_follower_count = int(
                 #     distance.euclidean(point_behind_follower, env.leader.position) / (
                 #             self.saving_period * 5 * env.leader.max_speed))
@@ -149,7 +150,6 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
                 if new_dist > last_dist and new_dist < 25:
                     self.leader_positions_hist.append(leader_position.copy())
 
-        # TODO : 5) Удаление точек
             # удаление точек коридора и истории
             # TODO : удаление точек истории (альтернативный метод ...)
             dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
