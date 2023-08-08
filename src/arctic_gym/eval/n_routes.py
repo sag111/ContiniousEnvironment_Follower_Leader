@@ -28,7 +28,7 @@ for pts in experiment["easy"]:
 
     exc.setup_position(start, finish)
 
-    time.sleep(3)
+    time.sleep(1)
 
     meta = exc.follow(finish)
 
@@ -40,22 +40,26 @@ for pts in experiment["easy"]:
 
     evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval_easy.csv"), sep=';', index=False)
 
-collects = []
-for pts in experiment["hard"]:
+    time.sleep(1)
 
-    start = pts[:3]
-    finish = pts[3:]
-
-    exc.setup_position(start, finish)
-
-    time.sleep(3)
-
-    meta = exc.follow(finish)
-
-    collects.append(meta)
-
-    evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
-    csv_path = project_path.joinpath("data/processed")
-    csv_path.mkdir(parents=True, exist_ok=True)
-
-    evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval_hard.csv"), sep=';', index=False)
+# collects = []
+# for pts in experiment["hard"]:
+#
+#     start = pts[:3]
+#     finish = pts[3:]
+#
+#     exc.setup_position(start, finish)
+#
+#     time.sleep(2)
+#
+#     meta = exc.follow(finish)
+#
+#     collects.append(meta)
+#
+#     evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
+#     csv_path = project_path.joinpath("data/processed")
+#     csv_path.mkdir(parents=True, exist_ok=True)
+#
+#     evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_gazebo_eval_hard.csv"), sep=';', index=False)
+#
+#     time.sleep(2)
