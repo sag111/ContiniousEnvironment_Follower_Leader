@@ -1049,25 +1049,25 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
                 self.lasers_collides_item_history.append(self.lasers_collides_item.copy())
                 self.lasers_collides_corridor_orientation_history.append(self.lasers_collides_corridor_orientation.copy())
 
-                obs_item = np.zeros(self.lasers_count*5, dtype=np.float32) * self.laser_length
+                obs_item = np.zeros(self.lasers_count*5, dtype=np.float32)
                 obs_item[:self.lasers_count] = 1
                 for i, (collide, orientation) in enumerate(zip(self.lasers_collides_item, self.lasers_collides_corridor_orientation)):
                     if (orientation == 0).all():
-                        obs_item[i] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
+                        obs_item[i] = np.linalg.norm(collide - self.host_object.position)
                     elif orientation[0] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.lasers_count*1] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
+                        obs_item[i + self.lasers_count*1] = np.linalg.norm(collide - self.host_object.position)
                     elif orientation[1] == 1:
                         obs_item[i] = 0
-                        obs_item[i + self.lasers_count*2] = np.linalg.norm(collide - self.host_object.position) / self.laser_length
+                        obs_item[i + self.lasers_count*2] = np.linalg.norm(collide - self.host_object.position)
                     elif orientation[2] == 1:
                         obs_item[i] = 0
                         obs_item[i + self.lasers_count * 3] = np.linalg.norm(
-                            collide - self.host_object.position) / self.laser_length
+                            collide - self.host_object.position)
                     elif orientation[3] == 1:
                         obs_item[i] = 0
                         obs_item[i + self.lasers_count * 4] = np.linalg.norm(
-                            collide - self.host_object.position) / self.laser_length
+                            collide - self.host_object.position)
                 all_obs_list.append(obs_item)
             all_obs_arr = np.array(all_obs_list)
         #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr)
