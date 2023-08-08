@@ -2,13 +2,14 @@ import pygame
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 from scipy.spatial import distance
+
 try:
     from continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
     from continuous_grid_arctic.utils.sensors import SENSOR_CLASSNAME_TO_CLASS
 except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, angle_to_point
     from src.continuous_grid_arctic.utils.sensors import SENSOR_CLASSNAME_TO_CLASS
-    
+
 import json
 
 
@@ -165,7 +166,6 @@ class AbstractRobot(GameObject):
         # скорректировали скорости
         self._controller_call()
         if self.rotation_speed != 0:
-
             self.direction = angle_correction(self.direction + self.rotation_direction * self.rotation_speed)
             # TODO: объединить изменение положения хитбокса и изменение размера в соответствии с поворотом
             # Rotate the original image without modifying it.
@@ -182,12 +182,12 @@ class AbstractRobot(GameObject):
 
     def move_to_the_point(self, next_point, speed=None):
         """Функция автоматического управления движением к точке"""
-        
+
         if speed is not None:
             new_speed = speed
         else:
             new_speed = distance.euclidean(self.position, next_point)
-        
+
         desirable_angle = int(angle_to_point(self.position, next_point))
 
         cur_direction = int(self.direction)
@@ -238,14 +238,15 @@ class RobotWithSensors(AbstractRobot):
         for k in sensors:
             if k in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 if 'LeaderPositionsTracker' not in sensors.keys() and "LeaderPositionsTracker_v2" not in sensors.keys():
-                    raise ValueError("Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
+                    raise ValueError(
+                        "Sensor {} requires sensor LeaderPositionsTracker for tracking leader movement.".format(k))
             if "sensor_class" in sensors[k]:
                 sensorClass = SENSOR_CLASSNAME_TO_CLASS[sensors[k]["sensor_class"]]
             elif k in SENSOR_CLASSNAME_TO_CLASS:
                 sensorClass = SENSOR_CLASSNAME_TO_CLASS[k]
             else:
                 raise ValueError(f"Sensor class is undefined: {k}")
-            sensor_args =  sensors[k].copy()
+            sensor_args = sensors[k].copy()
             if "sensor_class" in sensor_args:
                 sensor_args.pop("sensor_class")
             self.sensors[k] = sensorClass(self, **sensor_args)
@@ -270,9 +271,11 @@ class RobotWithSensors(AbstractRobot):
                 continue
             if type(sensor).__name__ in ['LeaderTrackDetector_vector', 'LeaderTrackDetector_radar']:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_positions_hist)
-            elif type(sensor).__name__ in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2', 'LeaderObstacles_lasers',
-                                 'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor', 'LeaderCorridor_Prev_lasers_v2',
-                                 'LaserPrevSensor_v2_compas', "LeaderCorridor_lasers_compas"]:
+            elif type(sensor).__name__ in ['LeaderCorridor_lasers', 'LeaderCorridor_lasers_v2',
+                                           'LeaderObstacles_lasers',
+                                           'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor',
+                                           'LeaderCorridor_Prev_lasers_v2',
+                                           'LaserPrevSensor_v2_compas', "LeaderCorridor_lasers_compas"]:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
 
             elif type(sensor).__name__ in ['FollowerInfo']:
