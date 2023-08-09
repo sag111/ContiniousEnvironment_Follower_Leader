@@ -14,8 +14,6 @@ except:
     from src.continuous_grid_arctic.utils.misc import rotateVector, calculateAngle
 
 
-
-
 class MyFrameStack(ObservationWrapper):
     r"""Observation wrapper that stacks the observations in a rolling manner.
     For example, if the number of stacks is 4, then the returned observation contains
@@ -78,91 +76,40 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         super().__init__(env)
         self.observations_list = None
         features_number = 0
-        self.prev_obs_flag = env.env.use_prev_obs
-        self.num_prev_obs = env.env.max_prev_obs
+        self.use_prev_obs = use_prev_obs
+        self.max_prev_obs = max_prev_obs
 
-        # этот должен быть -1:1
-        if 'LeaderTrackDetector_vector' in self.follower_sensors:
-            features_number += env.follower_sensors['LeaderTrackDetector_vector']['position_sequence_length'] * 2
-        # этот должен быть 0:1
-        if 'LeaderTrackDetector_radar' in self.follower_sensors:
-            features_number += env.follower_sensors['LeaderTrackDetector_radar']['radar_sectors_number']
-        # этот должен быть 0:1
-        if 'LeaderCorridor_lasers' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_lasers']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['front_lasers_count']
-            else:
-                features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers']['back_lasers_count']
+        for sensor_name, sensor_config in env.follower_sensors.items():
+            if sensor_name =='LeaderTrackDetector_vector' or sensor_config.get("sensor_class", None) =='LeaderTrackDetector_vector':
+                features_number += sensor_config['position_sequence_length'] * 2
 
-        # TODO : привести потом в нормальный вид
-        if 'LeaderCorridor_lasers_v2' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers_v2']['front_lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_lasers_v2']['back_lasers_count']
+            if sensor_name =='LeaderTrackDetector_radar' or sensor_config.get("sensor_class", None) =='LeaderTrackDetector_radar':
+                features_number += sensor_config['radar_sectors_number']
+            if sensor_name =='FollowerInfo' or sensor_config.get("sensor_class", None) =='FollowerInfo':
+                if 'speed_direction_param' in sensor_config:
+                    features_number += sensor_config['speed_direction_param']
+            if sensor_name =='LaserSensor' or sensor_config.get("sensor_class", None) =='LaserSensor':
+                if sensor_config['return_all_points']:
+                    lidar_points_number = (int(sensor_config['available_angle'] / sensor_config['angle_step'])+1) * sensor_config['points_number']
+                else:
+                    lidar_points_number = (int(sensor_config['available_angle'] / sensor_config['angle_step'])+1)
+                if sensor_config["return_only_distances"]:
+                    features_number += lidar_points_number
+                else:
+                    features_number += lidar_points_number * 2
 
-        # TODO : привести потом в нормальный вид
-        if 'LeaderObstacles_lasers' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
-                features_number += env.follower_sensors['LeaderObstacles_lasers']['front_lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['LeaderObstacles_lasers']:
-                features_number += env.follower_sensors['LeaderObstacles_lasers']['back_lasers_count']
-
-        # TODO : привести потом в нормальный вид
-        if 'Leader_Dyn_Obstacles_lasers' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['Leader_Dyn_Obstacles_lasers']:
-                features_number += env.follower_sensors['Leader_Dyn_Obstacles_lasers']['front_lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['Leader_Dyn_Obstacles_lasers']:
-                features_number += env.follower_sensors['Leader_Dyn_Obstacles_lasers']['back_lasers_count']
-
-
-        if 'LeaderCorridor_Prev_lasers_v2' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_Prev_lasers_v2']['front_lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2']:
-                features_number += env.follower_sensors['LeaderCorridor_Prev_lasers_v2']['back_lasers_count']
-
-
-        if 'LaserPrevSensor' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LaserPrevSensor']:
-                features_number += env.follower_sensors['LaserPrevSensor']['front_lasers_count']
-            if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor']:
-                features_number += env.follower_sensors['LaserPrevSensor']['back_lasers_count']
-
-        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
-                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['front_lasers_count'])
-            if 'back_lasers_count' in env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']:
-                features_number += (4*env.follower_sensors['LeaderCorridor_Prev_lasers_v2_compas']['back_lasers_count'])
-
-        if 'LaserPrevSensor_compas' in self.follower_sensors:
-            if 'front_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
-                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['front_lasers_count'])
-            if 'back_lasers_count' in env.follower_sensors['LaserPrevSensor_compas']:
-                features_number += (4*env.follower_sensors['LaserPrevSensor_compas']['back_lasers_count'])
-
-        if 'FollowerInfo' in self.follower_sensors:
-            if 'speed_direction_param' in env.follower_sensors['FollowerInfo']:
-                features_number += env.follower_sensors['FollowerInfo']['speed_direction_param']
-
-        if 'LaserSensor' in self.follower_sensors:
-            if self.follower_sensors['LaserSensor']['return_all_points']:
-                lidar_points_number = (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1) * self.follower_sensors['LaserSensor']['points_number']
-            else:
-                lidar_points_number = (int(self.follower_sensors['LaserSensor']['available_angle'] / self.follower_sensors['LaserSensor']['angle_step'])+1)
-            if self.follower_sensors['LaserSensor']["return_only_distances"]:
-                features_number += lidar_points_number
-            else:
-                features_number += lidar_points_number * 2
+            if sensor_name =='LeaderCorridor_lasers' or sensor_config.get("sensor_class", None) =='LeaderCorridor_lasers':
+                if 'front_lasers_count' in sensor_config:
+                    features_number += sensor_config['front_lasers_count']
+                else:
+                    features_number += 3  # env.follower_sensors['LeaderCorridor_lasers']['lasers_count']
+                if 'back_lasers_count' in sensor_config:
+                    features_number += sensor_config['back_lasers_count']
+            if sensor_name in ["LeaderCorridor_lasers_v2"] or sensor_config.get("sensor_class", None) in ["LeaderCorridor_lasers_v2"]:
+                features_number += sensor_config['lasers_count']
 
         self.features_number_num = features_number
-        if self.prev_obs_flag:
-            self.observation_space = Box(-np.ones([self.num_prev_obs, features_number]),
-                                         np.ones([self.num_prev_obs, features_number]))
-        else:
-            self.observation_space = Box(-np.ones(features_number),
+        self.observation_space = Box(-np.ones(features_number),
                                          np.ones(features_number))
 
         self.action_values_range = action_values_range
@@ -177,92 +124,38 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
     def observation(self, obs):
         features_list = []
-        if 'LeaderTrackDetector_vector' in self.follower.sensors:
-            history_vecs = obs['LeaderTrackDetector_vector'].flatten()
-            history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
-            features_list.append(history_vecs)
-        if 'LeaderTrackDetector_radar' in self.follower.sensors:
-            history_radar = obs['LeaderTrackDetector_radar']
-            history_radar = np.clip(history_radar / self.max_distance, 0, 1)
-            features_list.append(history_radar)
-        if 'LeaderCorridor_lasers' in self.follower.sensors:
-            corridor_lasers = obs['LeaderCorridor_lasers']
-            corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors['LeaderCorridor_lasers'].laser_length, 0, 1)
-            features_list.append(corridor_lasers)
 
-        if 'LeaderCorridor_lasers_v2' in self.follower.sensors:
-            corridor_lasers_v2 = obs['LeaderCorridor_lasers_v2']
-            corridor_lasers_v2 = np.clip(corridor_lasers_v2 / self.follower.sensors['LeaderCorridor_lasers_v2'].laser_length, 0, 1)
-            features_list.append(corridor_lasers_v2)
-
-        if 'LeaderObstacles_lasers' in self.follower.sensors:
-            corridor_obs_lasers = obs['LeaderObstacles_lasers']
-            corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['LeaderObstacles_lasers'].laser_length, 0, 1)
-            features_list.append(corridor_obs_lasers)
-
-        if 'Leader_Dyn_Obstacles_lasers' in self.follower.sensors:
-            corridor_obs_lasers = obs['Leader_Dyn_Obstacles_lasers']
-            corridor_obs_lasers = np.clip(corridor_obs_lasers / self.follower.sensors['Leader_Dyn_Obstacles_lasers'].laser_length, 0, 1)
-            features_list.append(corridor_obs_lasers)
-
-        if 'FollowerInfo' in self.follower.sensors:
-            follower_info = obs['FollowerInfo']
-            follower_info = np.clip(follower_info, -1, 1)
-            features_list.append(follower_info)
-
-
-                # TODO: исправить
-        if 'LeaderCorridor_Prev_lasers_v2' in self.follower.sensors:
-            corridor_prev_lasers_v2 = obs['LeaderCorridor_Prev_lasers_v2']
-            corridor_prev_lasers_v2 = np.clip(corridor_prev_lasers_v2 / self.follower.sensors['LeaderCorridor_Prev_lasers_v2'].laser_length, 0, 1)
-            # features_list.append(corridor_lasers_v2)
-
-        if 'LaserPrevSensor' in self.follower.sensors:
-            corridor_prev_obs_lasers = obs['LaserPrevSensor']
-            corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor'].laser_length, 0, 1)
-            # features_list.append(corridor_obs_lasers)
-            
-        # SENSORS WITH COMPAS
-
-        if 'LeaderCorridor_Prev_lasers_v2_compas' in self.follower.sensors:
-            corridor_prev_lasers_v2 = obs['LeaderCorridor_Prev_lasers_v2_compas']
-            corridor_prev_lasers_v2 = np.clip(corridor_prev_lasers_v2 / self.follower.sensors['LeaderCorridor_Prev_lasers_v2_compas'].laser_length, 0, 1)
-
-        if 'LaserPrevSensor_compas' in self.follower.sensors:
-            corridor_prev_obs_lasers = obs['LaserPrevSensor_compas']
-            corridor_prev_obs_lasers = np.clip(corridor_prev_obs_lasers / self.follower.sensors['LaserPrevSensor_compas'].laser_length, 0, 1)
-
-        if 'LaserSensor' in self.follower_sensors:
-            lidar_sensed_points = obs['LaserSensor']
-            # переход к относительным координатам лучше делать в сенсоре
-            if len(lidar_sensed_points.shape)==2:
-                lidar_sensed_points = np.concatenate(lidar_sensed_points)
-            lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors["LaserSensor"].range * self.PIXELS_TO_METER), -1, 1)
-            features_list.append(lidar_sensed_points)
-
-        if self.prev_obs_flag:
-#             concatenate_features_list = np.concatenate(features_list)
-#             self.observations_list = self.add_prev_obs(concatenate_features_list)
-            #print("corridor_prev_lasers_v2 ", corridor_prev_lasers_v2.shape)
-            #print("corridor_prev_obs_lasers ", corridor_prev_obs_lasers.shape)
-            self.observations_list  = np.concatenate((corridor_prev_lasers_v2, corridor_prev_obs_lasers), axis=1)
-        else:
+        for sensor_name in self.follower_sensors.keys():
+            sensor_config = self.follower_sensors[sensor_name]
+            if sensor_name == 'LeaderTrackDetector_vector' or sensor_config["sensor_class"] == 'LeaderTrackDetector_vector':
+                history_vecs = obs[sensor_name].flatten()
+                history_vecs = np.clip(history_vecs / self.max_distance, -1, 1)
+                features_list.append(history_vecs)
+            if sensor_name == 'LeaderTrackDetector_radar' or sensor_config["sensor_class"] == 'LeaderTrackDetector_radar':
+                history_radar = obs[sensor_name]
+                history_radar = np.clip(history_radar / self.max_distance, 0, 1)
+                features_list.append(history_radar)
+            if sensor_name == 'LeaderCorridor_lasers' or sensor_config["sensor_class"] == 'LeaderCorridor_lasers':
+                corridor_lasers = obs[sensor_name]
+                corridor_lasers =  np.clip(corridor_lasers / self.follower.sensors[sensor_name].laser_length, 0, 1)
+                features_list.append(corridor_lasers)
+            if sensor_name == 'LeaderCorridor_lasers_v2' or sensor_config["sensor_class"] == 'LeaderCorridor_lasers_v2':
+                corridor_lasers_v2 = obs[sensor_name]
+                corridor_lasers_v2 = np.clip(corridor_lasers_v2 / self.follower.sensors[sensor_name].laser_length, 0, 1)
+                features_list.append(corridor_lasers_v2)
+            if sensor_name == 'FollowerInfo' or sensor_config["sensor_class"] == 'FollowerInfo':
+                follower_info = obs[sensor_name]
+                follower_info = np.clip(follower_info, -1, 1)
+                features_list.append(follower_info)
+            if sensor_name == 'LaserSensor' or sensor_config["sensor_class"] == 'LaserSensor':
+                lidar_sensed_points = obs[sensor_name]
+                # переход к относительным координатам лучше делать в сенсоре
+                if len(lidar_sensed_points.shape)==2:
+                    lidar_sensed_points = np.concatenate(lidar_sensed_points)
+                lidar_sensed_points = np.clip(lidar_sensed_points / (self.follower.sensors[sensor_name].range * self.PIXELS_TO_METER), -1, 1)
+                features_list.append(lidar_sensed_points)
             self.observations_list = np.concatenate(features_list)
         return self.observations_list
-
-    def add_prev_obs(self, concatenate_features_list):
-        if self.observations_list is None:
-            self.observations_list = np.zeros([self.num_prev_obs, self.features_number_num])
-
-        remove_arr = self.observations_list
-        # вариант добавления нового сверху
-        # after_remove = np.delete(remove_arr, [-1], 0)
-        # after_add = np.insert(after_remove, 0, concatenate_features_list, axis=0)
-        # вариант добавления нового снизу
-
-        after_remove = np.delete(remove_arr, [0], 0)
-        after_add = np.vstack([after_remove, after_remove])
-        return after_add
 
     def step(self, action):
         if self.action_values_range is not None:
@@ -273,7 +166,58 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
         return obs, rews, dones, infos
 
 
+class ContinuousObserveModifier_sensorPrev(ObservationWrapper):
+    """
+    Враппер для сенсоров, которые возвращают историю значений. То есть от них ожидаются признаки формы (шаги, размерность)
+    """
+    def __init__(self, env, action_values_range=None, lz4_compress=False, max_prev_obs=0):
+        super().__init__(env)
+        self.observations_list = None
+        features_number = 0
+        self.max_prev_obs = max_prev_obs
 
+        for sensor_name, sensor_config in env.follower_sensors.items():
+            if sensor_config["sensor_class"]=="LeaderCorridor_Prev_lasers_v2":
+                if sensor_config["pad_sectors"]:
+                    features_number += (4*sensor_config['lasers_count'])
+                else:
+                    features_number += sensor_config['lasers_count']
+            if sensor_config["sensor_class"]=="LeaderCorridor_lasers_compas":
+                features_number += (5*sensor_config['lasers_count'])
+
+        self.features_number_num = features_number
+        self.observation_space = Box(-np.ones([self.max_prev_obs, features_number]),
+                                     np.ones([self.max_prev_obs, features_number]))
+
+        self.action_values_range = action_values_range
+        if self.action_values_range is not None:
+            low_bound, high_bound = self.action_values_range
+            self.scale = (high_bound - low_bound) / (env.action_space.high - env.action_space.low)
+            self.min = low_bound - env.action_space.low * self.scale
+            self.action_space = Box(low=-np.ones_like(env.action_space.low),
+                                    high=np.ones_like(env.action_space.high),
+                                    shape=env.action_space.shape,
+                                    dtype=env.action_space.dtype)
+
+    def observation(self, obs):
+        features_list = []
+
+        for sensor_name in self.follower_sensors.keys():
+            sensor_config = self.follower_sensors[sensor_name]
+            if sensor_name == 'LeaderCorridor_Prev_lasers_v2' or sensor_config["sensor_class"] == 'LeaderCorridor_Prev_lasers_v2':
+                corridor_obs = obs[sensor_name]
+                assert len(corridor_obs.shape) == 2
+                assert corridor_obs.shape[0] == self.max_prev_obs
+                corridor_obs = np.clip(corridor_obs / self.follower.sensors[sensor_name].laser_length, 0, 1)
+                features_list.append(corridor_obs)
+            if sensor_name == 'LeaderCorridor_lasers_compas' or sensor_config["sensor_class"] == 'LeaderCorridor_lasers_compas':
+                corridor_obs = obs[sensor_name]
+                assert len(corridor_obs.shape) == 2
+                assert corridor_obs.shape[0] == self.max_prev_obs
+                corridor_obs = np.clip(corridor_obs / self.follower.sensors[sensor_name].laser_length, 0, 1)
+                features_list.append(corridor_obs)
+        self.observations_list = np.concatenate(features_list, axis=1)
+        return self.observations_list
 
 class ContinuousObserveModifierPrev(ObservationWrapper):
 
