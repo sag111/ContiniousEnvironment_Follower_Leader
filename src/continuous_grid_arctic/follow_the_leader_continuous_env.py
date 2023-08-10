@@ -1178,17 +1178,8 @@ class Game(gym.Env):
         if self.show_box:
             if len(self.green_zone_trajectory_points) > 5:
                 #                 green_line = pygame.draw.polygon(self.gameDisplay,self.colours["green"],self.green_zone_trajectory_points[::5], width=self.max_dev*2)
-                green_line = pygame.draw.lines(self.gameDisplay,
-                                               self.colours["green"],
-                                               False,
-                                               self.green_zone_trajectory_points[::4],
-                                               width=int(self.max_dev * 2))
-
-                # for cur_point in self.left_border_points_list:
-                #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
-
-                # for cur_point in self.right_border_points_list:
-                #    pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 1)
+                for point in self.green_zone_trajectory_points[:]:
+                    pygame.draw.circle(self.gameDisplay, self.colours["green"], point, self.max_dev)
 
         # отображение пройденной Ведущим траектории
         if self.show_leader_trajectory:
@@ -1823,6 +1814,8 @@ class Game(gym.Env):
                                                     self.follower_config['max_speed'], 360,
                                                     self.follower_config['max_rotation_speed']), dtype=np.float32))
 
+    # TODO: Вроде можно оптимизировать. Не каждый раз всю траекторию смотреть, а только добавлять новые и
+    #  удалять вышедшие за пределы
     def _trajectory_in_box(self):
         """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
 
