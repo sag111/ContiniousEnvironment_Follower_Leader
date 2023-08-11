@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import logging
 from warnings import warn
 from collections import OrderedDict
 import pygame
@@ -877,6 +878,10 @@ class Game(gym.Env):
         # print("OBS", obs['LeaderCorridorObstacles_lasers'])
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
+        if done:
+            logging.info("Эпизод закончен: итоговая награда {}, пройдено шагов {} статус миссии {}, статус ведущего {}, "
+                  "статус ведомого {}".format(self.overall_reward, self.step_count, info["mission_status"],
+                                              info["leader_status"], info["agent_status"]))
         return obs, reward, done, info
 
     def frame_step(self, action):
@@ -1960,12 +1965,12 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=5000,
-                         obstacle_number=0,
+                         framerate=100,
+                         obstacle_number=35,
                          constant_follower_speed=False,
                          max_distance=4,
                          max_dev=1,
-                         add_bear=False,
+                         add_bear=True,
                          bear_behind=False,
                          multi_random_bears=False,
                          move_bear_v4=True,
@@ -1993,103 +1998,8 @@ class TestGameManual(Game):
                          multiple_end_points=False,
                          warm_start=0,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
-                         random_frames_per_step=[2, 20],
+                         #random_frames_per_step=[2, 20],
                          follower_sensors={
-                             'LeaderPositionsTracker_v2': {
-                                 'eat_close_points': True,
-                                 'saving_period': 8,
-                                 'start_corridor_behind_follower':True
-                                 },
-                             # 'LeaderTrackDetector_radar': {
-                             #     'position_sequence_length': 100,
-                             #     'radar_sectors_number': 7,
-                             #     'detectable_positions': 'near'},
-                             # "LeaderCorridor_lasers": {
-                             #     "react_to_obstacles": True,
-                             #     "front_lasers_count": 5,
-                             #     "back_lasers_count": 2,
-                             #     "react_to_green_zone": True,
-                             #     "laser_length": 150
-                             # }
-                             # "LeaderCorridor_lasers_v2": {
-                             #     "react_to_obstacles": True,
-                             #     "front_lasers_count": 6,
-                             #     "back_lasers_count": 6,
-                             #     "react_to_safe_corridor": True,
-                             #     "react_to_green_zone": True,
-                             #     "laser_length": 150
-                             # },
-                             # "LeaderObstacles_lasers": {
-                             #     "react_to_obstacles": True,
-                             #     "front_lasers_count": 15,
-                             #     "back_lasers_count": 15,
-                             #     "react_to_safe_corridor": False,
-                             #     "react_to_green_zone": False,
-                             #     "laser_length": 150
-                             # },
-                             # "Leader_Dyn_Obstacles_lasers": {
-                             #     "react_to_obstacles": True,
-                             #     "front_lasers_count": 15,
-                             #     "back_lasers_count": 15,
-                             #     "react_to_safe_corridor": False,
-                             #     "react_to_green_zone": False,
-                             #     "laser_length": 200
-                             #
-                             # },
-                             # "FollowerInfo": {
-                             #     'speed_direction_param': 2
-                             # },
-                            #  "LeaderCorridor_Prev_lasers_v2": {
-                            #      "react_to_obstacles": True,
-                            #      "front_lasers_count": 2,
-                            #      "back_lasers_count": 2,
-                            #      "react_to_safe_corridor": True,
-                            #      "react_to_green_zone": True,
-                            #      "laser_length": 150
-                            #  },
-                            #  "LaserPrevSensor": {
-                            #     "react_to_obstacles": True,
-                            #     "front_lasers_count": 4,
-                            #     "back_lasers_count": 4,
-                            #     "react_to_safe_corridor": False,
-                            #     "react_to_green_zone": False,
-                            #     "laser_length": 150
-                            # },
-                             "LeaderCorridor_lasers_compas": {
-                                 "sensor_class": "LeaderCorridor_lasers_compas",
-                                 "react_to_obstacles": False,
-                                 "lasers_count": 12,
-                                 "react_to_safe_corridor": True,
-                                 "react_to_green_zone": True,
-                                 "laser_length": 150,
-                                 "use_prev_obs": True,
-                                 "max_prev_obs": 5,
-                                 "pad_sectors": True
-                             },
-                            # "LaserPrevSensor_v2_all": {
-                             #    "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                             #    "react_to_obstacles": True,
-                             #    "front_lasers_count": 6,
-                             #    "back_lasers_count": 6,
-                             #    "react_to_safe_corridor": True,
-                             #    "react_to_green_zone": True,
-                             #    "laser_length": 150,
-                             #    "use_prev_obs": True,
-                             #    "max_prev_obs": 5,
-                             #    "pad_sectors": True
-                             #},
-                             #"LaserPrevSensor_v2_obst": {
-                             #    "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                             #    "react_to_obstacles": True,
-                             #    "front_lasers_count": 12,
-                             #    "back_lasers_count": 12,
-                             #    "react_to_safe_corridor": False,
-                              #   "react_to_green_zone": False,
-                               #  "laser_length": 200,
-                               #  "use_prev_obs": True,
-                               #  "max_prev_obs": 5,
-                               #  "pad_sectors": True
-                             #}
                          }
                          )
 

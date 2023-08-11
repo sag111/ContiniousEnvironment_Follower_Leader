@@ -30,6 +30,10 @@ if __name__ == "__main__":
                         type=int,
                         default=15000,
                         help="Число шагов, в течение которых работает проверочная симуляция")
+    parser.add_argument('--seed',
+                        type=int,
+                        default=None,
+                        help="Рандом сид для инициализации среды (от него зависит расположение случайно генерируемых препятствий)")
     
     parser.add_argument('--training_steps',
                     type=int,
@@ -59,16 +63,22 @@ if __name__ == "__main__":
         env = gym.make("Test-Cont-Env-Manual-v0")
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
-        env.seed(8)
+        if args.seed is not None:
+            env.seed(args.seed)
         env.reset()
-        action = (0,0)
+        action = (0, 0)
         
         for _ in range(args.n_steps):
             obs, rewards, dones, info = env.step((0,0)) 
             if dones:
+                print(
+                    "Эпизод закончен: итоговая награда {}, пройдено шагов {} статус миссии {}, статус ведущего {}, "
+                    "статус ведомого {}".format(env.accumulated_penalty, env.step_count, info["mission_status"],
+                                                info["leader_status"], info["agent_status"]))
                 break
             env.render()
-        env.close()
+        sleep(5)
+        #env.close()
         
     
     

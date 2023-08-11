@@ -7,7 +7,7 @@ import math
 
 from sys import maxsize
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 show_animation = False
 clear_if_path_not_found = False
