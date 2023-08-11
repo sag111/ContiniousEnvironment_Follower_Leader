@@ -60,6 +60,7 @@ class Game(gym.Env):
                  max_dev=1,  # в метрах
                  warm_start=500,  # во фреймах
                  manual_control=False,
+                 manual_control_input="keyboard",
                  max_steps=5000,
                  aggregate_reward=False,
                  add_obstacles=True,
@@ -126,6 +127,9 @@ class Game(gym.Env):
             число шагов, в пределах которого Ведомый не будет получать штраф (сейчас не реализовано полноценно);
         manual_control (bool): 
             использовать ручное управление Ведомым;
+        manual_control_input (str):
+            keyboard - управление стрелками на клавиатуре
+            gamepad - управление джойстиком на геймпаде
         max_steps (int): 
             максимальное число шагов для одной симуляции;
         aggregate_reward (bool):
@@ -237,6 +241,11 @@ class Game(gym.Env):
 
         self.caption = caption
         self.manual_control = manual_control
+        self.manual_control_input = manual_control_input
+        if manual_control_input=="gamepad":
+            pygame.joystick.init()
+            self.gamepad = pygame.joystick.Joystick(0)
+            print(self.gamepad)
         self.max_steps = max_steps
         self.aggregate_reward = aggregate_reward
 
@@ -879,7 +888,7 @@ class Game(gym.Env):
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         if done:
-            logging.info("Эпизод закончен: итоговая награда {}, пройдено шагов {} статус миссии {}, статус ведущего {}, "
+            logging.info("Эпизод закончен: итоговая награда {}, пройдено кадров {} статус миссии {}, статус ведущего {}, "
                   "статус ведомого {}".format(self.overall_reward, self.step_count, info["mission_status"],
                                               info["leader_status"], info["agent_status"]))
         return obs, reward, done, info
@@ -1751,7 +1760,17 @@ class Game(gym.Env):
         if event.type == pygame.QUIT:
             self.done = True
 
-        if event.type == pygame.KEYDOWN:
+        if self.manual_control_input=="gamepad" and event.type==pygame.JOYAXISMOTION:
+            updown_axis_value = pygame.joystick.Joystick(0).get_axis(1)
+            lr_axis_value = pygame.joystick.Joystick(0).get_axis(0)
+            self.follower.command_forward(-1 * updown_axis_value * self.follower.max_speed)
+            if lr_axis_value < 0:
+                self.follower.command_turn(abs(lr_axis_value) * self.follower.max_rotation_speed, -1)
+            elif lr_axis_value > 0:
+                self.follower.command_turn(lr_axis_value * self.follower.max_rotation_speed, 1)
+
+
+        if self.manual_control_input=="keyboard" and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 if follower.rotation_direction > 0:
 
@@ -1963,9 +1982,11 @@ class TestGameAuto(Game):
 
 class TestGameManual(Game):
     def __init__(self):
-        super().__init__(manual_control=True, add_obstacles=True, game_width=1500, game_height=1000,
+        super().__init__(manual_control=True,
+                         manual_control_input="gamepad",
+                         add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=100,
+                         framerate=2000,
                          obstacle_number=35,
                          constant_follower_speed=False,
                          max_distance=4,

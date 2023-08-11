@@ -16,14 +16,9 @@ import argparse as ag
 if __name__ == "__main__":
     
     parser = ag.ArgumentParser()
-    
-    parser.add_argument('--manual', 
-                        action='store_true', 
-                        help="Если указано, управление осуществляется стрелочками вручную, иначе на основе поданных моделью действий")
-    
-    parser.add_argument("--regime",
+    parser.add_argument("--mode",
                         type=str,
-                        default="rl",
+                        default="manual",
                         help="режим работы эксперимента. manual - ручной, rl - обучение алгоритма, base - использование базового алгоритма")
     
     parser.add_argument('--n_steps',
@@ -51,11 +46,8 @@ if __name__ == "__main__":
 #                         help="Число симуляций")
     
     args = parser.parse_args()
-    
-    
-    manual_handling = args.manual
-    
-    if args.regime=="manual":
+
+    if args.mode=="manual":
         manual_handling=True
     
     if manual_handling:
@@ -72,17 +64,17 @@ if __name__ == "__main__":
             obs, rewards, dones, info = env.step((0,0)) 
             if dones:
                 print(
-                    "Эпизод закончен: итоговая награда {}, пройдено шагов {} статус миссии {}, статус ведущего {}, "
-                    "статус ведомого {}".format(env.accumulated_penalty, env.step_count, info["mission_status"],
+                    "Эпизод закончен: итоговая награда {}, пройдено кадров {} статус миссии {}, статус ведущего {}, "
+                    "статус ведомого {}".format(env.overall_reward, env.step_count, info["mission_status"],
                                                 info["leader_status"], info["agent_status"]))
                 break
             env.render()
-        sleep(5)
+        sleep(3)
         #env.close()
         
     
     
-    if args.regime=="base":
+    if args.mode=="base":
         from scipy.spatial import distance
         from utils.misc import angle_to_point, move_to_the_point
         import numpy as np
@@ -127,7 +119,7 @@ if __name__ == "__main__":
         env.close()     
         
         
-    if args.regime=="rl":
+    if args.mode=="rl":
 
         from stable_baselines3 import PPO
 
