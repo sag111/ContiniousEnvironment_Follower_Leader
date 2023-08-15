@@ -3,7 +3,7 @@ import sys
 sys.path.append(pathlib.Path().resolve())
 import gym
 
-from src.continuous_grid_arctic.follow_the_leader_continuous_env import *
+from continuous_grid_arctic.follow_the_leader_continuous_env import *
 
 from gym.envs.registration import register as gym_register
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -29,6 +29,9 @@ if __name__ == "__main__":
                         type=int,
                         default=None,
                         help="Рандом сид для инициализации среды (от него зависит расположение случайно генерируемых препятствий)")
+    parser.add_argument('--log_results',
+                        action="store_true",
+                        help="Надо ли сохранять результаты эпизодов в файл")
     
     parser.add_argument('--training_steps',
                     type=int,
@@ -67,9 +70,16 @@ if __name__ == "__main__":
                     "Эпизод закончен: итоговая награда {}, пройдено кадров {} статус миссии {}, статус ведущего {}, "
                     "статус ведомого {}".format(env.overall_reward, env.step_count, info["mission_status"],
                                                 info["leader_status"], info["agent_status"]))
+                if args.log_results:
+                    if not os.path.exists("runs_results.csv"):
+                        with open("runs_results.csv", "w") as f:
+                            f.write("seed;reward;frames;mission_status;leader_status;agent_status\n")
+                    with open("runs_results.csv", "a") as f:
+                        f.write("{};{};{};{};{};{}\n".format(args.seed, env.overall_reward, env.step_count, info["mission_status"],
+                                                info["leader_status"], info["agent_status"]))
                 break
             env.render()
-        sleep(3)
+        sleep(1)
         #env.close()
         
     

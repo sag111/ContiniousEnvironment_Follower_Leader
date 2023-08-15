@@ -1986,7 +1986,7 @@ class TestGameManual(Game):
                          manual_control_input="gamepad",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=2000,
+                         framerate=144,
                          obstacle_number=35,
                          constant_follower_speed=False,
                          max_distance=4,
@@ -2018,6 +2018,7 @@ class TestGameManual(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
+                         frames_per_step=6,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[2, 20],
                          follower_sensors={
@@ -2056,7 +2057,7 @@ gym_register(
 
 gym_register(
     id="Test-Cont-Env-Manual-v0",
-    entry_point="src.continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
     reward_threshold=10000
 )
 
