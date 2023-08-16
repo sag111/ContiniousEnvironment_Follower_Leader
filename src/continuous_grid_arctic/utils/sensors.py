@@ -324,11 +324,12 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
         for point in self.leader_positions_hist:
             pygame.draw.circle(env.gameDisplay, (80, 10, 10), point, 3)
 
-        if len(self.corridor) > 1:
-            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
-            pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
-            pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[0][0], self.corridor[0][1], 3)
-            pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[-1][0], self.corridor[-1][1], 3)
+        # показывать или не показывать границы коридора
+        #if len(self.corridor) > 1:
+        #    pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
+        #    pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
+        #    pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[0][0], self.corridor[0][1], 3)
+        #    pygame.draw.line(env.gameDisplay, (150, 120, 50), self.corridor[-1][0], self.corridor[-1][1], 3)
         pass
 
 
@@ -851,6 +852,7 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
     def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, pad_sectors=True, first_laser_angle_offset=-45, **kwargs):
         super(LeaderCorridor_Prev_lasers_v2, self).__init__(*args, **kwargs)
         self.use_prev_obs = use_prev_obs
+        assert max_prev_obs > 0
         self.max_prev_obs = max_prev_obs
         self.pad_sectors = pad_sectors
         self.first_laser_angle_offset = first_laser_angle_offset

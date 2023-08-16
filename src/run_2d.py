@@ -32,6 +32,9 @@ if __name__ == "__main__":
     parser.add_argument('--log_results',
                         action="store_true",
                         help="Надо ли сохранять результаты эпизодов в файл")
+    parser.add_argument('--hardcore',
+                        action="store_true",
+                        help="Если выбран ручной режим и включен режим hardcore, то будут отображаться только показатели сенсоров")
     
     parser.add_argument('--training_steps',
                     type=int,
@@ -55,12 +58,17 @@ if __name__ == "__main__":
     
     if manual_handling:
         
-        env = gym.make("Test-Cont-Env-Manual-v0")
+
+        if args.hardcore:
+            env = gym.make("Test-Cont-Env-Manual-hardcore")
+        else:
+            env = gym.make("Test-Cont-Env-Manual-v0")
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
         if args.seed is not None:
             env.seed(args.seed)
         env.reset()
+
         action = (0, 0)
         
         for _ in range(args.n_steps):

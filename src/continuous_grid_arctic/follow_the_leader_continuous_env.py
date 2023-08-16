@@ -47,11 +47,12 @@ class Game(gym.Env):
                  caption="Serious Robot Follower Simulation v.-1",
                  trajectory=None,
                  leader_pos_epsilon=25,
-                 show_leader_path=True,
-                 show_leader_trajectory=True,
-                 show_rectangles=True,
-                 show_box=True,
-                 show_sensors=True,
+                 show_leader_path_flag=True,
+                 show_leader_trajectory_flag=True,
+                 show_rectangles_flag=True,
+                 show_box_flag=True,
+                 show_objects_flag=True,
+                 show_sensors_flag=True,
                  simulation_time_limit=None,
                  reward_config=None,
                  pixels_to_meter=50,
@@ -210,11 +211,12 @@ class Game(gym.Env):
         self.leader_pos_epsilon = leader_pos_epsilon
 
         # Настройки визуализации
-        self.show_leader_path = show_leader_path
-        self.show_leader_trajectory = show_leader_trajectory
-        self.show_rectangles = show_rectangles
-        self.show_box = show_box
-        self.show_sensors = show_sensors
+        self.show_leader_path_flag = show_leader_path_flag
+        self.show_leader_trajectory_flag = show_leader_trajectory_flag
+        self.show_rectangles_flag = show_rectangles_flag
+        self.show_box_flag = show_box_flag
+        self.show_objects_flag = show_objects_flag
+        self.show_sensors_flag = show_sensors_flag
 
         self.simulation_time_limit = simulation_time_limit
 
@@ -1171,55 +1173,56 @@ class Game(gym.Env):
             object_to_show.position[0] - object_to_show.width / 2,
             object_to_show.position[1] - object_to_show.height / 2))
 
-        if self.show_rectangles:
+        if self.show_rectangles_flag:
             pygame.draw.rect(self.gameDisplay, self.colours["red"], object_to_show.rectangle, width=1)
 
     def _show_tick(self):
         """Отображает всё, что положено отображать на каждом шаге"""
         self.gameDisplay.fill(self.colours["white"])  # фон
-        if self.add_obstacles:
-            pygame.draw.circle(self.gameDisplay, self.colours["black"], self.bridge_point, 5)
-        pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point, 5)
-        if self.multiple_end_points:
-            pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point2, 5)
-            pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point3, 5)
+
         # отображение полного маршрута Ведущего
-        if self.show_leader_path:
+        if self.show_leader_path_flag:
             if len(self.trajectory) > 2:
                 pygame.draw.aalines(self.gameDisplay, self.colours["red"], False, self.trajectory)
+            if self.add_obstacles:
+                pygame.draw.circle(self.gameDisplay, self.colours["black"], self.bridge_point, 5)
+            pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point, 5)
+            if self.multiple_end_points:
+                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point2, 5)
+                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.finish_point3, 5)
 
         # отображение зоны, в которой нужно находиться Ведомому
-        if self.show_box:
+        if self.show_box_flag:
             if len(self.green_zone_trajectory_points) > 5:
                 #                 green_line = pygame.draw.polygon(self.gameDisplay,self.colours["green"],self.green_zone_trajectory_points[::5], width=self.max_dev*2)
                 for point in self.green_zone_trajectory_points[:]:
                     pygame.draw.circle(self.gameDisplay, self.colours["green"], point, self.max_dev)
+            # отображение круга минимального расстояния
+            if self.follower_too_close:
+                close_circle_width = 2
+            else:
+                close_circle_width = 1
+
+            self.leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"],
+                                                          self.leader.position,
+                                                          self.min_distance, width=close_circle_width)
 
         # отображение пройденной Ведущим траектории
-        if self.show_leader_trajectory:
+        if self.show_leader_trajectory_flag:
             for cur_point in self.leader_factual_trajectory[::10]:  # Каждую 10ю точку показываем.
                 pass
                 # pygame.draw.circle(self.gameDisplay, self.colours["black"], cur_point, 3)
+        if self.show_objects_flag:
+            # отображение всех игровых объектов, которые были добавлены в список игровых объектов
+            for cur_object in self.game_object_list:
+                self.show_object(cur_object)
 
-        # отображение всех игровых объектов, которые были добавлены в список игровых объектов
-        for cur_object in self.game_object_list:
-            self.show_object(cur_object)
+            for cur_dyn_object in self.game_dynamic_list:
+                self.show_object(cur_dyn_object)
 
-        for cur_dyn_object in self.game_dynamic_list:
-            self.show_object(cur_dyn_object)
 
-        # TODO: здесь будет отображение препятствий (лучше, если в рамках цикла выше, то есть как игровых объектов)
-        #  [Слава]
-        # отображение круга минимального расстояния
-        if self.follower_too_close:
-            close_circle_width = 2
-        else:
-            close_circle_width = 1
 
-        self.leader_close_circle = pygame.draw.circle(self.gameDisplay, self.colours["red"], self.leader.position,
-                                                      self.min_distance, width=close_circle_width)
-
-        if self.show_sensors:
+        if self.show_sensors_flag:
             for sensor_name, cur_sensor in self.follower.sensors.items():
                 cur_sensor.show(self)
 
@@ -2024,7 +2027,82 @@ class TestGameManual(Game):
                          follower_sensors={
                          }
                          )
-
+class TestGameManual_hardcore(Game):
+    def __init__(self):
+        super().__init__(manual_control=True,
+                         manual_control_input="gamepad",
+                         add_obstacles=True, game_width=1500, game_height=1000,
+                         max_steps=15000,
+                         framerate=1000,
+                         obstacle_number=35,
+                         constant_follower_speed=False,
+                         max_distance=4,
+                         max_dev=1,
+                         add_bear=True,
+                         bear_behind=False,
+                         multi_random_bears=False,
+                         move_bear_v4=True,
+                         bear_number=2,
+                         bear_speed_coeff=1.2,
+                         corridor_length=7,
+                         corridor_width=1.5,
+                         negative_speed=True,
+                         follower_speed_koeff=0.6,
+                         leader_speed_coeff=0.45,
+                         show_leader_path_flag=False,
+                         show_leader_trajectory_flag=False,
+                         show_rectangles_flag=False,
+                         show_box_flag=False,
+                         show_objects_flag=False,
+                         show_sensors_flag=True,
+                         leader_speed_regime={
+                             0: [0.2, 1],
+                             200: 1,
+                             1000: [0.5, 1],
+                             1500: 0.75,
+                             2000: 0,
+                             2500: 1,
+                             3000: [0.5, 1],
+                             4000: [0.0, 0.5],
+                             5000: [0.4, 1],
+                         },
+                         leader_acceleration_regime={0: 0,
+                                                     3100: 0.03,
+                                                     4500: 0},
+                         multiple_end_points=False,
+                         warm_start=0,
+                         frames_per_step=6,
+                         early_stopping={"max_distance_coef": 4, "low_reward": -300},
+                         #random_frames_per_step=[2, 20],
+                         follower_sensors={
+                             'LeaderPositionsTracker_v2': {
+                                 'eat_close_points': True,
+                                 'saving_period': 8,
+                                 'start_corridor_behind_follower':True
+                                 },
+                              "LeaderCorridor_Prev_lasers_v2": {
+                                 "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                                  "react_to_obstacles": True,
+                                  "use_prev_obs" : False,
+                                  "max_prev_obs": 5,
+                                  "lasers_count": 36,
+                                  "react_to_safe_corridor": True,
+                                  "react_to_green_zone": False,
+                                  "laser_length": 200
+                              },
+                             "LeaderCorridor_lasers_compas": {
+                                 "sensor_class": "LeaderCorridor_lasers_compas",
+                                 "react_to_obstacles": False,
+                                 "lasers_count": 12,
+                                 "react_to_safe_corridor": True,
+                                 "react_to_green_zone": True,
+                                 "laser_length": 150,
+                                 "use_prev_obs": True,
+                                 "max_prev_obs": 5,
+                                 "pad_sectors": True
+                             },
+                         }
+                         )
 
 class TestGameBaseAlgoNoObst(Game):
     def __init__(self):
@@ -2058,6 +2136,11 @@ gym_register(
 gym_register(
     id="Test-Cont-Env-Manual-v0",
     entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
+    reward_threshold=10000
+)
+gym_register(
+    id="Test-Cont-Env-Manual-hardcore",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_hardcore",
     reward_threshold=10000
 )
 
