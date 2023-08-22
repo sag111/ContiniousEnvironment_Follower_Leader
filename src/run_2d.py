@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--n_steps',
                         type=int,
-                        default=15000,
+                        default=20000,
                         help="Число шагов, в течение которых работает проверочная симуляция")
     parser.add_argument('--seed',
                         type=int,
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
         action = (0, 0)
         
-        for _ in range(args.n_steps):
+        for f_i in range(args.n_steps):
             obs, rewards, dones, info = env.step((0,0)) 
             if dones:
                 print(

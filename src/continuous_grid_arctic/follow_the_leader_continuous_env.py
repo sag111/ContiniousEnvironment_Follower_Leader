@@ -34,6 +34,7 @@ except:
     from src.continuous_grid_arctic.utils.rrt import RRT
     from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
+AVG_FRAMES_PER_SECOND = 100
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
 # как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
@@ -85,9 +86,11 @@ class Game(gym.Env):
                  corridor_length=4,
                  corridor_width=1,
                  negative_speed=False,
-                 follower_speed_koeff=0.5,
-                 leader_speed_coeff=0.5,
-                 bear_speed_coeff=1.1,
+                 follower_max_speed=0.5,
+                 leader_max_speed=0.5,
+                 bear_max_speed=1.1,
+                 follower_size=(0.5, 0.35),
+                 leader_size=(0.38, 0.52),
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -138,7 +141,7 @@ class Game(gym.Env):
         obstacle_number (int):
             число случайно генерируемых препятствий.
         leader_speed_regime (dict):
-            словарь - ключ - число степов, значение - скорость лидера;
+            словарь - ключ - число степов, значение - скорость лидера (доля от максимальной?);
         leader_
         constant_follower_speed (bool):
             флаг - если True - корость ведомого всегда будет максимальной, и будет использован только один экшн - поворот
@@ -146,10 +149,20 @@ class Game(gym.Env):
             диапазон из которого будет сэмплироваться frames_per_step
         number_of_target_points (int):
             количество точек через которые будет строится маршрут. По умолчанию одна целевая.
+         follower_max_speed (float):
+            максимальная скорость ведомого робота в м/с
+         leader_max_speed (float):
+            максимальная скорость машины (ведущего) в м/с
+         bear_max_speed (float):
+            максимальная скорость динамического препятствия в м/с
         path_finding_algorythm (str):
             какой алгоритм поиска пути использовать для лидера. astar, dstar
         multiple_end_points (bool):
             если False - используется только одна конечная точка, если True - генерируется несколько точек и более сложный маршрут
+         follower_size (tuple of float):
+            Размеры ведомого робота (высота, ширина) в метрах
+         leader_size (tuple of float):
+            Размеры ведущего робота (высота, ширина) в метрах
         """
 
         # нужно для сохранения видео
@@ -247,7 +260,6 @@ class Game(gym.Env):
         if manual_control_input=="gamepad":
             pygame.joystick.init()
             self.gamepad = pygame.joystick.Joystick(0)
-            print(self.gamepad)
         self.max_steps = max_steps
         self.aggregate_reward = aggregate_reward
 
@@ -262,9 +274,9 @@ class Game(gym.Env):
         self.corridor_length = self._to_pixels(corridor_length)
         self.corridor_width = self._to_pixels(corridor_width)
         self.negative_speed = negative_speed
-        self.follower_speed_koeff = follower_speed_koeff
-        self.leader_speed_coeff = leader_speed_coeff
-        self.bear_speed_coeff = bear_speed_coeff
+        self.follower_max_speed = follower_max_speed
+        self.leader_max_speed = leader_max_speed
+        self.bear_max_speed = bear_max_speed
         # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
@@ -276,24 +288,31 @@ class Game(gym.Env):
         self.finish_position_framestimer = None
         # TODO: вынести куда-то дефолтный конфиг, и загружать его
         # TODO : конфиг для отрицательной скорости, наверное стоит поправить это
+        # Скорости переводятся из м/с в пикс/кадр
         if self.negative_speed:
             self.follower_config = {
                 # 'min_speed': 0,
-                'min_speed': -(self._to_pixels(self.follower_speed_koeff) / 100),
-                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
-                'max_rotation_speed': 57.296 / 100,
+                "height": self._to_pixels(follower_size[0]),
+                "width": self._to_pixels(follower_size[1]),
+                'min_speed': -(self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND),
+                'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
+                'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
             }
         else:
             self.follower_config = {
                 'min_speed': 0,
+                "height": self._to_pixels(follower_size[0]),
+                "width": self._to_pixels(follower_size[1]),
                 # 'min_speed':-(self._to_pixels(0.5) / 100),
-                'max_speed': self._to_pixels(self.follower_speed_koeff) / 100,
-                'max_rotation_speed': 57.296 / 100,
+                'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
+                'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
             }
         self.leader_config = {
             'min_speed': 0,
-            'max_speed': self._to_pixels(self.leader_speed_coeff) / 100,
-            'max_rotation_speed': 57.296 / 100,
+            "width": self._to_pixels(leader_size[0]),
+            "height": self._to_pixels(leader_size[1]),
+            'max_speed': self._to_pixels(self.leader_max_speed) / AVG_FRAMES_PER_SECOND,
+            'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
         }
         self.discrete_action_space = discrete_action_space
 
@@ -465,8 +484,6 @@ class Game(gym.Env):
             # self._pos_bears_nearest_leader()
             self._reset_pose_bear()
 
-
-
         self.leader_factual_trajectory = list()  # список, который сохраняет пройденные лидером точки;
         # добавляем начальные позиции - от ведомого до лидера, чтоб там была сейф зона.
         first_dots_for_follower_count = int(distance.euclidean(self.follower.position, self.leader.position) / (
@@ -492,8 +509,8 @@ class Game(gym.Env):
 
         self.leader = AbstractRobot("leader",
                                     image=self.leader_img,
-                                    height=self._to_pixels(0.38),
-                                    width=self._to_pixels(0.52),
+                                    height=self.leader_config["height"],
+                                    width=self.leader_config["width"],
                                     min_speed=self.leader_config["min_speed"],
                                     max_speed=self.leader_config["max_speed"],
                                     max_speed_change=self._to_pixels(0.005),  # / 100,
@@ -515,8 +532,8 @@ class Game(gym.Env):
         self.follower = RobotWithSensors("follower",
                                          image=self.follower_img,
                                          start_direction=follower_direction,
-                                         height=self._to_pixels(0.5),
-                                         width=self._to_pixels(0.35),
+                                         height=self.follower_config["height"],
+                                         width=self.follower_config["width"],
                                          min_speed=self.follower_config["min_speed"],
                                          max_speed=self.follower_config["max_speed"],
                                          max_speed_change=self._to_pixels(0.005) / 100,
@@ -645,7 +662,7 @@ class Game(gym.Env):
                                       height=bear_size,
                                       width=bear_size,
                                       min_speed=self.leader_config["min_speed"],
-                                      max_speed=self.bear_speed_coeff * self.leader_config["max_speed"],
+                                      max_speed=self.bear_max_speed * self.leader_config["max_speed"],
                                       max_speed_change=self._to_pixels(0.005),  # / 100,
                                       max_rotation_speed=self.leader_config["max_rotation_speed"],
                                       max_rotation_speed_change=20 / 100,
@@ -764,7 +781,6 @@ class Game(gym.Env):
         bears_points_behind_leader = []
         # ramdom_koeff = random.randrange(int(100), int(300), 10)
         ramdom_koeff = 100*(index+1)
-        # print(ramdom_koeff)
         if index >= 0:
             p1 = (self.leader.position + rotateVector(np.array([ramdom_koeff, 0]),
                                                          self.leader.direction - 130))
@@ -846,16 +862,6 @@ class Game(gym.Env):
         return cur_point
 
     def step(self, action):
-
-        # print("leader ", self.leader.max_speed)
-        # print("follower ", self.follower.max_speed)
-        # print("bear ", self.game_dynamic_list[0].max_speed)
-        # print(self.follower.position)
-
-        #print("history_cor_list: ", len(self.history_corridor_laser_list))
-        #print(self.history_corridor_laser_list[0].shape)
-
-
         # Если контролирует автомат, то нужно преобразовать угловую скорость с учётом её знака.
         if self.constant_follower_speed:
             self.follower.command_forward(self.follower.max_speed + self.PIXELS_TO_METER)
@@ -886,7 +892,6 @@ class Game(gym.Env):
             obs, reward, done, info = self.frame_step(action)
         self.follower_scan_dict = self.follower.use_sensors(self)
         obs = self._get_obs()
-        # print("OBS", obs['LeaderCorridorObstacles_lasers'])
         if self.random_frames_per_step is not None:
             self.frames_per_step = np.random.randint(self.random_frames_per_step[0], self.random_frames_per_step[1])
         if done:
@@ -1065,7 +1070,7 @@ class Game(gym.Env):
 
         self.overall_reward += res_reward
 
-        self.clock.tick(self.framerate)
+        self.ms_since_last_tick = self.clock.tick(self.framerate)
 
         if self.simulation_time_limit is not None:
             if pygame.time.get_ticks() * 1000 > self.simulation_time_limit:
@@ -1149,8 +1154,9 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
-        return np.transpose(
-            pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
+        #return np.transpose(
+#            pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
+
 
     def rotate_object(self, object_to_rotate):
         """Поворачивает изображение объекта, при этом сохраняя его центр и прямоугольник для взаимодействия.
@@ -1179,7 +1185,6 @@ class Game(gym.Env):
     def _show_tick(self):
         """Отображает всё, что положено отображать на каждом шаге"""
         self.gameDisplay.fill(self.colours["white"])  # фон
-
         # отображение полного маршрута Ведущего
         if self.show_leader_path_flag:
             if len(self.trajectory) > 2:
@@ -1229,19 +1234,25 @@ class Game(gym.Env):
                 pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
         #         if self.add_obstacles:
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
-        #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3)
-        reward_text = self.font.render("Step: {}, Суммарная награда:{}".format(self.step_count,
+        #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3
+        #
+        current_fps = np.round(1000 / self.ms_since_last_tick)
+        reward_text = self.font.render("FPS: {}, Step: {}, Суммарная награда:{}".format(current_fps, self.step_count,
                                                                                self.overall_reward),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 0))
-        reward_text = self.font.render("Фолловер. скорость:{}, скорость поворота:{}".format(self.follower.speed,
-                                                                                            self.follower.rotation_speed),
+        speed_mps = AVG_FRAMES_PER_SECOND * self.follower.speed / self.PIXELS_TO_METER
+        reward_text = self.font.render("Фолловер. скорость:{} p/f {} m/s, скорость поворота:{}".format(
+                                       np.round(self.follower.speed, 3), np.round(speed_mps, 3),
+                                       self.follower.rotation_speed),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 50))
-        reward_text = self.font.render("Лидер. скорость:{}, скорость поворота:{}".format(self.leader.speed,
-                                                                                         self.leader.rotation_speed),
+        speed_mps = AVG_FRAMES_PER_SECOND * self.leader.speed / self.PIXELS_TO_METER
+        reward_text = self.font.render("Лидер. скорость:{} p/f {} m/s, скорость поворота:{}".format(
+                                       np.round(self.leader.speed, 2), np.round(speed_mps, 2),
+                                       self.leader.rotation_speed),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 100))
@@ -1267,9 +1278,6 @@ class Game(gym.Env):
 
         step_obs = 60 / self.step_grid
 
-        #print(self.leader.start_position)
-        #print(self.finish_point)
-
         self.wid = self.DISPLAY_WIDTH
         self.hit = self.DISPLAY_HEIGHT
 
@@ -1277,18 +1285,11 @@ class Game(gym.Env):
             int(self.leader.start_position[0] / self.step_grid), int(self.leader.start_position[1] / self.step_grid))
         # int(start)
         # start.tolist(start)
-        #print(start)
         end = (int(self.finish_point[0] / self.step_grid), int(self.finish_point[1] / self.step_grid))
         # int(end)
-        #print(end)
 
         wid = int(self.wid / self.step_grid)
-        #print(wid)
         hit = int(self.hit / self.step_grid)
-        #print(hit)
-
-        # print(self.start)
-        # print(self.end)
 
         grid = []
         for i in range(wid):
@@ -1299,7 +1300,6 @@ class Game(gym.Env):
                 for k in range(self.obstacle_number):
                     ob = (self.obstacles[k].start_position / self.step_grid)
                     ob = ob.astype(int)
-                    # print(ob)
                     if distance.euclidean((i, j), ob) < step_obs:
                         grid[i][j] = 1
                     if i >= 700 / self.step_grid and i <= 800 / self.step_grid and j >= 0 and j <= 480 / self.step_grid:
@@ -1308,30 +1308,10 @@ class Game(gym.Env):
                             and j <= 1000 / self.step_grid:
                         grid[i][j] = 1
 
-        # print(grid)
         path = astar(maze=grid, start=start, end=end)
-        # print(path)
-        #         print(grid)
         trajectory = []
         trajectory = path
         timeAstar = time.time() - t_astar
-
-        # # print(trajectory)
-        # # print(self.obstacles)
-        # len_tr = len(trajectory)
-        # # print('Astr: ', len_tr)
-        # # print('Aend =', timeAstar)
-        # path_tab_astar = '~/Desktop/lentrAstar.xlsx'
-        # astar_table = pd.read_excel(path_tab_astar, index_col=False)
-        # # print(astar_table)
-        # # print(len_tr)
-        # # print(timeAstar)
-        # new_data = {'Time':timeAstar, 'Len':len_tr}
-        # new_astar_table = astar_table.append(new_data, ignore_index=True)
-        # # print(new_astar_table)
-        # #astar_table.loc[len(astar_table.index)] = ['timeAstar', 'len_tr']
-        # # pdc = pd.DataFrame(new_astar_table, index=False)
-        # new_astar_table.to_excel(path_tab_astar, index=False)
 
         return trajectory
 
@@ -1340,16 +1320,11 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        #print(self.leader.start_position)
-        #print(self.finish_point)
-
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0] / self.step_grid,
                     self.obstacles[i].start_position[1] / self.step_grid,
                     (100 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        #print(obstacle_list)
-
         t_rrt = time.time()
 
         # Set Initial parameters
@@ -1376,7 +1351,6 @@ class Game(gym.Env):
             obstacle_list=obstacle_list)
 
         path = rrt.planning(animation=False)
-        # print(path)
         # trajectory = rrt_star.planning(animation=False)
 
         trajectory = []
@@ -1385,19 +1359,11 @@ class Game(gym.Env):
 
         time_rrt = time.time() - t_rrt
         len_rrt = len(trajectory)
-        # print('Dstr: ', len_rrt)
-        # print('Dend =', time_rrt)
         path_tab_rrt = '~/Desktop/lentRRT.xlsx'
         rrt_table = pd.read_excel(path_tab_rrt, index_col=False)
-        # print(rrtstar_table)
-        # print(len_rrtstar)
-        # print(time_rrtstar)
         new_data = {'Time': time_rrt, 'Len': len_rrt}
         new_dstar_table = rrt_table.append(new_data, ignore_index=True)
         new_dstar_table.to_excel(path_tab_rrt, index=False)
-
-        #         print(trajectory)
-        # print(grid[75][23])
 
         return trajectory
 
@@ -1406,15 +1372,11 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        # print(self.leader.start_position)
-        # print(self.finish_point)
-
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0] / self.step_grid,
                     self.obstacles[i].start_position[1] / self.step_grid,
                     (80 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        # print(obstacle_list)
 
         for k in range(20, 460, 40):
             most1 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
@@ -1424,7 +1386,6 @@ class Game(gym.Env):
             most2 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most2)
 
-        # print(obstacle_list)
         t_rrtstar = time.time()
         # Set Initial parameters
         rrt_star = RRTStar(
@@ -1441,18 +1402,11 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        # print(trajectory)
-        # print(grid[75][23])
 
         time_rrtstar = time.time() - t_rrtstar
         len_rrtstar = len(trajectory)
-        # print('Dstr: ', len_rrtstar)
-        # print('Dend =', time_rrtstar)
         path_tab_rrtstar = '~/Desktop/lentRRTstar.xlsx'
         rrtstar_table = pd.read_excel(path_tab_rrtstar, index_col=False)
-        # print(rrtstar_table)
-        # print(len_rrtstar)
-        # print(time_rrtstar)
         new_data = {'Time': time_rrtstar, 'Len': len_rrtstar}
         new_dstar_table = rrtstar_table.append(new_data, ignore_index=True)
         new_dstar_table.to_excel(path_tab_rrtstar, index=False)
@@ -1464,15 +1418,11 @@ class Game(gym.Env):
 
         obstacle_list = []  # [x,y,size(radius)]
 
-        # print(self.leader.start_position)
-        # print(self.finish_point)
-
         for i in range(self.obstacle_number):
             obst = (self.obstacles[i].start_position[0] / self.step_grid,
                     self.obstacles[i].start_position[1] / self.step_grid,
                     (80 / self.step_grid) / 2)
             obstacle_list.append(obst)
-        # print(obstacle_list)
 
         for k in range(20, 460, 40):
             most1 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
@@ -1481,8 +1431,6 @@ class Game(gym.Env):
         for k in range(560, 1000, 40):
             most2 = (750 / self.step_grid, k / self.step_grid, 20 / self.step_grid)
             obstacle_list.append(most2)
-
-        # print(obstacle_list)
 
         lqr_rrt_star = LQRRRTStar(self.leader.start_position / self.step_grid, (90, 90),
                                   # self.finish_point/self.step_grid,
@@ -1493,19 +1441,11 @@ class Game(gym.Env):
         trajectory = []
         trajectory = path[::-1]
         trajectory.pop(0)
-        # print(trajectory)
 
         return trajectory
 
     # Алгоритм поиска Dstar (еще не настроен)
     def generate_trajectory_dstar(self):
-
-        # t_dstar = time.time()
-        # print('D0 =', time.time()-t_astar)
-        # print(self.leader.start_position)
-        # print(self.finish_point)
-        # print(self.finish_point2)
-        # print(self.finish_point3)
 
         m = Map(150, 100)
         m2 = Map(150, 100)
@@ -1531,7 +1471,6 @@ class Game(gym.Env):
                 ox.append(int((750 + i) / self.step_grid))
                 oy.append(int((k) / self.step_grid))
 
-        # print([(i, j) for i, j in zip(ox, oy)])
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
         m2.set_obstacle([(i, j) for i, j in zip(ox, oy)])
@@ -1551,7 +1490,6 @@ class Game(gym.Env):
         # trajectory = path[::-1]
         for i in range(len(rx)):
             trajectory.append((rx[i], ry[i]))
-        # print(trajectory)
 
         if self.multiple_end_points:
             # TODO : работа дстар в 3 захода (костыль)
@@ -1572,7 +1510,6 @@ class Game(gym.Env):
             # trajectory = path[::-1]
             for i in range(len(rx2)):
                 trajectory2.append((rx2[i], ry2[i]))
-            #print(trajectory2)
 
             # работа dstar 3
             # start3 = [int(self.leader.start_position[0]/self.step_grid),
@@ -1590,38 +1527,24 @@ class Game(gym.Env):
             # trajectory = path[::-1]
             for i in range(len(rx3)):
                 trajectory3.append((rx3[i], ry3[i]))
-            #print(trajectory3)
             trajectory = trajectory + trajectory2 + trajectory3
 
-            # print(trajectory)
             # len_dstar = len(trajectory)
-            # print("Dstar: ", len_dstar)
-            # print('Dend =', time.time() - t_dstar)
 
             #############################
             # time_dstar = time.time() - t_dstar
             # len_dstar = len(trajectory)
             # if len_dstar>200:
-            #     # print('Dstr: ', len_dstar)
-            #     # print('Dend =', time_dstar)
             #     path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
             #     dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
-            #     # print(dstar_table)
-            #     # print(len_dstar)
-            #     # print(time_dstar)
             #     new_data = {'Time50': time_dstar, 'Len50': len_dstar}
             #     # new_data = {'Time15': time_dstar, 'Len15': len_dstar}
             #     new_dstar_table = dstar_table.append(new_data, ignore_index=True)
             #     new_dstar_table.to_excel(path_tab_dstar, index=False)
             # else:
             #     return "PUSTO"
-            # # print('Dstr: ', len_dstar)
-            # # print('Dend =', time_dstar)
             # path_tab_dstar = '~/Desktop/lentrDstar-1.xlsx'
             # dstar_table = pd.read_excel(path_tab_dstar, index_col=False)
-            # # print(dstar_table)
-            # # print(len_dstar)
-            # # print(time_dstar)
             # # new_data = {'Time': time_dstar, 'Len': len_dstar}
             # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
             # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
@@ -1987,24 +1910,28 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True,
                          manual_control_input="gamepad",
-                         add_obstacles=True, game_width=1500, game_height=1000,
+                         add_obstacles=False, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=144,
+                         framerate=100,
+                         pixels_to_meter=10,
                          obstacle_number=35,
                          constant_follower_speed=False,
-                         max_distance=4,
+                         min_distance=4,
+                         max_distance=8.5,
                          max_dev=1,
-                         add_bear=True,
+                         add_bear=False,
                          bear_behind=False,
                          multi_random_bears=False,
                          move_bear_v4=True,
                          bear_number=2,
-                         bear_speed_coeff=1.2,
+                         bear_max_speed=1.2,
                          corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
-                         follower_speed_koeff=0.6,
-                         leader_speed_coeff=0.45,
+                         follower_size=(1, 1),
+                         leader_size=(4, 2),
+                         follower_max_speed=2,
+                         leader_max_speed=1,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -2021,7 +1948,7 @@ class TestGameManual(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
-                         frames_per_step=6,
+                         frames_per_step=50,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[2, 20],
                          follower_sensors={
@@ -2043,12 +1970,12 @@ class TestGameManual_hardcore(Game):
                          multi_random_bears=False,
                          move_bear_v4=True,
                          bear_number=2,
-                         bear_speed_coeff=1.2,
+                         bear_max_speed=1.2,
                          corridor_length=7,
                          corridor_width=1.5,
                          negative_speed=True,
-                         follower_speed_koeff=0.6,
-                         leader_speed_coeff=0.45,
+                         follower_max_speed=2,
+                         leader_max_speed=1,
                          show_leader_path_flag=False,
                          show_leader_trajectory_flag=False,
                          show_rectangles_flag=False,
@@ -2071,7 +1998,7 @@ class TestGameManual_hardcore(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
-                         frames_per_step=6,
+                         frames_per_step=1,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[2, 20],
                          follower_sensors={
