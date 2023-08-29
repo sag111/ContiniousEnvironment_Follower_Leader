@@ -233,6 +233,10 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
     Вроде отличается от первой версии тем, что в начале симуляции корридор строится не по 2ум точкам (лидер, ведомый),  а
     создаётся последовательность точек между ними. + может начинать этот корридор за спиной у ведомого.
     """
+    def __init__(self, *args, corridor_width, corridor_length, **kwargs):
+        self.corridor_width = corridor_width
+        self.corridor_length = corridor_length
+        super(LeaderPositionsTracker_v2, self).__init__(*args, **kwargs)
 
     def scan(self, env):
         # если сам сенсор отслеживает перемещение
@@ -283,7 +287,7 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
                                    np.array(self.leader_positions_hist)[1:, :], axis=1)
             path_length = np.sum(dists)
             # while path_length > env.max_distance:
-            while path_length > env.corridor_length:
+            while path_length > self.corridor_length:
                 self.leader_positions_hist.popleft()
                 self.corridor.popleft()
                 dists = np.linalg.norm(np.array(self.leader_positions_hist)[:-1, :] -
@@ -295,7 +299,7 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
                     for i in range(len(self.leader_positions_hist) - 1, 0, -1):
                         last_2points_vec = self.leader_positions_hist[i] - self.leader_positions_hist[i - 1]
                         # last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
-                        last_2points_vec *= env.corridor_width / np.linalg.norm(last_2points_vec)
+                        last_2points_vec *= self.corridor_width / np.linalg.norm(last_2points_vec)
                         right_border_dot = rotateVector(last_2points_vec, 90)
                         right_border_dot += self.leader_positions_hist[-i - 1]
                         left_border_dot = rotateVector(last_2points_vec, -90)
@@ -303,7 +307,7 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
                         self.corridor.append([right_border_dot, left_border_dot])
                 last_2points_vec = self.leader_positions_hist[-1] - self.leader_positions_hist[-2]
                 # last_2points_vec *= env.max_dev / np.linalg.norm(last_2points_vec)
-                last_2points_vec *= env.corridor_width / np.linalg.norm(last_2points_vec)
+                last_2points_vec *= self.corridor_width / np.linalg.norm(last_2points_vec)
                 right_border_dot = rotateVector(last_2points_vec, 90)
                 right_border_dot += self.leader_positions_hist[-2]
                 left_border_dot = rotateVector(last_2points_vec, -90)

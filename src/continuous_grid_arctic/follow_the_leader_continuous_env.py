@@ -83,14 +83,18 @@ class Game(gym.Env):
                  constant_follower_speed=False,
                  path_finding_algorythm="dstar",
                  multiple_end_points=False,
-                 corridor_length=4,
-                 corridor_width=1,
                  negative_speed=False,
                  follower_max_speed=0.5,
                  leader_max_speed=0.5,
+                 follower_max_rotation_speed=57.296,  # град/сек
+                 leader_max_rotation_speed=57.296,  # град/сек
+                 follower_acceleration=0.005,  # м/с^2
+                 leader_acceleration=0.005,  # м/с^2
                  bear_max_speed=1.1,
                  follower_size=(0.5, 0.35),
                  leader_size=(0.38, 0.52),
+                 bear_size=(0.5, 0.5),
+                 return_render_matrix=True,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -163,6 +167,8 @@ class Game(gym.Env):
             Размеры ведомого робота (высота, ширина) в метрах
          leader_size (tuple of float):
             Размеры ведущего робота (высота, ширина) в метрах
+        return_render_matrix (bool):
+            должна ли функция рендера возвращать картинку матрицей. Для видео и симуляций надо, для реалтайма лучше выкличить, чтоб быстрее работало.
         """
 
         # нужно для сохранения видео
@@ -180,6 +186,7 @@ class Game(gym.Env):
         self.early_stopping = early_stopping
         pygame.font.init()
         self.font = pygame.font.SysFont('Arial', 30)
+        self.return_render_matrix = return_render_matrix
 
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
@@ -270,13 +277,11 @@ class Game(gym.Env):
         self.bear_behind = bear_behind
         self.move_bear_v4 = move_bear_v4
 
-
-        self.corridor_length = self._to_pixels(corridor_length)
-        self.corridor_width = self._to_pixels(corridor_width)
         self.negative_speed = negative_speed
         self.follower_max_speed = follower_max_speed
         self.leader_max_speed = leader_max_speed
         self.bear_max_speed = bear_max_speed
+        self.bear_size = bear_size
         # TODO : _____
         self.obstacles = list()
         self.obstacle_number = obstacle_number
@@ -296,7 +301,8 @@ class Game(gym.Env):
                 "width": self._to_pixels(follower_size[1]),
                 'min_speed': -(self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND),
                 'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
-                'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
+                'max_rotation_speed': follower_max_rotation_speed / AVG_FRAMES_PER_SECOND,
+                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND
             }
         else:
             self.follower_config = {
@@ -305,14 +311,16 @@ class Game(gym.Env):
                 "width": self._to_pixels(follower_size[1]),
                 # 'min_speed':-(self._to_pixels(0.5) / 100),
                 'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
-                'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
+                'max_rotation_speed': follower_max_rotation_speed / AVG_FRAMES_PER_SECOND,
+                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND
             }
         self.leader_config = {
             'min_speed': 0,
             "width": self._to_pixels(leader_size[0]),
             "height": self._to_pixels(leader_size[1]),
             'max_speed': self._to_pixels(self.leader_max_speed) / AVG_FRAMES_PER_SECOND,
-            'max_rotation_speed': 57.296 / AVG_FRAMES_PER_SECOND,
+            'max_rotation_speed': leader_max_rotation_speed / AVG_FRAMES_PER_SECOND,
+            "acceleration": self._to_pixels(leader_acceleration) / AVG_FRAMES_PER_SECOND
         }
         self.discrete_action_space = discrete_action_space
 
@@ -513,7 +521,7 @@ class Game(gym.Env):
                                     width=self.leader_config["width"],
                                     min_speed=self.leader_config["min_speed"],
                                     max_speed=self.leader_config["max_speed"],
-                                    max_speed_change=self._to_pixels(0.005),  # / 100,
+                                    max_speed_change=self.leader_config["acceleration"],  # / 100,
                                     max_rotation_speed=self.leader_config["max_rotation_speed"],
                                     max_rotation_speed_change=20 / 100,
                                     start_position=leader_start_position,
@@ -536,7 +544,7 @@ class Game(gym.Env):
                                          width=self.follower_config["width"],
                                          min_speed=self.follower_config["min_speed"],
                                          max_speed=self.follower_config["max_speed"],
-                                         max_speed_change=self._to_pixels(0.005) / 100,
+                                         max_speed_change=self.follower_config["acceleration"],
                                          max_rotation_speed=self.follower_config["max_rotation_speed"],
                                          max_rotation_speed_change=20 / 100,
                                          start_position=follower_start_position,
@@ -643,10 +651,6 @@ class Game(gym.Env):
         """
 
         self.bears_obs = list()
-        bear_size = 25
-        # TODO : вынести в конфиг и сделать настраиваемым для различных режимов езды
-        # bear_speed_coeff = 1.2
-
         for i in range(self.bear_number):
             # TODO:
             koeff = 90*(i+1)
@@ -659,8 +663,8 @@ class Game(gym.Env):
 
             self.game_dynamic_list.append(AbstractRobot("bear",
                                       image=self.bear_img,
-                                      height=bear_size,
-                                      width=bear_size,
+                                      height=self._to_pixels(self.bear_size[0]),
+                                      width=self._to_pixels(self.bear_size[1]),
                                       min_speed=self.leader_config["min_speed"],
                                       max_speed=self.bear_max_speed * self.leader_config["max_speed"],
                                       max_speed_change=self._to_pixels(0.005),  # / 100,
@@ -1154,8 +1158,8 @@ class Game(gym.Env):
 
         self._show_tick()
         pygame.display.update()
-        #return np.transpose(
-#            pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
+        if self.return_render_matrix:
+            return np.transpose(pygame.surfarray.array3d(self.gameDisplay), axes=(1, 0, 2))
 
 
     def rotate_object(self, object_to_rotate):
@@ -1243,16 +1247,16 @@ class Game(gym.Env):
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 0))
         speed_mps = AVG_FRAMES_PER_SECOND * self.follower.speed / self.PIXELS_TO_METER
-        reward_text = self.font.render("Фолловер. скорость:{} p/f {} m/s, скорость поворота:{}".format(
+        reward_text = self.font.render("Фолловер. скорость:{} p/f {} m/s, скорость поворота:{} град/сек".format(
                                        np.round(self.follower.speed, 3), np.round(speed_mps, 3),
-                                       self.follower.rotation_speed),
+                                       np.round(AVG_FRAMES_PER_SECOND* self.follower.rotation_speed)),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 50))
         speed_mps = AVG_FRAMES_PER_SECOND * self.leader.speed / self.PIXELS_TO_METER
-        reward_text = self.font.render("Лидер. скорость:{} p/f {} m/s, скорость поворота:{}".format(
+        reward_text = self.font.render("Лидер. скорость:{} p/f {} m/s, скорость поворота:{} град/сек".format(
                                        np.round(self.leader.speed, 2), np.round(speed_mps, 2),
-                                       self.leader.rotation_speed),
+                                       np.round(AVG_FRAMES_PER_SECOND * self.leader.rotation_speed)),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 100))
@@ -1910,28 +1914,25 @@ class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True,
                          manual_control_input="gamepad",
-                         add_obstacles=False, game_width=1500, game_height=1000,
+                         add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=100,
-                         pixels_to_meter=10,
+                         pixels_to_meter=50,
                          obstacle_number=35,
                          constant_follower_speed=False,
-                         min_distance=4,
-                         max_distance=8.5,
+                         min_distance=1,
+                         max_distance=4,
                          max_dev=1,
-                         add_bear=False,
+                         add_bear=True,
                          bear_behind=False,
                          multi_random_bears=False,
                          move_bear_v4=True,
                          bear_number=2,
                          bear_max_speed=1.2,
-                         corridor_length=7,
-                         corridor_width=1.5,
                          negative_speed=True,
-                         follower_size=(1, 1),
-                         leader_size=(4, 2),
-                         follower_max_speed=2,
-                         leader_max_speed=1,
+                         follower_max_speed=0.6,
+                         leader_max_speed=0.45,
+                         return_render_matrix=False,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -1948,9 +1949,9 @@ class TestGameManual(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
-                         frames_per_step=50,
+                         frames_per_step=1,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
-                         #random_frames_per_step=[2, 20],
+                         #random_frames_per_step=[30, 70],
                          follower_sensors={
                          }
                          )
@@ -1971,8 +1972,6 @@ class TestGameManual_hardcore(Game):
                          move_bear_v4=True,
                          bear_number=2,
                          bear_max_speed=1.2,
-                         corridor_length=7,
-                         corridor_width=1.5,
                          negative_speed=True,
                          follower_max_speed=2,
                          leader_max_speed=1,
@@ -1982,6 +1981,7 @@ class TestGameManual_hardcore(Game):
                          show_box_flag=False,
                          show_objects_flag=False,
                          show_sensors_flag=True,
+                         return_render_matrix=False,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
@@ -2005,7 +2005,9 @@ class TestGameManual_hardcore(Game):
                              'LeaderPositionsTracker_v2': {
                                  'eat_close_points': True,
                                  'saving_period': 8,
-                                 'start_corridor_behind_follower':True
+                                 'start_corridor_behind_follower':True,
+                                 'corridor_length': 700,  # pixels
+                                 'corridor_width': 150  # pixels
                                  },
                               "LeaderCorridor_Prev_lasers_v2": {
                                  "sensor_class": "LeaderCorridor_Prev_lasers_v2",
@@ -2031,6 +2033,58 @@ class TestGameManual_hardcore(Game):
                          }
                          )
 
+class TestGameManual_gazebo(Game):
+    def __init__(self):
+        super().__init__(manual_control=True,
+                         manual_control_input="gamepad",
+                         add_obstacles=True, game_width=1500, game_height=1000,
+                         max_steps=15000,
+                         framerate=100,
+                         pixels_to_meter=10,
+                         obstacle_number=35,
+                         constant_follower_speed=False,
+                         min_distance=4.5,
+                         max_distance=8,
+                         max_dev=1,
+                         add_bear=True,
+                         bear_behind=False,
+                         multi_random_bears=False,
+                         move_bear_v4=True,
+                         bear_number=2,
+                         bear_max_speed=1.2,
+                         negative_speed=True,
+                         follower_size=(1, 1),
+                         leader_size=(4, 2),
+                         bear_size=(1.5, 1.5),
+                         follower_max_speed=2,
+                         leader_max_speed=1,
+                         follower_max_rotation_speed=28.65,
+                         leader_max_rotation_speed=28.65,
+                         follower_acceleration=2,
+                         leader_acceleration=0.2,
+                         return_render_matrix=False,
+                         leader_speed_regime={
+                             0: [0.2, 1],
+                             200: 1,
+                             1000: [0.5, 1],
+                             1500: 0.75,
+                             2000: 0,
+                             2500: 1,
+                             3000: [0.5, 1],
+                             4000: [0.0, 0.5],
+                             5000: [0.4, 1],
+                         },
+                         leader_acceleration_regime={0: 0,
+                                                     3100: 0.03,
+                                                     4500: 0},
+                         multiple_end_points=False,
+                         warm_start=0,
+                         frames_per_step=1,
+                         early_stopping={"max_distance_coef": 4, "low_reward": -300},
+                         #random_frames_per_step=[30, 70],
+                         follower_sensors={
+                         }
+                         )
 class TestGameBaseAlgoNoObst(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
@@ -2063,6 +2117,11 @@ gym_register(
 gym_register(
     id="Test-Cont-Env-Manual-v0",
     entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual",
+    reward_threshold=10000
+)
+gym_register(
+    id="Test-Cont-Env-Manual-gazebo",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_gazebo",
     reward_threshold=10000
 )
 gym_register(
