@@ -83,7 +83,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                       react_to_obstacles=True,
                                                       front_lasers_count=12,
                                                       back_lasers_count=12,
-                                                      laser_length=8)
+                                                      laser_length=4)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
