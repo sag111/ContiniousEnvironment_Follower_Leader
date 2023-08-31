@@ -38,12 +38,12 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         follower_position = [0, 0]
         self.generate_corridor = True
         # ширина коридора
-        self.max_dev = 2.5
+        self.max_dev = 2
         # self.max_dev = 35
         leader_max_speed = 1.0 # TODO : потом посмотреть и перенести все в конфиг
 
         # длина коридора
-        max_distance = 30
+        max_distance = 25
         self.saving_period = 3
 
         # print('LEADER', leader_position)
