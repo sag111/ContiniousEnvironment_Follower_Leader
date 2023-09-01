@@ -188,10 +188,10 @@ class Dstar:
                 break
 
             tmp.set_state("*")
-            rx.append(tmp.x*10) #ИСПРАВЛЕНЫ НА СЕТКУ
-            ry.append(tmp.y*10)
+            rx.append(tmp.x)
+            ry.append(tmp.y)
             if show_animation:
-                plt.plot(rx, ry, "-r")
+                plt.plot(rx, ry, "-r")  # надо домножить на grid_step? раньше было домножение, но оно было выше, где оно не нужно
                 plt.pause(0.01)
             if tmp.parent.state == "#":
                 self.modify(tmp)

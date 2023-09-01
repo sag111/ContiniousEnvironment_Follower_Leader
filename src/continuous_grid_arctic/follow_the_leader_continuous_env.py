@@ -12,6 +12,7 @@ from scipy.spatial import distance
 import gym
 from gym.envs.registration import register as gym_register
 from gym.spaces import Discrete, Box
+from copy import deepcopy
 
 try:
     from continuous_grid_arctic.utils.classes import AbstractRobot, GameObject, RobotWithSensors
@@ -94,6 +95,7 @@ class Game(gym.Env):
                  follower_size=(0.5, 0.35),
                  leader_size=(0.38, 0.52),
                  bear_size=(0.5, 0.5),
+                 bridge_size=(80, 40), # ширина, длина в пикселях
                  return_render_matrix=True,
                  **kwargs
                  ):
@@ -197,7 +199,7 @@ class Game(gym.Env):
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
-
+        self.bridge_size = bridge_size
         self.step_grid = step_grid
         self.accumulated_penalty = 0  # штраф, который копится, если долго не получаем отрицательной награды
         # Генерация финишной точки
@@ -576,21 +578,23 @@ class Game(gym.Env):
 
         #####################################
         # TODO: отсутствие абсолютных чисел!
-        self.most_point1 = (self.DISPLAY_WIDTH / 2, 230)
-        self.most_point2 = (self.DISPLAY_WIDTH / 2, 770)
+        bridge_obstacle_height = (self.DISPLAY_HEIGHT - self.bridge_size[0]) // 2
+        
+        self.most_point1 = (self.DISPLAY_WIDTH / 2, bridge_obstacle_height // 2)
+        self.most_point2 = (self.DISPLAY_WIDTH / 2, (self.DISPLAY_HEIGHT // 2) + (bridge_obstacle_height // 2) + (self.bridge_size[0] // 2))
 
         # верхняя и нижняя часть моста
         self.obstacles1 = GameObject('wall',
                                      image=self.wall_img,
                                      start_position=self.most_point1,
-                                     height=460,
-                                     width=40)
+                                     height=bridge_obstacle_height,
+                                     width=self.bridge_size[1])
 
         self.obstacles2 = GameObject('wall',
                                      image=self.wall_img,
                                      start_position=self.most_point2,
-                                     height=460,
-                                     width=40)
+                                     height=bridge_obstacle_height,
+                                     width=self.bridge_size[1])
 
         self.bridge_point = np.array(((self.most_point1[0] + self.most_point2[0]) / 2,
                                       (self.most_point1[1] + self.most_point2[1]) / 2), dtype=np.float32)
@@ -602,10 +606,10 @@ class Game(gym.Env):
         wall_end_x = self.obstacles1.rectangle.right
 
         obstacle_size = 50
-        bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 3,
-                                       self.obstacles1.rectangle.bottom - self.leader.height,
-                                       self.obstacles1.rectangle.width + 6 * self.leader.width,
-                                       self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 2 * self.leader.height)
+        bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 4,
+                                       self.obstacles1.rectangle.bottom - self.leader.height*1.5,
+                                       self.obstacles1.rectangle.width + 8 * self.leader.width,
+                                       self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 3 * self.leader.height)
         for i in range(self.obstacle_number):
 
             is_free = False
@@ -1449,14 +1453,24 @@ class Game(gym.Env):
         return trajectory
 
     # Алгоритм поиска Dstar (еще не настроен)
+    # TODO: много хардкода, ориентированного на стандартные настройки (размеров экрана, роботов, препятствий)
     def generate_trajectory_dstar(self):
 
-        m = Map(150, 100)
-        m2 = Map(150, 100)
-        m3 = Map(150, 100)
+        m = Map(self.DISPLAY_WIDTH // self.step_grid, self.DISPLAY_HEIGHT // self.step_grid)
+        #m = Map(150, 100)
 
         ox, oy = [], []
+        margin = int(1.5*max(self.leader.width, self.leader.height) // self.step_grid)
 
+        for obst in self.obstacles + [self.obstacles1, self.obstacles2]:
+            position_on_map = (int(obst.start_position[0] // self.step_grid), int(obst.start_position[1] // self.step_grid))
+            halfheight = int((obst.height / 2) // self.step_grid) + margin
+            halfwidth = int((obst.width / 2) // self.step_grid) + margin
+            for i in range(position_on_map[0] - halfwidth, position_on_map[0] + halfwidth):
+                for j in range(position_on_map[1] - halfheight, position_on_map[1] + halfheight):
+                    ox.append(i)
+                    oy.append(j)
+        """
         for ob in range(self.obstacle_number):
             for i in range(-50, 50, 10):
                 for j in range(-50, 50, 10):
@@ -1474,18 +1488,17 @@ class Game(gym.Env):
                 # for j in range(-30,30,10):
                 ox.append(int((750 + i) / self.step_grid))
                 oy.append(int((k) / self.step_grid))
-
+        """
         m.set_obstacle([(i, j) for i, j in zip(ox, oy)])
 
-        m2.set_obstacle([(i, j) for i, j in zip(ox, oy)])
-        m3.set_obstacle([(i, j) for i, j in zip(ox, oy)])
+        m2 = deepcopy(m)
+        m3 = deepcopy(m)
 
         ########### работа dstar 1
         start = [int(self.leader.start_position[0] / self.step_grid),
                  int(self.leader.start_position[1] / self.step_grid)]
         goal = [int(self.finish_point[0] / self.step_grid),
                 int(self.finish_point[1] / self.step_grid)]
-
         start = m.map[start[0]][start[1]]
         end = m.map[goal[0]][goal[1]]
         dstar = Dstar(m)
@@ -1493,7 +1506,7 @@ class Game(gym.Env):
         trajectory = []
         # trajectory = path[::-1]
         for i in range(len(rx)):
-            trajectory.append((rx[i], ry[i]))
+            trajectory.append((rx[i]*self.step_grid, ry[i]*self.step_grid))
 
         if self.multiple_end_points:
             # TODO : работа дстар в 3 захода (костыль)
@@ -1513,7 +1526,7 @@ class Game(gym.Env):
             trajectory2 = []
             # trajectory = path[::-1]
             for i in range(len(rx2)):
-                trajectory2.append((rx2[i], ry2[i]))
+                trajectory2.append((rx2[i]*self.step_grid, ry2[i]*self.step_grid))
 
             # работа dstar 3
             # start3 = [int(self.leader.start_position[0]/self.step_grid),
@@ -1530,7 +1543,7 @@ class Game(gym.Env):
             trajectory3 = []
             # trajectory = path[::-1]
             for i in range(len(rx3)):
-                trajectory3.append((rx3[i], ry3[i]))
+                trajectory3.append((rx3[i]*self.step_grid, ry3[i]*self.step_grid))
             trajectory = trajectory + trajectory2 + trajectory3
 
             # len_dstar = len(trajectory)
@@ -2120,12 +2133,12 @@ gym_register(
     reward_threshold=10000
 )
 gym_register(
-    id="Test-Cont-Env-Manual-gazebo",
+    id="Test-Cont-Env-Manual-gazebo-v0",
     entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_gazebo",
     reward_threshold=10000
 )
 gym_register(
-    id="Test-Cont-Env-Manual-hardcore",
+    id="Test-Cont-Env-Manual-hardcore-v0",
     entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_hardcore",
     reward_threshold=10000
 )

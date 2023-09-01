@@ -250,7 +250,6 @@ class RobotWithSensors(AbstractRobot):
             if "sensor_class" in sensor_args:
                 sensor_args.pop("sensor_class")
             self.sensors[k] = sensorClass(self, **sensor_args)
-        print(self.sensors)
 
     def use_sensors(self, env):
         sensors_observes = dict()
