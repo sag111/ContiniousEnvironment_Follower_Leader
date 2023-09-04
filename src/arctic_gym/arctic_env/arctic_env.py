@@ -74,7 +74,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                           react_to_obstacles=True,
                                                           front_lasers_count=6,
                                                           back_lasers_count=6,
-                                                          laser_length=4)
+                                                          laser_length=8)
 
         self.laser_aux = GazeboLaserPrevSensor_compas(host_object="arctic_robot",
                                                       sensor_name='LaserPrevSensor_compas',
@@ -125,22 +125,6 @@ class ArcticEnv(RobotGazeboEnv):
 
         self.pub.update_follower_path()
         self.pub.update_target_path()
-
-        # print('debug')
-
-        if move:
-            # print('перемещение ведущего и ведомого в начальную позицию')
-            # self.arctic_coords = [0.0, 30.0, 1.0]
-            # self.target_coords = [12.0, 30.0, 1.0]
-
-            self.arctic_coords = [0.0, -10.0, 0.3]
-            self.target_coords = [10.0, -10.0, 0.7]
-
-            # self.arctic_coords = [40.0, 0.0, 1.0]
-            # self.target_coords = [47.0, 0.0, 1.0]
-
-            self.pub.teleport(model="arctic_model", point=self.arctic_coords, quaternion=[0, 0, 0, 1])
-            self.pub.teleport(model="target_robot", point=self.target_coords, quaternion=[0, 0, 0, 1])
 
         # self._reset_sim()
         self._init_env_variables()
@@ -265,7 +249,7 @@ class ArcticEnv(RobotGazeboEnv):
         # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         log_linear = round(float(action[0]), 2)
         log_angular = round(float(action[1]), 2)
-        # print(f'Actions: linear - {log_linear}, angular - {log_angular}')
+        print(f'Actions: linear - {log_linear}, angular - {log_angular}')
         self._set_action(action)
 
         self.follower_delta_position = self._get_delta_position()
