@@ -6,9 +6,9 @@ from collections import deque
 import itertools
 
 try:
-    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    from continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect, areDotsOnLeft
 except:
-    from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+    from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect, areDotsOnLeft
 
 import pandas as pd
 
@@ -966,6 +966,155 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
                 for laser_collide in lasers_collides_item:
                     pygame.draw.circle(env.gameDisplay, (255, 75, 110), laser_collide, 3)
 
+
+class LeaderCorridor_Prev_lasers_v3(LeaderCorridor_Prev_lasers_v2):
+    """
+    Отличается от LeaderCorridor_Prev_lasers_v2 тем, что осуществляется проверка - не находятся ли точки переесечения с
+    лазером внутри коридора
+    """
+    def scan(self, env, corridor):
+        self.lasers_collides = []
+        self.lasers_end_points = []
+        self.lasers_collides_item_history = []
+
+        for i in range(self.lasers_count):
+            self.lasers_end_points.append(self.host_object.position + rotateVector(np.array([self.laser_length, 0]),
+                                                                                   (self.host_object.direction + self.first_laser_angle_offset) +
+                                                                                   i * self.laser_period))
+        # TODO: Исправить, не работает проверка на столкновение лазеров с препятствиями, если пустой коридор
+        if len(corridor) > 1:
+            corridor_lines = self.collect_obstacle_edges(env, corridor)
+            # Сейчас в истории хранятся все грани препятствий, а не только пересеченные
+            self.history_obstacles_list.pop(0)
+            self.history_obstacles_list.append(corridor_lines)
+
+            all_obs_list = []
+
+            for j, corridor_lines_item in enumerate(self.history_obstacles_list):
+
+                corridor_lines_item = np.array(corridor_lines_item)
+
+                lasers_values_item = []
+                self.lasers_collides_item = []
+                for laser_end_point in self.lasers_end_points:
+                    rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :], corridor_lines_item[:, 1, :],
+                                                          np.array([self.host_object.position]),
+                                                          np.array([laser_end_point]))
+                    intersected_line_item = corridor_lines_item[rez]
+                    if len(intersected_line_item) > 0:
+                        x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
+                                                                intersected_line_item[:, 1, :],
+                                                                np.array([self.host_object.position]),
+                                                                np.array([laser_end_point]))
+                        # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                        # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                        exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
+
+                        if len(corridor) > 2:
+                            # разбиваем корридор на 4ёхугольные сектора
+                            for cor_segm_i in range(len(corridor) - 1):
+                                rectangle_points = [corridor[cor_segm_i][0], corridor[cor_segm_i][1],
+                                                    corridor[cor_segm_i + 1][0], corridor[cor_segm_i + 1][1]]
+                                # так как прямоугольник может быть не выпуклый, пробуем превратить его в таковой,
+                                # если это возможно (не всегда)
+                                check1 = areDotsOnLeft(np.array([rectangle_points[0], rectangle_points[3]]),
+                                                       np.array([rectangle_points[1], rectangle_points[2]]))
+                                check2 = areDotsOnLeft(np.array([rectangle_points[1], rectangle_points[2]]),
+                                                       np.array([rectangle_points[3], rectangle_points[0]]))
+                                if ((check1 == [False, True]).all() and (check2 == [False, True]).all()):
+                                    pass
+                                elif ((check1 == [True, True]).all() and (check2 == [True, True]).all()):
+                                    rectangle_points[1], rectangle_points[3] = rectangle_points[3], rectangle_points[1]
+                                elif ((check1 == [False, False]).all() and (check2 == [False, False]).all()):
+                                    rectangle_points[0], rectangle_points[2] = rectangle_points[2], rectangle_points[0]
+                                elif ((check1 == [True, True]).all() and (check2 == [False, False]).all()):
+                                    rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
+                                elif ((check1 == [False, False]).all() and (check2 == [True, True]).all()):
+                                    rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
+                                elif ((check1 == [True, False]).all() and (check2 == [True, False]).all()):
+                                    rectangle_points[2], rectangle_points[3] = rectangle_points[3], rectangle_points[2]
+                                    rectangle_points[0], rectangle_points[1] = rectangle_points[1], rectangle_points[0]
+                                elif (((check1 == [False, True]).all() or (check1 == [True, False]).all()) and (
+                                        check2 == [True, True]).all()):
+                                    pass  # warn("Впуклый прямоугольник, не обрабатывается корректно")
+                                elif ((check1 == [True, True]).all() and (
+                                        (check2 == [True, False]).all() or (check2 == [False, True]).all())):
+                                    pass  # warn("Впуклый прямоугольник, не обрабатывается корректно")
+                                elif ((check1 == [False, False]).all() and (
+                                        (check2 == [True, False]).all() or (check2 == [False, True]).all())):
+                                    pass  # warn("Впуклый прямоугольник, не обрабатывается корректно")
+                                elif (((check1 == [False, True]).all() or (check1 == [True, False]).all()) and (
+                                        check2 == [False, False]).all()):
+                                    pass  # warn("Впуклый прямоугольник, не обрабатывается корректно")
+                                else:
+                                    raise ValueError(
+                                        "Не предвидел такой вариант расположения вершин прямоугольника (сегмента "
+                                        "корридора) при проверке, находятся ли точки внутри него: check1:{}, "
+                                        "check2:{}".format(str(check1), str(check2)))
+                                # проверяем точки пересечений луча и стенок на то, находятся ли они внутри этого прямоугольника или нет.
+                                # Проверка для каждой стороны 4-ёхугольника, лежат ли точки слева от неё. Точки, которые слева от всех сторон - внутри многоугольника.
+                                # TODO: Не работает с впуклыми многоугольниками, возможно стоит попробовать алгоритм с лучами или ещё что-то.
+                                line = np.array([rectangle_points[0], rectangle_points[1]])
+                                insideDots_currRectangle = areDotsOnLeft(line, x)
+                                line = np.array([rectangle_points[1], rectangle_points[3]])
+                                insideDots_currRectangle &= areDotsOnLeft(line, x)
+                                line = np.array([rectangle_points[3], rectangle_points[2]])
+                                insideDots_currRectangle &= areDotsOnLeft(line, x)
+                                line = np.array([rectangle_points[2], rectangle_points[0]])
+                                insideDots_currRectangle &= areDotsOnLeft(line, x)
+                                if cor_segm_i == 0:
+                                    dotsInsideCorridor = insideDots_currRectangle
+                                else:
+                                    dotsInsideCorridor |= insideDots_currRectangle
+                        x = x[~dotsInsideCorridor]
+                        if len(x) > 0:
+                            norms = np.linalg.norm(x - self.host_object.position, axis=1)
+                            lasers_values_item.append(np.min(norms))
+                            closest_dot_idx = np.argmin(np.linalg.norm(x - self.host_object.position, axis=1))
+                            self.lasers_collides_item.append(x[closest_dot_idx])
+                        else:
+                            self.lasers_collides_item.append(laser_end_point)
+                    else:
+                        self.lasers_collides_item.append(laser_end_point)
+                self.lasers_collides_item_history.append(self.lasers_collides_item.copy())
+
+                obs_item = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+                for i, collide in enumerate(self.lasers_collides_item):
+                    obs_item[i] = np.linalg.norm(collide - self.host_object.position)
+
+                if self.pad_sectors:
+                    front = np.zeros(len(obs_item))
+                    right = np.zeros(len(obs_item))
+                    behind = np.zeros(len(obs_item))
+                    left = np.zeros(len(obs_item))
+
+                    lasers_in_sector = self.lasers_count / 4
+                    for i in range(len(obs_item)):
+                        if i < lasers_in_sector:
+                            front[i] = obs_item[i]
+                        elif lasers_in_sector <= i < 2 * lasers_in_sector:
+                            right[i] = obs_item[i]
+                        elif 2 * lasers_in_sector <= i < 3 * lasers_in_sector:
+                            behind[i] = obs_item[i]
+                        else:
+                            left[i] = obs_item[i]
+
+                    # front = np.array([obs_item[0], obs_item[1], 0, 0, 0, 0, 0, 0, 0, 0, 0, obs_item[11]])
+                    # right = np.array([0, 0, obs_item[2], obs_item[3], obs_item[4], 0, 0, 0, 0, 0, 0, 0])
+                    # behind = np.array([0, 0, 0, 0, 0, obs_item[5], obs_item[6], obs_item[7], 0, 0, 0, 0])
+                    # left = np.array([0, 0, 0, 0, 0, 0, 0, 0, obs_item[8], obs_item[9], obs_item[10], 0])
+                    res_out = np.concatenate((front, right, behind, left), axis=None)
+                else:
+                    res_out = obs_item
+
+                all_obs_list.append(res_out)
+            all_obs_arr = np.array(all_obs_list)
+            # print(all_obs_arr)
+        #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr)
+        #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr.shape)
+        return all_obs_arr
+
+
 #TODO: класс наследует некоторые атрибуты, которые ему не нужны, возможно получится сделать это как-то чище,
 # без наследования
 class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
@@ -1136,5 +1285,6 @@ SENSOR_CLASSNAME_TO_CLASS = {
     "FollowerInfo": FollowerInfo,
     "LaserPrevSensor": LaserPrevSensor,
     "LeaderCorridor_Prev_lasers_v2": LeaderCorridor_Prev_lasers_v2,
+    "LeaderCorridor_Prev_lasers_v3": LeaderCorridor_Prev_lasers_v3,
     "LeaderCorridor_lasers_compas": LeaderCorridor_lasers_compas,
 }

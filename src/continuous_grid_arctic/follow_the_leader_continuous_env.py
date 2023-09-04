@@ -1926,7 +1926,7 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True,
-                         manual_control_input="gamepad",
+                         manual_control_input="keyboard",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=100,
@@ -2049,10 +2049,10 @@ class TestGameManual_hardcore(Game):
 class TestGameManual_gazebo(Game):
     def __init__(self):
         super().__init__(manual_control=True,
-                         manual_control_input="gamepad",
+                         manual_control_input="keyboard",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=100,
+                         framerate=200,
                          pixels_to_meter=10,
                          obstacle_number=35,
                          constant_follower_speed=False,
@@ -2073,8 +2073,8 @@ class TestGameManual_gazebo(Game):
                          leader_max_speed=1,
                          follower_max_rotation_speed=28.65,
                          leader_max_rotation_speed=28.65,
-                         follower_acceleration=2,
-                         leader_acceleration=0.2,
+                         follower_acceleration=0.5,
+                         leader_acceleration=2,
                          return_render_matrix=False,
                          leader_speed_regime={
                              0: [0.2, 1],
@@ -2092,10 +2092,46 @@ class TestGameManual_gazebo(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
-                         frames_per_step=1,
+                         frames_per_step=20,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[30, 70],
                          follower_sensors={
+                            "LeaderCorridor_Prev_lasers_v2_compas":
+                            {
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
+                                "lasers_count": 12,
+                                "laser_length": 150,
+                                "react_to_green_zone": True,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": True,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "sensor_name": "LeaderCorridor_Prev_lasers_v2_compas",
+                                "pad_sectors": True
+                            },
+                            "LaserPrevSensor_compas":
+                            {
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
+                                "lasers_count": 24,
+                                "laser_length": 200,
+                                "react_to_green_zone": False,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": False,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": True
+                            },
+                            "LeaderPositionsTracker_v2":
+                            {
+                                "sensor_class": "LeaderPositionsTracker_v2",
+                                "eat_close_points": False,
+                                "generate_corridor": True,
+                                "saving_period": 8,
+                                "sensor_name": "LeaderPositionsTracker_v2",
+                                "start_corridor_behind_follower": True,
+                                "corridor_length": 200,
+                                "corridor_width": 40
+                            }
                          }
                          )
 class TestGameBaseAlgoNoObst(Game):

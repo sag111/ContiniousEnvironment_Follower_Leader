@@ -93,3 +93,14 @@ def move_to_the_point(direction,
     v = distance.euclidean(position, next_point)
     w = delta_turn * new_rotation_direction
     return np.array((v,w/10))
+
+def areDotsOnLeft(line, dots):
+        """
+        Определяем, лежат ли точки dots слева от прямой line
+        line: ndarray [[x1, y1], [x2,y2]]
+        dots: ndarray (points, coordinates)
+        """
+        # D = (x2 - x1) * (yp - y1) - (xp - x1) * (y2 - y1)
+        d = (line[1, 0] - line[0, 0]) * (dots[:, 1] - line[0, 1]) - (dots[:, 0] - line[0, 0]) * (
+                    line[1, 1] - line[0, 1])
+        return d > 0.01
