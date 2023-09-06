@@ -177,7 +177,7 @@ class ContinuousObserveModifier_sensorPrev(ObservationWrapper):
         self.max_prev_obs = max_prev_obs
 
         for sensor_name, sensor_config in env.follower_sensors.items():
-            if sensor_config["sensor_class"]=="LeaderCorridor_Prev_lasers_v2":
+            if sensor_config["sensor_class"] in ["LeaderCorridor_Prev_lasers_v2", "LeaderCorridor_Prev_lasers_v3"]:
                 if sensor_config["pad_sectors"]:
                     features_number += (4*sensor_config['lasers_count'])
                 else:
@@ -204,7 +204,7 @@ class ContinuousObserveModifier_sensorPrev(ObservationWrapper):
 
         for sensor_name in self.follower_sensors.keys():
             sensor_config = self.follower_sensors[sensor_name]
-            if sensor_name == 'LeaderCorridor_Prev_lasers_v2' or sensor_config["sensor_class"] == 'LeaderCorridor_Prev_lasers_v2':
+            if sensor_name in ['LeaderCorridor_Prev_lasers_v2', "LeaderCorridor_Prev_lasers_v3"] or sensor_config["sensor_class"] in ['LeaderCorridor_Prev_lasers_v2', "LeaderCorridor_Prev_lasers_v3"]:
                 corridor_obs = obs[sensor_name]
                 assert len(corridor_obs.shape) == 2
                 assert corridor_obs.shape[0] == self.max_prev_obs
