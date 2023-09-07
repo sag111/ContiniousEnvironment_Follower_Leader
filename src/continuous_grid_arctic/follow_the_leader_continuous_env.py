@@ -1239,7 +1239,7 @@ class Game(gym.Env):
             for sensor_name, cur_sensor in self.follower.sensors.items():
                 cur_sensor.show(self)
 
-                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
+        pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
         #         if self.add_obstacles:
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3
@@ -1522,7 +1522,7 @@ class Game(gym.Env):
             start2 = m2.map[start2[0]][start2[1]]
             end2 = m2.map[goal2[0]][goal2[1]]
             dstar2 = Dstar(m2)
-            rx2, ry2, found_target_point = dstar2.run(start2, end2)
+            rx2, ry2, found_target_point_2 = dstar2.run(start2, end2)
             trajectory2 = []
             # trajectory = path[::-1]
             for i in range(len(rx2)):
@@ -1539,7 +1539,7 @@ class Game(gym.Env):
             start3 = m3.map[start3[0]][start3[1]]
             end3 = m3.map[goal3[0]][goal3[1]]
             dstar3 = Dstar(m3)
-            rx3, ry3, found_target_point = dstar3.run(start3, end3)
+            rx3, ry3, found_target_point_3 = dstar3.run(start3, end3)
             trajectory3 = []
             # trajectory = path[::-1]
             for i in range(len(rx3)):
@@ -1566,6 +1566,7 @@ class Game(gym.Env):
             # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
             # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
             # new_dstar_table.to_excel(path_tab_dstar, index=False)
+            found_target_point = found_target_point & found_target_point_2 & found_target_point_3
 
         return trajectory
 
@@ -1758,7 +1759,7 @@ class Game(gym.Env):
                                                    self.follower.speed,
                                                    self.follower.direction,
                                                    self.follower.rotation_speed], dtype=np.float32)
-        if self.cur_target_point == self.trajectory[-1]:
+        if len(self.trajectory) > 0 and self.cur_target_point == self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
         else:
             obs_dict["leader_target_point"] = self.cur_target_point
