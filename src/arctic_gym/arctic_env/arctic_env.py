@@ -21,6 +21,7 @@ from src.continuous_grid_arctic.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2_compas, GazeboLaserPrevSensor_compas
+from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2
 from src.continuous_grid_arctic.utils.misc import rotateVector
 
 
@@ -62,28 +63,28 @@ class ArcticEnv(RobotGazeboEnv):
         # TODO traker_v2 for history and corridor
         self.tracker_v2 = GazeboLeaderPositionsTracker_v2(host_object="arctic_robot",
                                                           sensor_name='LeaderTrackDetector',
-                                                          saving_period=self.trajectory_saving_period)
+                                                          saving_period=self.trajectory_saving_period,
+                                                          corridor_width=2,
+                                                          corridor_length=25)
 
         self.leader_history_v2 = self.tracker_v2.leader_positions_hist
         self.corridor_v2 = self.tracker_v2.corridor
 
-        self.laser = GazeboCorridor_Prev_lasers_v2_compas(host_object="arctic_robot",
-                                                          sensor_name='LeaderCorridor_Prev_lasers_v2_compas',
-                                                          react_to_green_zone=True,
-                                                          react_to_safe_corridor=True,
-                                                          react_to_obstacles=True,
-                                                          front_lasers_count=6,
-                                                          back_lasers_count=6,
-                                                          laser_length=8)
+        self.laser = GazeboCorridor_Prev_lasers_v2(host_object="arctic_robot",
+                                                   sensor_name='LeaderCorridor_Prev_lasers_v2_compas',
+                                                   react_to_green_zone=True,
+                                                   react_to_safe_corridor=True,
+                                                   react_to_obstacles=True,
+                                                   lasers_count=12,
+                                                   laser_length=8)
 
-        self.laser_aux = GazeboLaserPrevSensor_compas(host_object="arctic_robot",
-                                                      sensor_name='LaserPrevSensor_compas',
-                                                      react_to_green_zone=True,
-                                                      react_to_safe_corridor=True,
-                                                      react_to_obstacles=True,
-                                                      front_lasers_count=12,
-                                                      back_lasers_count=12,
-                                                      laser_length=4)
+        self.laser_aux = GazeboCorridor_Prev_lasers_v2(host_object="arctic_robot",
+                                                       sensor_name='LaserPrevSensor_compas',
+                                                       react_to_green_zone=True,
+                                                       react_to_safe_corridor=True,
+                                                       react_to_obstacles=True,
+                                                       lasers_count=24,
+                                                       laser_length=4)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
