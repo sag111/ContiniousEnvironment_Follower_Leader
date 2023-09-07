@@ -36,6 +36,7 @@ except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 AVG_FRAMES_PER_SECOND = 100
+DEBUG = True
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
 # как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
@@ -97,6 +98,9 @@ class Game(gym.Env):
                  bear_size=(0.5, 0.5),
                  bridge_size=(80, 40), # ширина, длина в пикселях
                  return_render_matrix=True,
+                 ignore_follower_collisions=False,
+                 path_finding_iterations=15000,
+                 leader_margin=1.5,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -171,10 +175,18 @@ class Game(gym.Env):
             Размеры ведущего робота (высота, ширина) в метрах
         return_render_matrix (bool):
             должна ли функция рендера возвращать картинку матрицей. Для видео и симуляций надо, для реалтайма лучше выкличить, чтоб быстрее работало.
+        ignore_follower_collisions (bool):
+            игнорировать столкновения с ведомым (рекомендуется использовать во время подбора тестовых маршрутов)
+        path_finding_iterations (int):
+            если используется итеративный алгоритм поиска пути для лидера, сколько итераций максимально допустимо
+        leader_margin (float):
+            дополнительный отступ между лидером и препятствиями, который учитывается при расчёте маршрута
         """
 
         # нужно для сохранения видео
         self.metadata = {"render.modes": ["rgb_array"]}
+        if DEBUG:
+            self.debug_info = {}
         # Здесь можно задать дополнительные цвета в формате RGB
         self.colours = {
             'white': (255, 255, 255),
@@ -189,22 +201,26 @@ class Game(gym.Env):
         pygame.font.init()
         self.font = pygame.font.SysFont('Arial', 30)
         self.return_render_matrix = return_render_matrix
+        self.ignore_follower_collisions = ignore_follower_collisions
 
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
                     "video.frames_per_second": framerate}  # "human" вроде не обязательно
         self.constant_follower_speed = constant_follower_speed
         self.path_finding_algorythm = path_finding_algorythm
+        self.path_finding_iterations = path_finding_iterations
 
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
         self.bridge_size = bridge_size
         self.step_grid = step_grid
+        self.leader_margin = leader_margin
         self.accumulated_penalty = 0  # штраф, который копится, если долго не получаем отрицательной награды
         # Генерация финишной точки
         self.finish_point = (10, 10)  # np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
         self.multiple_end_points = multiple_end_points
+        self.found_target_point = False
         if multiple_end_points:
             if path_finding_algorythm != "dstar":
                 raise NotImplementedError("Only dstar pathfinding function supports multiple end points. "
@@ -409,9 +425,12 @@ class Game(gym.Env):
 #             print("file not found")
 
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
+        if DEBUG:
+            self.debug_info = {}
         self.step_count = 0
         self.accumulated_penalty = 0
         self.cur_speed_multiplier = 1
+        self.found_target_point = False
 
         #         valid_trajectory = False
 
@@ -607,7 +626,7 @@ class Game(gym.Env):
 
         obstacle_size = 50
         bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 4,
-                                       self.obstacles1.rectangle.bottom - self.leader.height*1.5,
+                                       self.obstacles1.rectangle.bottom - self.leader.height * self.leader_margin,
                                        self.obstacles1.rectangle.width + 8 * self.leader.width,
                                        self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 3 * self.leader.height)
         for i in range(self.obstacle_number):
@@ -921,7 +940,7 @@ class Game(gym.Env):
         self.follower.move()
 
         # определение столкновения ведомого с препятствиями
-        if self._collision_check(self.follower):
+        if not self.ignore_follower_collisions and self._collision_check(self.follower):
             self.crash = True
             self.done = True
             info["mission_status"] = "fail"
@@ -1460,7 +1479,7 @@ class Game(gym.Env):
         #m = Map(150, 100)
 
         ox, oy = [], []
-        margin = int(1.5*max(self.leader.width, self.leader.height) // self.step_grid)
+        margin = int(self.leader_margin * max(self.leader.width, self.leader.height) // self.step_grid)
 
         for obst in self.obstacles + [self.obstacles1, self.obstacles2]:
             position_on_map = (int(obst.start_position[0] // self.step_grid), int(obst.start_position[1] // self.step_grid))
@@ -1501,8 +1520,13 @@ class Game(gym.Env):
                 int(self.finish_point[1] / self.step_grid)]
         start = m.map[start[0]][start[1]]
         end = m.map[goal[0]][goal[1]]
-        dstar = Dstar(m)
-        rx, ry, found_target_point = dstar.run(start, end)
+        dstar = Dstar(m, self.path_finding_iterations)
+        if DEBUG:
+            t_1 = time.time()
+        rx, ry, self.found_target_point = dstar.run(start, end)
+        if DEBUG:
+            t_2 = time.time()
+            self.debug_info["path_finding_time"] = t_2 - t_1
         trajectory = []
         # trajectory = path[::-1]
         for i in range(len(rx)):
@@ -1566,7 +1590,7 @@ class Game(gym.Env):
             # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
             # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
             # new_dstar_table.to_excel(path_tab_dstar, index=False)
-            found_target_point = found_target_point & found_target_point_2 & found_target_point_3
+            self.found_target_point = self.found_target_point & found_target_point_2 & found_target_point_3
 
         return trajectory
 
