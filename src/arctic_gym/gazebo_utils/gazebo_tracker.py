@@ -8,16 +8,15 @@ from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker_v2
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_lasers
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_Prev_lasers_v2_compas
 from src.continuous_grid_arctic.utils.sensors import LaserPrevSensor_compas
+from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_Prev_lasers_v2
 
 from collections import deque
 
 
 class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
 
-    def __init__(self, host_object, sensor_name, saving_period):
-        super(GazeboLeaderPositionsTracker_v2, self).__init__(host_object,
-                                                              sensor_name,
-                                                              saving_period=saving_period)
+    def __init__(self, *args, **kwargs):
+        super(GazeboLeaderPositionsTracker_v2, self).__init__(*args, **kwargs)
 
     def scan(self, leader_position, follower_position, follower_orientation, delta):
         """
@@ -189,6 +188,115 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         # print("ИСТОРИЯ И КОРИДОР", self.leader_positions_hist)
 
         return self.leader_positions_hist, self.corridor
+
+
+class GazeboCorridor_Prev_lasers_v2(LeaderCorridor_Prev_lasers_v2):
+
+    def __init__(self, *args, **kwargs):
+        super(GazeboCorridor_Prev_lasers_v2, self).__init__(*args, **kwargs)
+
+    def collect_obstacle_edges(self, corridor, cur_object_points_1, cur_object_points_2):
+        obstacle_lines = list()
+        if self.react_to_safe_corridor:
+            for i in range(len(corridor) - 1):
+                obstacle_lines.append([corridor[i][0], corridor[i + 1][0]])
+                obstacle_lines.append([corridor[i][1], corridor[i + 1][1]])
+        if self.react_to_green_zone:
+            obstacle_lines.append([corridor[0][0], corridor[0][1]])
+            obstacle_lines.append([corridor[-1][0], corridor[-1][1]])
+        if self.react_to_obstacles:
+            cur_object_points_1 = np.array(cur_object_points_1)
+            cur_object_points_2 = np.array(cur_object_points_2)
+
+            for i in range(len(cur_object_points_1) - 1):
+                if np.linalg.norm(cur_object_points_1[i] - cur_object_points_1[i + 1]) < 0.5:
+                    obstacle_lines.append([cur_object_points_1[i], cur_object_points_1[i + 1]])
+                else:
+                    obstacle_lines.append([cur_object_points_1[i], cur_object_points_2[i]])
+
+        obstacle_lines = np.array(obstacle_lines, dtype=np.float32)
+
+        return obstacle_lines
+
+    def scan(self, follower_position, follower_orientation, history, corridor, cur_object_points_1, cur_object_points_2):
+        _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
+        direction = np.degrees(yaw)
+        follower_orientation = direction
+
+        for i in range(self.lasers_count):
+            self.lasers_end_points.append(follower_position + rotateVector(np.array([self.laser_length, 0]),
+                                                            (follower_orientation-45) + i*self.laser_period))
+
+        if len(corridor) > 1:
+            corridor_lines = self.collect_obstacle_edges(corridor, cur_object_points_1, cur_object_points_2)
+            history.pop(0)
+            history.append(corridor_lines)
+
+            all_obs_list = []
+
+            for j, corridor_lines_item in enumerate(history):
+                corridor_lines_item = np.array(corridor_lines_item)
+
+                lasers_values_item = []
+                self.lasers_collides_item = []
+                for laser_end_point in self.lasers_end_points:
+                    rez = LeaderCorridor_lasers.intersect(corridor_lines_item[:, 0, :],
+                                                          corridor_lines_item[:, 1, :],
+                                                          np.array([follower_position]),
+                                                          np.array([laser_end_point]))
+                    intersected_line_item = corridor_lines_item[rez]
+
+                    if len(intersected_line_item) > 0:
+                        x = LeaderCorridor_lasers.seg_intersect(intersected_line_item[:, 0, :],
+                                                                intersected_line_item[:, 1, :],
+                                                                np.array([follower_position]),
+                                                                np.array([laser_end_point]))
+                        # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                        # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                        exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
+                        norms = np.linalg.norm(x - follower_position, axis=1)
+                        lasers_values_item.append(np.min(norms))
+                        closest_dot_idx = np.argmin(np.linalg.norm(x - follower_position, axis=1))
+                        self.lasers_collides_item.append(x[closest_dot_idx])
+                    else:
+                        self.lasers_collides_item.append(laser_end_point)
+
+                obs_item = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+                for i, collide in enumerate(self.lasers_collides_item):
+                    obs_item[i] = np.linalg.norm(collide - follower_position)
+
+                if self.pad_sectors:
+                    front = np.zeros(len(obs_item))
+                    right = np.zeros(len(obs_item))
+                    behind = np.zeros(len(obs_item))
+                    left = np.zeros(len(obs_item))
+
+                    lasers_in_sector = self.lasers_count / 4
+                    for i in range(len(obs_item)):
+                        if i < lasers_in_sector:
+                            front[i] = obs_item[i]
+                        elif lasers_in_sector <= i < 2 * lasers_in_sector:
+                            right[i] = obs_item[i]
+                        elif 2 * lasers_in_sector <= i < 3 * lasers_in_sector:
+                            behind[i] = obs_item[i]
+                        else:
+                            left[i] = obs_item[i]
+
+                    # front = np.array([obs_item[0], obs_item[1], 0, 0, 0, 0, 0, 0, 0, 0, 0, obs_item[11]])
+                    # right = np.array([0, 0, obs_item[2], obs_item[3], obs_item[4], 0, 0, 0, 0, 0, 0, 0])
+                    # behind = np.array([0, 0, 0, 0, 0, obs_item[5], obs_item[6], obs_item[7], 0, 0, 0, 0])
+                    # left = np.array([0, 0, 0, 0, 0, 0, 0, 0, obs_item[8], obs_item[9], obs_item[10], 0])
+                    res_out = np.concatenate((front, right, behind, left), axis=None)
+                else:
+                    res_out = obs_item
+
+                all_obs_list.append(res_out)
+
+            all_obs_arr = np.array(all_obs_list)
+            # print(all_obs_arr)
+        #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr)
+        #             print('ALL CORIDOR OBS ARR 1: ', all_obs_arr.shape)
+        return all_obs_arr
 
 
 class GazeboCorridor_Prev_lasers_v2_compas(LeaderCorridor_Prev_lasers_v2_compas):
