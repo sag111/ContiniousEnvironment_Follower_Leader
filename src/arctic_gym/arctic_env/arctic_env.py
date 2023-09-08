@@ -76,15 +76,17 @@ class ArcticEnv(RobotGazeboEnv):
                                                    react_to_safe_corridor=True,
                                                    react_to_obstacles=True,
                                                    lasers_count=12,
-                                                   laser_length=8)
+                                                   laser_length=8,
+                                                   max_prev_obs=5)
 
         self.laser_aux = GazeboCorridor_Prev_lasers_v2(host_object="arctic_robot",
                                                        sensor_name='LaserPrevSensor_compas',
-                                                       react_to_green_zone=True,
-                                                       react_to_safe_corridor=True,
+                                                       react_to_green_zone=False,
+                                                       react_to_safe_corridor=False,
                                                        react_to_obstacles=True,
                                                        lasers_count=24,
-                                                       laser_length=4)
+                                                       laser_length=8,
+                                                       max_prev_obs=5)
 
         # Информация о ведущем и ведомом
         self.leader_position = None
@@ -294,7 +296,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         obs = self._get_obs()
 
-        print(obs[-1][:48])
+        print(obs[-1])
 
         """"""
         self._is_done(self.leader_position, self.follower_position)
@@ -464,7 +466,7 @@ class ArcticEnv(RobotGazeboEnv):
 
     def _get_obs_points(self, points_list):
         """
-        Функция обрабатывающая облако точек лидара для веделения препятствий. Первоначально функция фильтрует точки
+        Функция обрабатывающая облако точек лидара для выделения препятствий. Первоначально функция фильтрует точки
         поверхности методом CSF (Cloth Simulation Filter), оставляя только точки препятствий. Далее, нормализует их
         относительно локального положения ведомого. После, полученный список проэцируется на 2D плоскость, уменьшается
         дискретность и округляются значения координат оставшихся точек. Список добавляется вторым соседними мнимыми точками
@@ -485,7 +487,7 @@ class ArcticEnv(RobotGazeboEnv):
         #### Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
-        max_dist = 4
+        max_dist = 8
         # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
         xyz = [(x, y, z) for x, y, z in points_list if x**2 + y**2 <= max_dist**2]  # get xyz
         # print('OTHER POINTS in radius', len(xyz))
