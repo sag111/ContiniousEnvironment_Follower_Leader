@@ -13,14 +13,12 @@ import matplotlib.pyplot as plt
 import sensor_msgs.point_cloud2 as pc2
 
 
-from math import atan, tan, sqrt, cos, sin
-from gym.spaces import Discrete, Box
+from math import atan, tan, cos, sin
 from scipy.spatial import distance
 
 from src.continuous_grid_arctic.utils.reward_constructor import Reward
 from src.arctic_gym.base_arctic_env.robot_gazebo_env import RobotGazeboEnv
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboLeaderPositionsTracker_v2
-from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2_compas, GazeboLaserPrevSensor_compas
 from src.arctic_gym.gazebo_utils.gazebo_tracker import GazeboCorridor_Prev_lasers_v2
 from src.continuous_grid_arctic.utils.misc import rotateVector
 
@@ -32,7 +30,6 @@ class ArcticEnv(RobotGazeboEnv):
 
     def __init__(self, name,
                  object_detection_endpoint,
-                 discrete_action=False,
                  time_for_action=0.2,
                  trajectory_saving_period=3,
                  leader_max_speed=1.0,
@@ -46,7 +43,6 @@ class ArcticEnv(RobotGazeboEnv):
         super(ArcticEnv, self).__init__()
 
         self.object_detection_endpoint = object_detection_endpoint
-        self.discrete_action = discrete_action
         self.time_for_action = time_for_action
         self.trajectory_saving_period = trajectory_saving_period
         self.leader_max_speed = leader_max_speed
@@ -60,15 +56,11 @@ class ArcticEnv(RobotGazeboEnv):
         self.close_coeff = close_coeff
 
         # Периодическое сохранение позиций ведущего в Gazebo
-        # TODO traker_v2 for history and corridor
         self.tracker_v2 = GazeboLeaderPositionsTracker_v2(host_object="arctic_robot",
                                                           sensor_name='LeaderTrackDetector',
                                                           saving_period=self.trajectory_saving_period,
                                                           corridor_width=2,
                                                           corridor_length=25)
-
-        self.leader_history_v2 = self.tracker_v2.leader_positions_hist
-        self.corridor_v2 = self.tracker_v2.corridor
 
         self.laser = GazeboCorridor_Prev_lasers_v2(host_object="arctic_robot",
                                                    sensor_name='LeaderCorridor_Prev_lasers_v2_compas',
@@ -87,14 +79,6 @@ class ArcticEnv(RobotGazeboEnv):
                                                        lasers_count=24,
                                                        laser_length=8,
                                                        max_prev_obs=5)
-
-        # Информация о ведущем и ведомом
-        self.leader_position = None
-        self.follower_position = None
-        self.follower_orientation = None
-
-        self.leader_position_delta = None
-        self.follower_position_delta = [0, 0]
 
         # dataclass наград
         self.reward = Reward()
@@ -707,7 +691,7 @@ class ArcticEnv(RobotGazeboEnv):
             cam_size = (640, 480)
             theta = np.arctan((2 * y - cam_size[0]) / cam_size[0] * np.tan(hfov / 2))
             # получаем ориентацию робота с gazebo и складываем с отклонением до ведущего
-            yaw = self.yaw_ang
+
             theta_new = yaw + theta + camera_yaw
             lead_results = {'length': x, 'phi': theta_new}
 
@@ -717,7 +701,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         else:
             x = 0
-            yaw = self.yaw_ang
+
             theta_new = yaw + camera_yaw
             lead_results = {'length': x, 'phi': theta_new}
             self.theta_camera_yaw = camera_yaw
