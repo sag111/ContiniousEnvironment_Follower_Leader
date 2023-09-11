@@ -498,11 +498,11 @@ class ArcticEnv(RobotGazeboEnv):
 
     @staticmethod
     def _calculate_points_angles_objects(obj: dict,
-                                        width: int = 640,
-                                        height: int = 480,
-                                        hov: float = 80.0,
-                                        fov: float = 64.0,
-                                        scale: int = 10) -> dict:
+                                         width: int = 640,
+                                         height: int = 480,
+                                         hov: float = 80.0,
+                                         fov: float = 64.0,
+                                         scale: int = 10) -> dict:
         """
         Вычисление углов по значениям bounding box, вычисления основано на цилиндрической системе координат,
         центр изображения - центр системы координат
@@ -832,7 +832,7 @@ class ArcticEnv(RobotGazeboEnv):
 
     def _get_delta_position(self):
         """
-        Функция определения перемещения за одну итерацию. Определяется перемещение ведомого по координатам x и y за один step.
+        Определяет перемещение робота за один шаг
         Args:
 
         Returns:
