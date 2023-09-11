@@ -532,10 +532,11 @@ class ArcticEnv(RobotGazeboEnv):
                 if dist <= max_dist and k1_x <= i[1] <= k2_x and theta2_x <= i[1] <= theta1_x and phi2_x <= i[2] <= phi1_x:
                     object_coord.append(i[:3])
 
-                    # if dist <= length_to_leader:
-                    #     length_to_leader = dist
-                elif dist >= 1 and obj["name"]:
-                    other_points.append(i[:3])
+                #     # if dist <= length_to_leader:
+                #     #     length_to_leader = dist
+                # elif dist >= 1 and obj["name"]:
+
+                other_points.append(i[:3])
 
             # Отсутствие точек object_coord в области объекта
             try:
