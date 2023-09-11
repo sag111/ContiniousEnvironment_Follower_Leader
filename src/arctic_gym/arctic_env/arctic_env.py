@@ -360,7 +360,7 @@ class ArcticEnv(RobotGazeboEnv):
         lidar = self.sub.get_lidar()
         self.lidar_points = pc2.read_points(lidar, skip_nans=False, field_names=("x", "y", "z", "ring"))
 
-    def _get_obs_points(self, points_list):
+    def _get_obs_points(self, points_list, follower_orientation):
         """
         Функция обрабатывающая облако точек лидара для выделения препятствий. Первоначально функция фильтрует точки
         поверхности методом CSF (Cloth Simulation Filter), оставляя только точки препятствий. Далее, нормализует их
@@ -383,9 +383,10 @@ class ArcticEnv(RobotGazeboEnv):
         #### Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
+        min_dist = 1
         max_dist = 8
         # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
-        xyz = [(x, y, z) for x, y, z in points_list if x**2 + y**2 <= max_dist**2]  # get xyz
+        xyz = [(x, y, z) for x, y, z in points_list if min_dist <= x**2 + y**2 <= max_dist**2]  # get xyz
         # print('OTHER POINTS in radius', len(xyz))
 
         if len(xyz) > 0:
