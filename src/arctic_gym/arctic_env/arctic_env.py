@@ -682,21 +682,8 @@ class ArcticEnv(RobotGazeboEnv):
         """
         Выбор дискретных или непрерывных действий
         """
-        if self.discrete_action:
-            if action == 0:
-                discrete_action = (0.5, 0.0)
-            elif action == 1:
-                discrete_action = (0.5, 0.5)
-            elif action == 2:
-                discrete_action = (0.5, -0.5)
-            else:
-                discrete_action = (0.0, 0.0)
-
-            self.pub.move_base(discrete_action[0], discrete_action[1])
-            rospy.sleep(self.time_for_action)
-        else:
-            self.pub.move_base(action[0], action[1])
-            rospy.sleep(self.time_for_action)
+        self.pub.move_base(*action)
+        rospy.sleep(self.time_for_action)
 
     def _is_done(self, leader_position, follower_position, follower_orientation):
         """
