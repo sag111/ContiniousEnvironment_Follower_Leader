@@ -214,7 +214,7 @@ class GazeboCorridor_Prev_lasers_v2(LeaderCorridor_Prev_lasers_v2):
 
         return obstacle_lines
 
-    def scan(self, follower_position, follower_orientation, history, corridor, cur_object_points_1, cur_object_points_2):
+    def scan(self, follower_position, follower_orientation, corridor, cur_object_points_1, cur_object_points_2):
         self.lasers_collides = []
         self.lasers_end_points = []
 
@@ -226,12 +226,12 @@ class GazeboCorridor_Prev_lasers_v2(LeaderCorridor_Prev_lasers_v2):
 
         if len(corridor) > 1:
             corridor_lines = self.collect_obstacle_edges(corridor, cur_object_points_1, cur_object_points_2)
-            history.pop(0)
-            history.append(corridor_lines)
+            self.history_obstacles_list.pop(0)
+            self.history_obstacles_list.append(corridor_lines)
 
             all_obs_list = []
 
-            for j, corridor_lines_item in enumerate(history):
+            for j, corridor_lines_item in enumerate(self.history_obstacles_list):
                 corridor_lines_item = np.array(corridor_lines_item)
 
                 lasers_values_item = []
