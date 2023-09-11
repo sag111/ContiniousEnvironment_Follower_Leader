@@ -15,7 +15,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
     def __init__(self, *args, **kwargs):
         super(GazeboLeaderPositionsTracker_v2, self).__init__(*args, **kwargs)
 
-    def scan(self, leader_position, follower_position, follower_orientation, delta):
+    def scan(self, leader_position, follower_orientation, delta, follower_position=[0, 0]):
         """
         Версия сохранения координат для Gazebo, без построения корридора
         Args:
@@ -29,7 +29,6 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
 
         delta_cx = delta['delta_x']
         delta_cy = delta['delta_y']
-        follower_position = [0, 0]
         self.generate_corridor = True
         # ширина коридора
         self.max_dev = 2
@@ -39,9 +38,6 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
         # длина коридора
         max_distance = 25
         self.saving_period = 3
-
-        # print('LEADER', leader_position)
-        # print('FOLLOWER', follower_position)
 
         # 1) Пересчет истории
         if len(self.leader_positions_hist) > 0:
@@ -213,7 +209,7 @@ class GazeboCorridor_Prev_lasers_v2(LeaderCorridor_Prev_lasers_v2):
 
         return obstacle_lines
 
-    def scan(self, follower_position, follower_orientation, corridor, cur_object_points_1, cur_object_points_2):
+    def scan(self, follower_orientation, corridor, cur_object_points_1, cur_object_points_2, follower_position=[0, 0]):
         self.lasers_collides = []
         self.lasers_end_points = []
 
