@@ -445,33 +445,29 @@ class ArcticEnv(RobotGazeboEnv):
         """
         Получение информации о позиции, направлении и скорости ведущего и ведомго
         """
-        target_odom = self.sub.get_odom_target()
-        arctic_odom = self.sub.get_odom()
+        leader_odom = self.sub.get_odom_target()
+        robot_odom = self.sub.get_odom()
 
-        leader_position = np.array([np.round(target_odom.pose.pose.position.x, decimals=2),
-                                    np.round(target_odom.pose.pose.position.y, decimals=2)])
+        leader_pos = np.array([
+            leader_odom.pose.pose.position.x,
+            leader_odom.pose.pose.position.y
+        ])
 
-        follower_position = np.array([np.round(arctic_odom.pose.pose.position.x, decimals=2),
-                                      np.round(arctic_odom.pose.pose.position.y, decimals=2)])
+        robot_pos = np.array([
+            robot_odom.pose.pose.position.x,
+            robot_odom.pose.pose.position.y
+        ])
 
-        quaternion = arctic_odom.pose.pose.orientation
-        follower_orientation_list = [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
+        robot_quat = [
+            robot_odom.pose.pose.orientation.x,
+            robot_odom.pose.pose.orientation.y,
+            robot_odom.pose.pose.orientation.z,
+            robot_odom.pose.pose.orientation.w
+        ]
 
-        return leader_position, follower_position, follower_orientation_list
+        robot_ang = np.array(tf.transformations.euler_from_quaternion(robot_quat))
 
-    @staticmethod
-    def _get_leader_local_pose_info(leader_position, follower_position):
-        local_lead_pose = leader_position - follower_position
-        return local_lead_pose
-
-    @staticmethod
-    def _get_length_phi_lead_from_xy(leader_pose_local):
-        lead_x = leader_pose_local[0]
-        lead_y = leader_pose_local[1]
-        length = sqrt(lead_x**2 + lead_y**2)
-        phi = atan(lead_y/lead_x)
-        results = {'length': length, 'phi': phi}
-        return results
+        return leader_pos, robot_pos, robot_ang
 
     @staticmethod
     def _get_xy_lead_from_length_phi(length_phi):
