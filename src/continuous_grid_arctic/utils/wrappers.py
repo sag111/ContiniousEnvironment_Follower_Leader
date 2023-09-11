@@ -1,7 +1,7 @@
 import gym
 from collections import deque
 import numpy as np
-from gym import ObservationWrapper
+from gym import Wrapper, ObservationWrapper
 from gym.spaces import Box
 from warnings import warn
 try:
@@ -809,3 +809,16 @@ class LeaderTrajectory_v0(ObservationWrapper):
         observation = self.env.reset(**kwargs)
         self.leader_positions_hist = list()
         return self.observation(observation)
+
+class SkipBadSeeds(Wrapper):
+    """
+    Враппер для пропуска
+    """
+    def __init__(self, env):
+        super().__init__(env)
+
+    def reset(self, **kwargs):
+        observation = self.env.reset(**kwargs)        
+        while not self.env.found_target_point:
+            observation = self.env.reset(**kwargs)
+        return observation
