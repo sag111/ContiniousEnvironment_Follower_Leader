@@ -83,18 +83,144 @@ class ArcticEnv(RobotGazeboEnv):
         # dataclass наград
         self.reward = Reward()
 
-        if self.discrete_action:
-            self.action_space = Discrete(4)
-        else:
-            self.action_space = Box(
-                np.array((0, 0.57), dtype=np.float32),
-                np.array((1.0, -0.57), dtype=np.float32)
-            )
+    def _init_publishers(self):
+        """
+        Инициализация значений Publishers
+        """
+        self.pub.update_corridor([])
+        self.pub.set_camera_pitch(0)
+        self.pub.set_camera_yaw(0)
+        self.pub.update_follower_path()
+        self.pub.update_target_path()
 
-        self.observation_space = Box(
-            np.zeros(7, dtype=np.float32),
-            np.ones(7, dtype=np.float32)
-        )
+    def _init_lasers(self):
+        """
+        Инициализация значений сенсоров
+        """
+        self.laser.reset()
+        self.laser_aux.reset()
+        self.tracker_v2.reset()
+
+    def _init_env_variables(self):
+        """
+        Инициализация переменных среды
+        """
+        # Green Zone
+        self.green_zone_trajectory_points = list()
+        self.leader_factual_trajectory = list()
+        self.follower_factual_trajectory = list()
+
+        self.cumulated_episode_reward = 0.0
+
+        self.step_count = 0
+        self.done = False
+        self.info = {}
+
+        self.saving_counter = 0
+
+        self.is_in_box = False
+        self.is_on_trace = False
+        self.follower_too_close = False
+        self.crash = False
+
+        self.code = 0
+        self.text = ''
+
+        self.steps_out_box = 0
+
+        self.history_time = list()
+        self.delta_time = 0
+
+        self.history_twist_x = list()
+        self.delta_twist_x = 0
+
+        self.history_twist_y = list()
+        self.delta_twist_y = 0
+
+        self.theta_camera_yaw = 0
+
+        self.end_stop_count = 0
+
+        # для тестов
+        self.count_leader_steps_reward = 1
+        self.count_leader_reward = 0
+        self.leader_finish = False
+        self.count_stop_leader = 0
+
+    def reset(self):
+        self._init_publishers()
+        self._init_lasers()
+        self._init_env_variables()
+
+        obs, _, _, _ = self.step([0, 0])
+
+        return obs
+
+    def step(self, action: list):
+
+        # print(f'Actions: linear - {action[0]}, angular - {action[1]}')
+        self._set_action(action)
+
+        # delta x, y
+        follower_delta_position = self._get_delta_position()
+
+        # x, y, quaternion
+        leader_position, follower_position, follower_orientation = self._get_positions()
+
+        # обновление путей в rviz
+        self.pub.update_follower_path(*follower_position)
+        self.pub.update_target_path(*leader_position)
+
+        # JSON {object: name, xmin, ymin, width, height, score}
+        ssd_camera_objects = self.get_ssd_lead_information()
+
+        # функции с переводом в цилиндрические координаты, гистограмма, удаление пересечений с bb машины
+        length_to_leader, other_points = self.calculate_length_to_leader(ssd_camera_objects)
+
+        # расстояние до лидера и угол = ориентация робота + угол отклонения от центра изображения + ориентация камеры
+        self.camera_lead_info = self._get_camera_lead_info(ssd_camera_objects, length_to_leader, follower_orientation)
+
+        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
+        leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
+
+
+        # Получение истории и коридора
+        self.leader_history_v2, corridor_v2 = self.tracker_v2.scan(leader_position_new_phi,
+                                                                        follower_position,
+                                                                        follower_orientation,
+                                                                        follower_delta_position)
+
+        # рисуем коридор
+        cor = np.array(corridor_v2) + follower_position
+        self.pub.update_corridor(cor)
+
+        # Получение точек препятствий и формирование obs
+        cur_object_points_1, cur_object_points_2 = self._get_obs_points(other_points, follower_orientation)
+
+        # наблюдения коридора
+        self.laser_values = self.laser.scan([0.0, 0.0],
+                                            follower_orientation,
+                                            corridor_v2,
+                                            cur_object_points_1,
+                                            cur_object_points_2)
+
+        # наблюдения препятствий
+        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0],
+                                                    follower_orientation,
+                                                    corridor_v2,
+                                                    cur_object_points_1,
+                                                    cur_object_points_2)
+
+        obs = self._get_obs()
+
+        self._safe_zone(leader_position, follower_position)
+
+        self._is_done(leader_position, follower_position, follower_orientation)
+
+        reward = self._compute_reward()
+        self.cumulated_episode_reward += reward
+
+        return obs, reward, self.done, self.info
 
     def set_goal(self, point):
         self.goal = point
