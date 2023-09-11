@@ -225,221 +225,11 @@ class ArcticEnv(RobotGazeboEnv):
     def set_goal(self, point):
         self.goal = point
 
-    def reset(self, move=True):
+    def _safe_zone(self, leader_position, follower_position):
+        first_dots_for_follower_count = int(distance.euclidean(follower_position, leader_position) * (self.leader_max_speed))
 
-        self.pub.update_corridor([])
-
-        zeros_item = [np.zeros((1, 2, 2)) for _ in range(5)]
-        self.history_obstacles_list = zeros_item
-        self.history_corridor_laser_list = zeros_item
-
-        self.pub.set_camera_pitch(0)
-        self.pub.set_camera_yaw(0)
-
-        self.pub.update_follower_path()
-        self.pub.update_target_path()
-
-        # self._reset_sim()
-        self._init_env_variables()
-        self.follower_delta_position = self._get_delta_position()
-
-        """для reset image data как в step()"""
-        self.leader_position, self.follower_position, self.follower_orientation = self._get_positions()
-        self.roll_ang, self.pitch_ang, self.yaw_ang = tf.transformations.euler_from_quaternion(
-            self.follower_orientation)
-
-        # Вызов основных функций
-        self.ssd_camera_objects = self.get_ssd_lead_information()
-        # self.get_lidar_points()
-        self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
-        self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
-        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
-        self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
-
-        # Получение истории и корридора
-        self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
-                                                                        self.follower_position,
-                                                                        self.follower_orientation,
-                                                                        self.follower_delta_position)
-        # Получение точек препятствий и формирование obs
-        self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
-
-        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.history_corridor_laser_list,
-                                            self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
-
-        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.history_obstacles_list,
-                                                    self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
-
-        obs = self._get_obs()
-        """"""
-        self._safe_zone()
-        self._is_done(self.leader_position, self.follower_position)
-
-        return obs
-
-    def _safe_zone(self):
-        first_dots_for_follower_count = int(distance.euclidean(self.follower_position, self.leader_position) * (self.leader_max_speed))
-
-        self.leader_factual_trajectory.extend(zip(np.linspace(self.follower_position[0], self.leader_position[0], first_dots_for_follower_count),
-                                                  np.linspace(self.follower_position[1], self.leader_position[1], first_dots_for_follower_count)))
-
-    def _reset_sim(self):
-        self._check_all_systems_ready()
-        self._set_init_pose()
-        self.srv.reset_world()
-        self._check_all_systems_ready()
-
-    def _check_all_systems_ready(self):
-        self.sub.check_all_subscribers_ready()
-        return True
-
-    def _set_init_pose(self):
-        # TODO: телепорты для ведущего и ведомого
-        self.pub.move_base(linear_speed=0.0,
-                           angular_speed=0.0)
-
-        return True
-
-    def _init_env_variables(self):
-        """
-        Инициализация переменных среды
-        """
-        # Green Zone
-        self.green_zone_trajectory_points = list()
-        self.leader_factual_trajectory = list()
-        self.follower_factual_trajectory = list()
-
-        # Sensors
-
-        self.tracker_v2.reset()
-
-        self.cumulated_episode_reward = 0.0
-        self._episode_done = False
-
-        self.step_count = 0
-        self.done = False
-        self.info = {}
-
-        self.leader_finished = False
-
-        self.saving_counter = 0
-
-        self.is_in_box = False
-        self.is_on_trace = False
-        self.follower_too_close = False
-        self.crash = False
-
-        self.code = 0
-        self.text = ''
-
-        self.steps_out_box = 0
-
-        self.history_time = list()
-        self.delta_time = 0
-
-        self.history_twist_x = list()
-        self.delta_twist_x = 0
-
-        self.history_twist_y = list()
-        self.delta_twist_y = 0
-
-        self.theta_camera_yaw = 0
-
-
-        self.leader_pose_from_cam_glob = list()
-        self.all_delta_pose = [0, 0]
-
-        self.end_stop_count = 0
-
-        # для тестов
-        self.count_leader_steps_reward = 1
-        self.count_leader_reward = 0
-        self.leader_finish = False
-        self.count_stop_leader = 0
-
-    def step(self, action):
-
-        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        log_linear = round(float(action[0]), 2)
-        log_angular = round(float(action[1]), 2)
-        print(f'Actions: linear - {log_linear}, angular - {log_angular}')
-        self._set_action(action)
-
-        self.follower_delta_position = self._get_delta_position()
-        """
-        Радар по позициям ведущего и ведомого
-        """
-        self.leader_position, self.follower_position, self.follower_orientation = self._get_positions()
-        self.roll_ang, self.pitch_ang, self.yaw_ang = tf.transformations.euler_from_quaternion(self.follower_orientation)
-
-        self.pub.update_follower_path(self.follower_position[0], self.follower_position[1])
-        self.pub.update_target_path(self.leader_position[0], self.leader_position[1])
-
-        # Вызов основных функций
-        self.ssd_camera_objects = self.get_ssd_lead_information()
-        # self.get_lidar_points()
-
-        self.length_to_leader, self.other_points = self.calculate_length_to_leader(self.ssd_camera_objects)
-        self.camera_lead_info = self._get_camera_lead_info(self.ssd_camera_objects, self.length_to_leader)
-        # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
-        self.leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
-
-
-        # Получение истории и корридора
-        self.leader_history_v2, self.corridor_v2 = self.tracker_v2.scan(self.leader_position_new_phi,
-                                                                        self.follower_position,
-                                                                        self.follower_orientation,
-                                                                        self.follower_delta_position)
-
-        # рисуем коридор
-        cor = np.array(self.corridor_v2) + self.follower_position
-        self.pub.update_corridor(cor)
-
-        # Получение точек препятствий и формирование obs
-        self.cur_object_points_1, self.cur_object_points_2 = self._get_obs_points(self.other_points)
-
-        self.laser_values = self.laser.scan([0.0, 0.0], self.follower_orientation, self.history_corridor_laser_list,
-                                            self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
-
-        self.laser_aux_values = self.laser_aux.scan([0.0, 0.0], self.follower_orientation, self.history_obstacles_list,
-                                                    self.corridor_v2, self.cur_object_points_1, self.cur_object_points_2)
-
-        obs = self._get_obs()
-
-        print(obs[-1])
-
-        """"""
-        self._is_done(self.leader_position, self.follower_position)
-        # log_obs = list(map(lambda x: round(x, 2), obs))
-        # print(f'Наблюдения: {log_obs}')
-        reward = self._compute_reward()
-        self.cumulated_episode_reward += reward
-        # print(self.cumulated_episode_reward)
-
-        log_reward = reward
-        if self.is_in_box:
-            in_box = self.is_in_box
-        else:
-            in_box = self.is_in_box
-            self.steps_out_box += 1
-
-        if self.is_on_trace:
-            on_trace = self.is_on_trace
-        else:
-            on_trace = self.is_on_trace
-
-        if self.follower_too_close:
-            too_close = self.follower_too_close
-        else:
-            too_close = self.follower_too_close
-        # print(f'Награда за шаг: {log_reward}, в зоне следования: {in_box}, на пути: {on_trace}, слишком близко: {too_close}')
-
-        # if self.done:
-        #     # print(f"Количество шагов: {self.step_count}, шагов вне зоны следования: {self.steps_out_box}")
-        #     # print(f"Общая награда: {np.round(self.cumulated_episode_reward, decimals=2)}")
-        #     # self._test_sys()
-
-        return obs, reward, self.done, self.info
+        self.leader_factual_trajectory.extend(zip(np.linspace(follower_position[0], leader_position[0], first_dots_for_follower_count),
+                                                  np.linspace(follower_position[1], leader_position[1], first_dots_for_follower_count)))
 
     def _get_positions(self):
         """
@@ -624,7 +414,7 @@ class ArcticEnv(RobotGazeboEnv):
             # получение списка неповторяющихся точек в проекции на 2D
             list_fil = list()
             list_fil_2 = list()
-            yaw = np.degrees(self.yaw_ang)
+            yaw = np.degrees(follower_orientation)[2]
             for item in list_to_arr:
                 if item not in list_fil:
                     list_fil.append(item)
@@ -787,7 +577,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         return length_to_leader, other_points
 
-    def _get_camera_lead_info(self, camera_objects, length_to_leader):
+    def _get_camera_lead_info(self, camera_objects, length_to_leader, follower_orientation):
         """
         Функция определения угла отклонения ведущего относительно ведомого на основе информации с камеры и расстоянии до
         ведущего. Возвращает результат о расстояние и угле отклонения ведущего в локальных координатах
@@ -806,6 +596,7 @@ class ArcticEnv(RobotGazeboEnv):
         camera_yaw_state_info = self.sub.get_camera_yaw_state()
         camera_yaw = camera_yaw_state_info.process_value
 
+        yaw = follower_orientation[2]
         if bool(info_lead) and length_to_leader is not None:
             y = (info_lead['xmin'] + info_lead['xmax']) / 2
             x = length_to_leader + 2.1
@@ -905,7 +696,7 @@ class ArcticEnv(RobotGazeboEnv):
             self.pub.move_base(action[0], action[1])
             rospy.sleep(self.time_for_action)
 
-    def _is_done(self, leader_position, follower_position):
+    def _is_done(self, leader_position, follower_position, follower_orientation):
         """
         Функция проверки статусов выполнения задачи и нештатных ситуаций.
         Args:
@@ -941,7 +732,7 @@ class ArcticEnv(RobotGazeboEnv):
 
         # Информирование (global)
         self._trajectory_in_box()
-        self._check_agent_position(self.follower_position, self.leader_position)
+        self._check_agent_position(follower_position, leader_position)
 
         if self.saving_counter % self.trajectory_saving_period == 0:
             self.leader_factual_trajectory.append(leader_position)
@@ -967,7 +758,7 @@ class ArcticEnv(RobotGazeboEnv):
         else:
             return 0
 
-        if self.roll_ang > 1 or self.roll_ang < -1 or self.pitch_ang > 1 or self.pitch_ang < -1:
+        if -1 > follower_orientation[0] > 1 or -1 > follower_orientation[1] > 1:
             self.info["mission_status"] = "fail"
             self.info["agent_status"] = "the_robot_turned_over"
             self.crash = True
