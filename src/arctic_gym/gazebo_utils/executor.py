@@ -64,7 +64,7 @@ class Executor:
 
         self.env.set_goal(point_b[:2])
 
-        obs = self.env.reset(move=False)
+        obs = self.env.reset()
 
         camera_flag = True
         done = False
@@ -106,7 +106,7 @@ class Executor:
                     self.env.pub.target_cancel_action()
 
             else:
-                action *= 2.5
+                action *= 2
 
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
