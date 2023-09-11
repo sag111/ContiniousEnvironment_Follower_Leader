@@ -6,8 +6,6 @@ from math import cos, sin, radians
 from src.continuous_grid_arctic.utils.misc import rotateVector, angle_correction
 from src.continuous_grid_arctic.utils.sensors import LeaderPositionsTracker_v2
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_lasers
-from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_Prev_lasers_v2_compas
-from src.continuous_grid_arctic.utils.sensors import LaserPrevSensor_compas
 from src.continuous_grid_arctic.utils.sensors import LeaderCorridor_Prev_lasers_v2
 
 from collections import deque
