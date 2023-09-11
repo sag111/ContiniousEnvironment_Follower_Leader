@@ -28,9 +28,7 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
             История позиций ведущего робота
         """
 
-        _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
-        direction = np.degrees(yaw)
-        follower_orientation = direction
+        follower_orientation = np.degrees(follower_orientation)[2]
 
         delta_cx = delta['delta_x']
         delta_cy = delta['delta_y']
@@ -222,9 +220,7 @@ class GazeboCorridor_Prev_lasers_v2(LeaderCorridor_Prev_lasers_v2):
         self.lasers_collides = []
         self.lasers_end_points = []
 
-        _, _, yaw = tf.transformations.euler_from_quaternion(follower_orientation)
-        direction = np.degrees(yaw)
-        follower_orientation = direction
+        follower_orientation = np.degrees(follower_orientation)[2]
 
         for i in range(self.lasers_count):
             self.lasers_end_points.append(follower_position + rotateVector(np.array([self.laser_length, 0]),
