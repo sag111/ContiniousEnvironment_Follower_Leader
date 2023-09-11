@@ -175,13 +175,9 @@ class ArcticEnv(RobotGazeboEnv):
             # функции с переводом в цилиндрические координаты, гистограмма, удаление пересечений с bb машины
             length_to_leader = self.calculate_length_to_leader(ssd_camera_objects)
             # расстояние до лидера и угол = ориентация робота + угол отклонения от центра изображения + ориентация камеры
-            self.camera_lead_info = self._get_camera_lead_info(ssd_camera_objects, length_to_leader, follower_orientation)
-            # Сопоставление и получение координат ведущего на основе информации о расстояние и угле отклонения
-            leader_position_new_phi = self._get_xy_lead_from_length_phi(self.camera_lead_info)
+            leader_position_new_phi = self._get_camera_lead_info(ssd_camera_objects, length_to_leader, follower_orientation)
         else:
             leader_position_new_phi = leader_position - follower_position
-            # self.camera_leader_information = "global"
-
 
         # Получение истории и коридора
         self.leader_history_v2, corridor_v2 = self.tracker_v2.scan(leader_position_new_phi,
@@ -211,12 +207,10 @@ class ArcticEnv(RobotGazeboEnv):
 
         self._safe_zone(leader_position, follower_position)
 
-        self._is_done(leader_position, follower_position, follower_orientation)
+        self._is_done(leader_position, follower_position, follower_orientation, leader_position_new_phi)
 
         reward = self._compute_reward()
         self.cumulated_episode_reward += reward
-
-        print(obs)
 
         return obs, reward, self.done, self.info
 
@@ -263,26 +257,6 @@ class ArcticEnv(RobotGazeboEnv):
         robot_ang = np.array(tf.transformations.euler_from_quaternion(robot_quat))
 
         return leader_pos, robot_pos, robot_ang
-
-    @staticmethod
-    def _get_xy_lead_from_length_phi(length_phi):
-        """
-        функция вычисления координат ведущего относительно ведомого на основе информации о расстоянии и угле отклонения
-        Args:
-            length_phi = ['length': 12, 'phi' : 0.1]
-        Returns:
-            Локальные координаты ведущего
-            [x, y]
-        """
-
-        length = length_phi['length']
-        phi = length_phi['phi']
-
-        lead_x = length * cos(phi)
-        lead_y = length * sin(phi)
-        results = np.array([lead_x, lead_y])
-
-        return results
 
     @staticmethod
     def _get_four_points(x):
@@ -565,7 +539,6 @@ class ArcticEnv(RobotGazeboEnv):
 
         """
         info_lead = next((x for x in camera_objects if x["name"] == "car"), None)
-        # print(info_lead)
         self.camera_leader_information = info_lead
 
         camera_yaw_state_info = self.sub.get_camera_yaw_state()
@@ -583,10 +556,6 @@ class ArcticEnv(RobotGazeboEnv):
             # получаем ориентацию робота с gazebo и складываем с отклонением до ведущего
 
             theta_new = yaw + theta + camera_yaw
-
-            # print(np.degrees([yaw, theta, camera_yaw]))
-            # print(f"calculated: {np.degrees(theta_new)}")
-
             lead_results = {'length': x, 'phi': theta_new}
 
             self.theta_camera_yaw = camera_yaw
@@ -600,7 +569,10 @@ class ArcticEnv(RobotGazeboEnv):
             lead_results = {'length': x, 'phi': theta_new}
             self.theta_camera_yaw = camera_yaw
 
-        return lead_results
+        lead_x = x * cos(theta_new)
+        lead_y = x * sin(theta_new)
+
+        return np.array([lead_x, lead_y])
 
     def _get_delta_position(self):
         """
@@ -664,7 +636,7 @@ class ArcticEnv(RobotGazeboEnv):
         self.pub.move_base(*action)
         rospy.sleep(self.time_for_action)
 
-    def _is_done(self, leader_position, follower_position, follower_orientation):
+    def _is_done(self, leader_position, follower_position, follower_orientation, leader_position_new_phi):
         """
         Функция проверки статусов выполнения задачи и нештатных ситуаций.
         Args:
@@ -674,10 +646,6 @@ class ArcticEnv(RobotGazeboEnv):
 
 
         """
-        # TODO : проверить все состояния для системы безопасности
-
-        # print("STEP: {}".format(self.step_count))
-
         self.done = False
         self.is_in_box = False
         self.is_on_trace = False
@@ -692,11 +660,9 @@ class ArcticEnv(RobotGazeboEnv):
 
         try:
             self.code, self.text = leader_status.status_list[-1].status, leader_status.status_list[-1].text
-            # print(f"Статус ведущего: {self.code}, {self.text}")
-        except IndexError as e:
+        except IndexError:
             self.code = 1
             self.text = "None"
-        #     print(f"Проблема получения статуса ведущего: {e}")
 
         # Информирование (global)
         self._trajectory_in_box()
@@ -750,20 +716,20 @@ class ArcticEnv(RobotGazeboEnv):
 
                 return 0
 
-            # ведомый далеко от ведущего (global)
-            if np.linalg.norm(follower_position - leader_position) > 35:
-                self.info["mission_status"] = "fail"
-                self.info["leader_status"] = "stop"
-                self.info["agent_status"] = "too_far_from_leader"
-                self.crash = True
-                self.done = True
-
-                print(self.info)
-
-                return 0
+            # # ведомый далеко от ведущего (global)
+            # if np.linalg.norm(follower_position - leader_position) > 35:
+            #     self.info["mission_status"] = "fail"
+            #     self.info["leader_status"] = "stop"
+            #     self.info["agent_status"] = "too_far_from_leader"
+            #     self.crash = True
+            #     self.done = True
+            #
+            #     print(self.info)
+            #
+            #     return 0
 
             # ведомый далеко от ведущего
-            if self.camera_lead_info['length'] > 17:
+            if np.linalg.norm(leader_position_new_phi) > 17:
                 self.info["mission_status"] = "safety system"
                 self.info["leader_status"] = "stop"
                 self.info["agent_status"] = "too_far_from_leader_info"
@@ -820,7 +786,7 @@ class ArcticEnv(RobotGazeboEnv):
                 return 0
 
             # Проверка на близость к ведущему
-            if self.camera_lead_info['length'] < self.min_distance:
+            if np.linalg.norm(leader_position_new_phi) < self.min_distance:
                 self.info["agent_status"] = "too_close_to_leader"
 
                 # Определение расстояния до ведущего определяется только по области машины в кадре
