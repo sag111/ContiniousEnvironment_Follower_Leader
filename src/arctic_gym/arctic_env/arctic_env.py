@@ -363,7 +363,7 @@ class ArcticEnv(RobotGazeboEnv):
         # Фильтрация, получение точек и передача их в класс PointCloud
         open3d_cloud = open3d.geometry.PointCloud()
         # TODO : Исправить (подумать над альтернативой + оптимизация)
-        min_dist = 1
+        min_dist = 0.1
         max_dist = 8
         # Отсекание облака точек за пределами удаленности от робота на расстоянии 4 метра
         xyz = [(x, y, z) for x, y, z in points_list if min_dist <= x**2 + y**2 <= max_dist**2]  # get xyz
@@ -681,28 +681,26 @@ class ArcticEnv(RobotGazeboEnv):
         # print(f"Статус ведущего: {self.code}, {self.text}")
         if self.code == 3:
             self.info["leader_status"] = "finished"
-        else:
-            return 0
-
-        if -1 > follower_orientation[0] > 1 or -1 > follower_orientation[1] > 1:
-            self.info["mission_status"] = "fail"
-            self.info["agent_status"] = "the_robot_turned_over"
-            self.crash = True
-            self.done = True
-
-            print(self.info)
-
-            return 0
+        # else:
+        #     return 0
 
         if self.step_count > self.warm_start:
             # Система безопасности
-            if self.camera_leader_information == None:
-                self.info["mission_status"] = "safety system"
-                self.info["leader_status"] = "None"
-                self.info["agent_status"] = "moving"
+            # if self.camera_leader_information == None:
+            #     self.info["mission_status"] = "safety system"
+            #     self.info["leader_status"] = "None"
+            #     self.info["agent_status"] = "moving"
                 # self.done = True
 
+            if follower_orientation[0] > 1 or follower_orientation[0] < -1:
+                self.info["mission_status"] = "fail"
+                self.info["agent_status"] = "the_robot_turned_over"
+                self.crash = True
+                self.done = True
 
+                print(self.info)
+
+                return 0
 
             # Низкая награда
             if self.cumulated_episode_reward < self.low_reward:
@@ -809,10 +807,8 @@ class ArcticEnv(RobotGazeboEnv):
 
         if self.info["leader_status"] == "moving":
             self.end_stop_count = 0
-            print(self.info)
+            # print(self.info)
             return 0
-
-
 
     def _compute_reward(self):
         """
