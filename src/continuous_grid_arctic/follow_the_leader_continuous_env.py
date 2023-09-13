@@ -408,6 +408,8 @@ class Game(gym.Env):
         if self.path_finding_algorythm not in ["astar", "dstar"]:
             raise ValueError(
                 "path_finding_algorythm {} not in list:{}".format(self.path_finding_algorythm, ["astar", "dstar"]))
+        if self.add_bear and self.bear_number <= 0:
+            raise ValueError("Add bear is true, but number of bears is not greater then 0")
 
     def seed(self, seed_value):
         random.seed(seed_value)
