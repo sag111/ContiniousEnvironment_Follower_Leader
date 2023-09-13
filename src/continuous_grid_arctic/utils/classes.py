@@ -274,6 +274,7 @@ class RobotWithSensors(AbstractRobot):
                                            'LeaderObstacles_lasers',
                                            'Leader_Dyn_Obstacles_lasers', 'LaserPrevSensor',
                                            'LeaderCorridor_Prev_lasers_v2',
+                                           'LeaderCorridor_Prev_lasers_v3',
                                            'LaserPrevSensor_v2_compas', "LeaderCorridor_lasers_compas"]:
                 sensors_observes[sensor_name] = sensor.scan(env, leader_corridor)
 

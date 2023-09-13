@@ -82,8 +82,9 @@ class Map:
 
 
 class Dstar:
-    def __init__(self, maps):
+    def __init__(self, maps, max_iterat=15000):
         self.map = maps
+        self.max_iterat = max_iterat
         self.open_list = set()
 
     def process_state(self):
@@ -162,7 +163,6 @@ class Dstar:
 
         self.open_list.add(end)
         # Задаем количество итераций для прерыания (15к около 5секунд)
-        max_iterat = 15000
         iterat = 0
 
         while True:
@@ -180,7 +180,7 @@ class Dstar:
             # Реализовал прерывание таким образом
             iterat += 1
             #print(iterat)
-            if iterat > max_iterat:
+            if iterat > self.max_iterat:
                 found_targed_point = False
                 if clear_if_path_not_found:
                     rx.clear()

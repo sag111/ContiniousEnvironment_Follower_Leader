@@ -60,9 +60,9 @@ if __name__ == "__main__":
         
 
         if args.hardcore:
-            env = gym.make("Test-Cont-Env-Manual-hardcore")
+            env = gym.make("Test-Cont-Env-Manual-hardcore-v0")
         else:
-            env = gym.make("Test-Cont-Env-Manual-gazebo")
+            env = gym.make("Test-Cont-Env-Manual-gazebo-v0")
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
         if args.seed is not None:

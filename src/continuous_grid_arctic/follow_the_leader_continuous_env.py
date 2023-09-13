@@ -36,6 +36,7 @@ except:
     from src.continuous_grid_arctic.utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
 
 AVG_FRAMES_PER_SECOND = 100
+DEBUG = True
 
 # TODO: Вынести все эти дефолтные настройки в дефолтный конфиг, возможно разбить конфиг на подконфиги
 # как вариант - файл default_configs, там словари. Они сразу подгружаются средой, если в среду переданы другие словари,
@@ -97,6 +98,9 @@ class Game(gym.Env):
                  bear_size=(0.5, 0.5),
                  bridge_size=(80, 40), # ширина, длина в пикселях
                  return_render_matrix=True,
+                 ignore_follower_collisions=False,
+                 path_finding_iterations=15000,
+                 leader_margin=1.5,
                  **kwargs
                  ):
         """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
@@ -171,10 +175,18 @@ class Game(gym.Env):
             Размеры ведущего робота (высота, ширина) в метрах
         return_render_matrix (bool):
             должна ли функция рендера возвращать картинку матрицей. Для видео и симуляций надо, для реалтайма лучше выкличить, чтоб быстрее работало.
+        ignore_follower_collisions (bool):
+            игнорировать столкновения с ведомым (рекомендуется использовать во время подбора тестовых маршрутов)
+        path_finding_iterations (int):
+            если используется итеративный алгоритм поиска пути для лидера, сколько итераций максимально допустимо
+        leader_margin (float):
+            дополнительный отступ между лидером и препятствиями, который учитывается при расчёте маршрута
         """
 
         # нужно для сохранения видео
         self.metadata = {"render.modes": ["rgb_array"]}
+        if DEBUG:
+            self.debug_info = {}
         # Здесь можно задать дополнительные цвета в формате RGB
         self.colours = {
             'white': (255, 255, 255),
@@ -189,22 +201,26 @@ class Game(gym.Env):
         pygame.font.init()
         self.font = pygame.font.SysFont('Arial', 30)
         self.return_render_matrix = return_render_matrix
+        self.ignore_follower_collisions = ignore_follower_collisions
 
         # TODO: сделать нормально
         metadata = {"render.modes": ["human", "rgb_array"],
                     "video.frames_per_second": framerate}  # "human" вроде не обязательно
         self.constant_follower_speed = constant_follower_speed
         self.path_finding_algorythm = path_finding_algorythm
+        self.path_finding_iterations = path_finding_iterations
 
         # задание траектории, которое полноценно обрабатывается в методе reset()
         self.trajectory = trajectory
         self.trajectory_generated = False
         self.bridge_size = bridge_size
         self.step_grid = step_grid
+        self.leader_margin = leader_margin
         self.accumulated_penalty = 0  # штраф, который копится, если долго не получаем отрицательной награды
         # Генерация финишной точки
         self.finish_point = (10, 10)  # np.float64((random.randrange(20, 100, 10), random.randrange(20, 1000, 10)))
         self.multiple_end_points = multiple_end_points
+        self.found_target_point = False
         if multiple_end_points:
             if path_finding_algorythm != "dstar":
                 raise NotImplementedError("Only dstar pathfinding function supports multiple end points. "
@@ -392,6 +408,8 @@ class Game(gym.Env):
         if self.path_finding_algorythm not in ["astar", "dstar"]:
             raise ValueError(
                 "path_finding_algorythm {} not in list:{}".format(self.path_finding_algorythm, ["astar", "dstar"]))
+        if self.add_bear and self.bear_number <= 0:
+            raise ValueError("Add bear is true, but number of bears is not greater then 0")
 
     def seed(self, seed_value):
         random.seed(seed_value)
@@ -409,9 +427,12 @@ class Game(gym.Env):
 #             print("file not found")
 
         print("===Запуск симуляции номер {}===".format(self.simulation_number))
+        if DEBUG:
+            self.debug_info = {}
         self.step_count = 0
         self.accumulated_penalty = 0
         self.cur_speed_multiplier = 1
+        self.found_target_point = False
 
         #         valid_trajectory = False
 
@@ -607,7 +628,7 @@ class Game(gym.Env):
 
         obstacle_size = 50
         bridge_rectangle = pygame.Rect(wall_start_x - self.leader.width * 4,
-                                       self.obstacles1.rectangle.bottom - self.leader.height*1.5,
+                                       self.obstacles1.rectangle.bottom - self.leader.height * self.leader_margin,
                                        self.obstacles1.rectangle.width + 8 * self.leader.width,
                                        self.obstacles2.rectangle.top - self.obstacles1.rectangle.bottom + 3 * self.leader.height)
         for i in range(self.obstacle_number):
@@ -921,7 +942,7 @@ class Game(gym.Env):
         self.follower.move()
 
         # определение столкновения ведомого с препятствиями
-        if self._collision_check(self.follower):
+        if not self.ignore_follower_collisions and self._collision_check(self.follower):
             self.crash = True
             self.done = True
             info["mission_status"] = "fail"
@@ -1239,7 +1260,7 @@ class Game(gym.Env):
             for sensor_name, cur_sensor in self.follower.sensors.items():
                 cur_sensor.show(self)
 
-                pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
+        pygame.draw.circle(self.gameDisplay, self.colours["red"], self.cur_target_point, 10, width=2)
         #         if self.add_obstacles:
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.first_bridge_point, 10, width=3)
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3
@@ -1460,7 +1481,7 @@ class Game(gym.Env):
         #m = Map(150, 100)
 
         ox, oy = [], []
-        margin = int(1.5*max(self.leader.width, self.leader.height) // self.step_grid)
+        margin = int(self.leader_margin * max(self.leader.width, self.leader.height) // self.step_grid)
 
         for obst in self.obstacles + [self.obstacles1, self.obstacles2]:
             position_on_map = (int(obst.start_position[0] // self.step_grid), int(obst.start_position[1] // self.step_grid))
@@ -1501,8 +1522,13 @@ class Game(gym.Env):
                 int(self.finish_point[1] / self.step_grid)]
         start = m.map[start[0]][start[1]]
         end = m.map[goal[0]][goal[1]]
-        dstar = Dstar(m)
-        rx, ry, found_target_point = dstar.run(start, end)
+        dstar = Dstar(m, self.path_finding_iterations)
+        if DEBUG:
+            t_1 = time.time()
+        rx, ry, self.found_target_point = dstar.run(start, end)
+        if DEBUG:
+            t_2 = time.time()
+            self.debug_info["path_finding_time"] = t_2 - t_1
         trajectory = []
         # trajectory = path[::-1]
         for i in range(len(rx)):
@@ -1522,7 +1548,7 @@ class Game(gym.Env):
             start2 = m2.map[start2[0]][start2[1]]
             end2 = m2.map[goal2[0]][goal2[1]]
             dstar2 = Dstar(m2)
-            rx2, ry2, found_target_point = dstar2.run(start2, end2)
+            rx2, ry2, found_target_point_2 = dstar2.run(start2, end2)
             trajectory2 = []
             # trajectory = path[::-1]
             for i in range(len(rx2)):
@@ -1539,7 +1565,7 @@ class Game(gym.Env):
             start3 = m3.map[start3[0]][start3[1]]
             end3 = m3.map[goal3[0]][goal3[1]]
             dstar3 = Dstar(m3)
-            rx3, ry3, found_target_point = dstar3.run(start3, end3)
+            rx3, ry3, found_target_point_3 = dstar3.run(start3, end3)
             trajectory3 = []
             # trajectory = path[::-1]
             for i in range(len(rx3)):
@@ -1566,6 +1592,7 @@ class Game(gym.Env):
             # new_data = {'Time1': time_dstar, 'Len1': len_dstar}
             # new_dstar_table = dstar_table.append(new_data, ignore_index=True)
             # new_dstar_table.to_excel(path_tab_dstar, index=False)
+            self.found_target_point = self.found_target_point & found_target_point_2 & found_target_point_3
 
         return trajectory
 
@@ -1758,7 +1785,7 @@ class Game(gym.Env):
                                                    self.follower.speed,
                                                    self.follower.direction,
                                                    self.follower.rotation_speed], dtype=np.float32)
-        if self.cur_target_point == self.trajectory[-1]:
+        if len(self.trajectory) > 0 and self.cur_target_point == self.trajectory[-1]:
             obs_dict["leader_target_point"] = self.trajectory[-2]
         else:
             obs_dict["leader_target_point"] = self.cur_target_point
@@ -1926,7 +1953,7 @@ class TestGameAuto(Game):
 class TestGameManual(Game):
     def __init__(self):
         super().__init__(manual_control=True,
-                         manual_control_input="gamepad",
+                         manual_control_input="keyboard",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=100,
@@ -2049,10 +2076,10 @@ class TestGameManual_hardcore(Game):
 class TestGameManual_gazebo(Game):
     def __init__(self):
         super().__init__(manual_control=True,
-                         manual_control_input="gamepad",
+                         manual_control_input="keyboard",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
-                         framerate=100,
+                         framerate=200,
                          pixels_to_meter=10,
                          obstacle_number=35,
                          constant_follower_speed=False,
@@ -2073,8 +2100,8 @@ class TestGameManual_gazebo(Game):
                          leader_max_speed=1,
                          follower_max_rotation_speed=28.65,
                          leader_max_rotation_speed=28.65,
-                         follower_acceleration=2,
-                         leader_acceleration=0.2,
+                         follower_acceleration=0.5,
+                         leader_acceleration=2,
                          return_render_matrix=False,
                          leader_speed_regime={
                              0: [0.2, 1],
@@ -2092,10 +2119,46 @@ class TestGameManual_gazebo(Game):
                                                      4500: 0},
                          multiple_end_points=False,
                          warm_start=0,
-                         frames_per_step=1,
+                         frames_per_step=20,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[30, 70],
                          follower_sensors={
+                            "LeaderCorridor_Prev_lasers_v2_compas":
+                            {
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
+                                "lasers_count": 12,
+                                "laser_length": 150,
+                                "react_to_green_zone": True,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": True,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "sensor_name": "LeaderCorridor_Prev_lasers_v2_compas",
+                                "pad_sectors": True
+                            },
+                            "LaserPrevSensor_compas":
+                            {
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
+                                "lasers_count": 24,
+                                "laser_length": 200,
+                                "react_to_green_zone": False,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": False,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": True
+                            },
+                            "LeaderPositionsTracker_v2":
+                            {
+                                "sensor_class": "LeaderPositionsTracker_v2",
+                                "eat_close_points": False,
+                                "generate_corridor": True,
+                                "saving_period": 8,
+                                "sensor_name": "LeaderPositionsTracker_v2",
+                                "start_corridor_behind_follower": True,
+                                "corridor_length": 200,
+                                "corridor_width": 40
+                            }
                          }
                          )
 class TestGameBaseAlgoNoObst(Game):
