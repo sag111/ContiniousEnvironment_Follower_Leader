@@ -320,7 +320,7 @@ class Game(gym.Env):
                 'min_speed': -(self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND),
                 'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
                 'max_rotation_speed': follower_max_rotation_speed / AVG_FRAMES_PER_SECOND,
-                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND
+                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND  # так, а это не если м/с^2 должны быть? тогда может квадрат?
             }
         else:
             self.follower_config = {
@@ -330,7 +330,7 @@ class Game(gym.Env):
                 # 'min_speed':-(self._to_pixels(0.5) / 100),
                 'max_speed': self._to_pixels(self.follower_max_speed) / AVG_FRAMES_PER_SECOND,
                 'max_rotation_speed': follower_max_rotation_speed / AVG_FRAMES_PER_SECOND,
-                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND
+                "acceleration": self._to_pixels(follower_acceleration) / AVG_FRAMES_PER_SECOND  # квадрат?
             }
         self.leader_config = {
             'min_speed': 0,
@@ -338,7 +338,7 @@ class Game(gym.Env):
             "height": self._to_pixels(leader_size[1]),
             'max_speed': self._to_pixels(self.leader_max_speed) / AVG_FRAMES_PER_SECOND,
             'max_rotation_speed': leader_max_rotation_speed / AVG_FRAMES_PER_SECOND,
-            "acceleration": self._to_pixels(leader_acceleration) / AVG_FRAMES_PER_SECOND
+            "acceleration": self._to_pixels(leader_acceleration) / AVG_FRAMES_PER_SECOND  # квадрат?
         }
         self.discrete_action_space = discrete_action_space
 
@@ -1951,9 +1951,8 @@ class TestGameAuto(Game):
 
 
 class TestGameManual(Game):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(manual_control=True,
-                         manual_control_input="keyboard",
                          add_obstacles=True, game_width=1500, game_height=1000,
                          max_steps=15000,
                          framerate=100,
@@ -1993,161 +1992,64 @@ class TestGameManual(Game):
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[30, 70],
                          follower_sensors={
-                         }
-                         )
-class TestGameManual_hardcore(Game):
-    def __init__(self):
-        super().__init__(manual_control=True,
-                         manual_control_input="gamepad",
-                         add_obstacles=True, game_width=1500, game_height=1000,
-                         max_steps=15000,
-                         framerate=1000,
-                         obstacle_number=35,
-                         constant_follower_speed=False,
-                         max_distance=4,
-                         max_dev=1,
-                         add_bear=True,
-                         bear_behind=False,
-                         multi_random_bears=False,
-                         move_bear_v4=True,
-                         bear_number=2,
-                         bear_max_speed=1.2,
-                         negative_speed=True,
-                         follower_max_speed=2,
-                         leader_max_speed=1,
-                         show_leader_path_flag=False,
-                         show_leader_trajectory_flag=False,
-                         show_rectangles_flag=False,
-                         show_box_flag=False,
-                         show_objects_flag=False,
-                         show_sensors_flag=True,
-                         return_render_matrix=False,
-                         leader_speed_regime={
-                             0: [0.2, 1],
-                             200: 1,
-                             1000: [0.5, 1],
-                             1500: 0.75,
-                             2000: 0,
-                             2500: 1,
-                             3000: [0.5, 1],
-                             4000: [0.0, 0.5],
-                             5000: [0.4, 1],
-                         },
-                         leader_acceleration_regime={0: 0,
-                                                     3100: 0.03,
-                                                     4500: 0},
-                         multiple_end_points=False,
-                         warm_start=0,
-                         frames_per_step=1,
-                         early_stopping={"max_distance_coef": 4, "low_reward": -300},
-                         #random_frames_per_step=[2, 20],
-                         follower_sensors={
-                             'LeaderPositionsTracker_v2': {
-                                 'eat_close_points': True,
-                                 'saving_period': 8,
-                                 'start_corridor_behind_follower':True,
-                                 'corridor_length': 700,  # pixels
-                                 'corridor_width': 150  # pixels
-                                 },
-                              "LeaderCorridor_Prev_lasers_v2": {
-                                 "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                                  "react_to_obstacles": True,
-                                  "use_prev_obs" : False,
-                                  "max_prev_obs": 5,
-                                  "lasers_count": 36,
-                                  "react_to_safe_corridor": True,
-                                  "react_to_green_zone": False,
-                                  "laser_length": 200
-                              },
-                             "LeaderCorridor_lasers_compas": {
-                                 "sensor_class": "LeaderCorridor_lasers_compas",
-                                 "react_to_obstacles": False,
-                                 "lasers_count": 12,
-                                 "react_to_safe_corridor": True,
-                                 "react_to_green_zone": True,
-                                 "laser_length": 150,
-                                 "use_prev_obs": True,
-                                 "max_prev_obs": 5,
-                                 "pad_sectors": True
-                             },
-                         }
+                         }, **kwargs
                          )
 
 class TestGameManual_gazebo(Game):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(manual_control=True,
-                         manual_control_input="keyboard",
-                         add_obstacles=True, game_width=1500, game_height=1000,
-                         max_steps=15000,
-                         framerate=200,
+                         game_width=1500, game_height=1000,
                          pixels_to_meter=10,
-                         obstacle_number=35,
-                         constant_follower_speed=False,
-                         min_distance=4.5,
-                         max_distance=8,
+                         step_grid=10,
+                         max_steps=30000,
+                         framerate=90,
+                         frames_per_step=5, # ?
+                         #random_frames_per_step=[30,70],
+                         min_distance=8,
+                         max_distance=15,
                          max_dev=1,
-                         add_bear=True,
-                         bear_behind=False,
-                         multi_random_bears=False,
-                         move_bear_v4=True,
-                         bear_number=2,
-                         bear_max_speed=1.2,
-                         negative_speed=True,
+                         constant_follower_speed=False,
+                         warm_start=0,
+                         path_finding_iterations=15000,
                          follower_size=(1, 1),
                          leader_size=(4, 2),
                          bear_size=(1.5, 1.5),
                          follower_max_speed=2,
                          leader_max_speed=1,
+                         negative_speed=True,
+                         bear_max_speed=1.2,
                          follower_max_rotation_speed=28.65,
                          leader_max_rotation_speed=28.65,
-                         follower_acceleration=0.5,
-                         leader_acceleration=2,
-                         return_render_matrix=False,
+                         follower_acceleration=1,
+                         leader_acceleration=1,
+                         leader_margin=1,
                          leader_speed_regime={
                              0: [0.2, 1],
                              200: 1,
                              1000: [0.5, 1],
                              1500: 0.75,
-                             2000: 0,
+                             2300: 0,
                              2500: 1,
                              3000: [0.5, 1],
                              4000: [0.0, 0.5],
                              5000: [0.4, 1],
                          },
+                         add_obstacles=True,
+                         obstacle_number=20,
+                         add_bear=True,
+                         bear_number=2,
+                         bear_behind=False,
+                         multi_random_bears=False,
+                         move_bear_v4=True,
+                         bridge_size=[140,40],
+                         multiple_end_points=False,
+                         return_render_matrix=False,
                          leader_acceleration_regime={0: 0,
                                                      3100: 0.03,
                                                      4500: 0},
-                         multiple_end_points=False,
-                         warm_start=0,
-                         frames_per_step=20,
                          early_stopping={"max_distance_coef": 4, "low_reward": -300},
                          #random_frames_per_step=[30, 70],
                          follower_sensors={
-                            "LeaderCorridor_Prev_lasers_v2_compas":
-                            {
-                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
-                                "lasers_count": 12,
-                                "laser_length": 150,
-                                "react_to_green_zone": True,
-                                "react_to_obstacles": True,
-                                "react_to_safe_corridor": True,
-                                "max_prev_obs": 5,
-                                "use_prev_obs": True,
-                                "sensor_name": "LeaderCorridor_Prev_lasers_v2_compas",
-                                "pad_sectors": True
-                            },
-                            "LaserPrevSensor_compas":
-                            {
-                                "sensor_class": "LeaderCorridor_Prev_lasers_v3",
-                                "lasers_count": 24,
-                                "laser_length": 200,
-                                "react_to_green_zone": False,
-                                "react_to_obstacles": True,
-                                "react_to_safe_corridor": False,
-                                "max_prev_obs": 5,
-                                "use_prev_obs": True,
-                                "pad_sectors": True
-                            },
                             "LeaderPositionsTracker_v2":
                             {
                                 "sensor_class": "LeaderPositionsTracker_v2",
@@ -2156,11 +2058,38 @@ class TestGameManual_gazebo(Game):
                                 "saving_period": 8,
                                 "sensor_name": "LeaderPositionsTracker_v2",
                                 "start_corridor_behind_follower": True,
-                                "corridor_length": 200,
-                                "corridor_width": 40
-                            }
-                         }
-                         )
+                                "corridor_length": 250,
+                                "corridor_width": 30
+                            },
+                            "LeaderCorridor_lasers_all":
+                            {
+                                "sensor_name": "LeaderCorridor_lasers_all",
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                                "react_to_green_zone": True,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": True,
+                                "lasers_count": 12,
+                                "laser_length": 100,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": False
+                            },
+                            "LeaderCorridor_lasers_obstacles":
+                            {
+                                "sensor_name": "LeaderCorridor_lasers_obstacles",
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                                "react_to_green_zone": False,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": False,
+                                "lasers_count": 24,
+                                "laser_length": 150,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": False
+                            },
+                         }, **kwargs
+                    )
+
 class TestGameBaseAlgoNoObst(Game):
     def __init__(self):
         super().__init__(manual_control=False, add_obstacles=False, game_width=1500, game_height=1000,
@@ -2203,6 +2132,11 @@ gym_register(
 gym_register(
     id="Test-Cont-Env-Manual-hardcore-v0",
     entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_hardcore",
+    reward_threshold=10000
+)
+gym_register(
+    id="Test-Cont-Env-Manual-gazebo-hardcore-v0",
+    entry_point="continuous_grid_arctic.follow_the_leader_continuous_env:TestGameManual_gazebo_hardcore",
     reward_threshold=10000
 )
 

@@ -12,13 +12,17 @@ from gym.spaces import Box
 from time import sleep
 
 import argparse as ag
-        
+
+#TODO: Может сюда добавить как-то модель из ray?
+#TODO: и какой-нибудь тупой алгоритм для сравнения
+
 if __name__ == "__main__":
     
     parser = ag.ArgumentParser()
     parser.add_argument("--mode",
                         type=str,
                         default="manual",
+                        choices=["manual", "rl", "base"],
                         help="режим работы эксперимента. manual - ручной, rl - обучение алгоритма, base - использование базового алгоритма")
     
     parser.add_argument('--n_steps',
@@ -35,6 +39,10 @@ if __name__ == "__main__":
     parser.add_argument('--hardcore',
                         action="store_true",
                         help="Если выбран ручной режим и включен режим hardcore, то будут отображаться только показатели сенсоров")
+    parser.add_argument('--manual_input',
+                        default="keyboard",
+                        choices=["keyboard", "gamepad"],
+                        help="Чем осуществляется ручное управление keyboard или gamepad")
     
     parser.add_argument('--training_steps',
                     type=int,
@@ -60,9 +68,15 @@ if __name__ == "__main__":
         
 
         if args.hardcore:
-            env = gym.make("Test-Cont-Env-Manual-hardcore-v0")
+            env = gym.make("Test-Cont-Env-Manual-gazebo-v0",
+                         show_leader_path_flag=False,
+                         show_leader_trajectory_flag=False,
+                         show_rectangles_flag=False,
+                         show_box_flag=False,
+                         show_objects_flag=False,
+                         show_sensors_flag=True, manual_control_input=args.manual_input)
         else:
-            env = gym.make("Test-Cont-Env-Manual-gazebo-v0")
+            env = gym.make("Test-Cont-Env-Manual-gazebo-v0", manual_control_input=args.manual_input)
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
         if args.seed is not None:

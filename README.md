@@ -34,8 +34,9 @@ conda env create -f conda.yml
 conda create -n rl -c conda-forge python-pdal=3.1.2 python=3.7 
 
 pip install requirements.txt
-
 ```
+
+3. Для 2д среды достаточно установить pygame~=2.1.2, pandas и numpy 
 
 
 ### Требования:
@@ -66,12 +67,14 @@ pip install requirements.txt
 ## Примеры использования [2D среды](src/continuous_grid_arctic):
 Для демонстрации работы среды в ручном режиме работы необходимо запускать файл main.py:
 ```
-python main.py --manual
+python run_2d.py --mode manual
+или
+python run_2d.py --mode manual --seed 0 --hardcore --manual_input gamepad --log_results
 ```
-
-Скрипт main.py имеет следующие аргументы командной строки:
-* флаг manual -- если указан, управление агентом проводится вручную, с помощью стрелок на клавиатуре;
-* n_steps -- определяет число шагов среды, в течение которых проводится проверочная симуляция (по умолчанию: 5000);
+Возможные аргументы командной строки описаны в самом скрипте run_2d.py. Кроме этого настроить среду можно в скрипте 
+follow_the_leader_continus_env.py. Для этого надо посмотреть в run_2d.py, какая именно среда запускается и в
+follower_the_leader_continuous_env изменить параметры. Например можно ускорить симуляцию увеличив framerate или 
+frames_per_step. 
 
 По умолчанию одна симуляция длится не более 5000 шагов (задаётся при создании конкретной среды параметром max_steps) 
 или до тех пор, пока агент не попадёт в аварию.
