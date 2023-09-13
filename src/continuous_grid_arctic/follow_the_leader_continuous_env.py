@@ -2003,8 +2003,8 @@ class TestGameManual_gazebo(Game):
                          step_grid=10,
                          max_steps=30000,
                          framerate=90,
-                         frames_per_step=5, # ?
-                         #random_frames_per_step=[30,70],
+                         #frames_per_step=5, # ?
+                         random_frames_per_step=[30,70],
                          min_distance=8,
                          max_distance=15,
                          max_dev=1,
