@@ -966,13 +966,14 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
                 for laser_collide in lasers_collides_item:
                     pygame.draw.circle(env.gameDisplay, (255, 75, 110), laser_collide, 3)
 
-
+# TODO: Исправить, сенсор игнорирует все точки внутри корридора, препятствия тоже
 class LeaderCorridor_Prev_lasers_v3(LeaderCorridor_Prev_lasers_v2):
     """
     Отличается от LeaderCorridor_Prev_lasers_v2 тем, что осуществляется проверка - не находятся ли точки переесечения с
     лазером внутри коридора
     """
     def scan(self, env, corridor):
+        raise ValueError("Сенсор игнорирует все точки внутри корридора, в том числе и препятствия, это ошибка")
         self.lasers_collides = []
         self.lasers_end_points = []
         self.lasers_collides_item_history = []
