@@ -2003,8 +2003,8 @@ class TestGameManual_gazebo(Game):
                          step_grid=10,
                          max_steps=30000,
                          framerate=90,
-                         #frames_per_step=5, # ?
-                         random_frames_per_step=[30,70],
+                         frames_per_step=5, # ?
+                         # random_frames_per_step=[30,70],
                          min_distance=8,
                          max_distance=15,
                          max_dev=1,
@@ -2061,33 +2061,34 @@ class TestGameManual_gazebo(Game):
                                 "corridor_length": 250,
                                 "corridor_width": 30
                             },
-                            "LeaderCorridor_lasers_all":
-                            {
-                                "sensor_name": "LeaderCorridor_lasers_all",
-                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                                "react_to_green_zone": True,
-                                "react_to_obstacles": True,
-                                "react_to_safe_corridor": True,
-                                "lasers_count": 12,
-                                "laser_length": 100,
-                                "max_prev_obs": 5,
-                                "use_prev_obs": True,
-                                "pad_sectors": False
-                            },
-                            "LeaderCorridor_lasers_obstacles":
-                            {
-                                "sensor_name": "LeaderCorridor_lasers_obstacles",
-                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                                "react_to_green_zone": False,
-                                "react_to_obstacles": True,
-                                "react_to_safe_corridor": False,
-                                "lasers_count": 24,
-                                "laser_length": 150,
-                                "max_prev_obs": 5,
-                                "use_prev_obs": True,
-                                "pad_sectors": False
-                            },
-                         }, **kwargs
+                         #    "LeaderCorridor_lasers_all":
+                         #    {
+                         #        "sensor_name": "LeaderCorridor_lasers_all",
+                         #        "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                         #        "react_to_green_zone": True,
+                         #        "react_to_obstacles": True,
+                         #        "react_to_safe_corridor": True,
+                         #        "lasers_count": 12,
+                         #        "laser_length": 100,
+                         #        "max_prev_obs": 5,
+                         #        "use_prev_obs": True,
+                         #        "pad_sectors": False
+                         #    },
+                         #    "LeaderCorridor_lasers_obstacles":
+                         #    {
+                         #        "sensor_name": "LeaderCorridor_lasers_obstacles",
+                         #        "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                         #        "react_to_green_zone": False,
+                         #        "react_to_obstacles": True,
+                         #        "react_to_safe_corridor": False,
+                         #        "lasers_count": 24,
+                         #        "laser_length": 150,
+                         #        "max_prev_obs": 5,
+                         #        "use_prev_obs": True,
+                         #        "pad_sectors": False
+                         #    },
+                         },
+                        **kwargs
                     )
 
 class TestGameBaseAlgoNoObst(Game):

@@ -31,14 +31,14 @@ class ArcticEnv(RobotGazeboEnv):
     def __init__(self, name,
                  object_detection_endpoint,
                  time_for_action=0.2,
-                 trajectory_saving_period=3,
+                 trajectory_saving_period=5,
                  leader_max_speed=1.0,
                  min_distance=6.0,
                  max_distance=25.0,
                  leader_pos_epsilon=1.25,
                  max_dev=1.5,
                  max_steps=1000,
-                 low_reward=-200,
+                 low_reward=-100,
                  close_coeff=0.6,
                  use_object_detection=True
                  ):
@@ -71,8 +71,9 @@ class ArcticEnv(RobotGazeboEnv):
                                                    react_to_safe_corridor=True,
                                                    react_to_obstacles=True,
                                                    lasers_count=12,
-                                                   laser_length=8,
-                                                   max_prev_obs=5)
+                                                   laser_length=4,
+                                                   max_prev_obs=10,
+                                                   pad_sectors=False)
 
         self.laser_aux = GazeboCorridor_Prev_lasers_v2(host_object="arctic_robot",
                                                        sensor_name='LaserPrevSensor_compas',
@@ -81,7 +82,8 @@ class ArcticEnv(RobotGazeboEnv):
                                                        react_to_obstacles=True,
                                                        lasers_count=24,
                                                        laser_length=8,
-                                                       max_prev_obs=5)
+                                                       max_prev_obs=10,
+                                                       pad_sectors=False)
 
         # dataclass наград
         self.reward = Reward()
@@ -736,7 +738,7 @@ class ArcticEnv(RobotGazeboEnv):
 
                 # Зануляет скорость робота ???
                 self.end_stop_count += 1
-                if self.end_stop_count > 40:
+                if self.end_stop_count > 150:
                     self.info["mission_status"] = "failed by something else"
                     self.done = True
 
