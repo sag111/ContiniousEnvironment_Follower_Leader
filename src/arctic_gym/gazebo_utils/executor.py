@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import rospy
 
@@ -54,6 +56,9 @@ class Executor:
                 путь движения ведомого
             ]
         """
+
+        start_time = time.time()
+
         start = self.env.sub.get_odom().pose
         point_a = [start.pose.position.x, start.pose.position.y, start.pose.position.z]
 
@@ -105,8 +110,8 @@ class Executor:
                 if count_lost >= 2:
                     self.env.pub.target_cancel_action()
 
-            else:
-                action *= 1.5
+            # else:
+            #     action *= 2
 
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
@@ -122,8 +127,11 @@ class Executor:
         target_path = self.env.sub.get_target_path().poses
         follower_path = self.env.sub.get_robot_path().poses
 
+        finish_time = time.time() - start_time
+
         return [
             info,
+            finish_time,
             point_a,
             point_b,
             target_path,
