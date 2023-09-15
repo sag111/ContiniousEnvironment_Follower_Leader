@@ -3,7 +3,8 @@ import numpy as np
 
 from pathlib import Path
 from gym.spaces import Box
-from pyhocon import ConfigFactory
+# from pyhocon import ConfigFactory
+import json
 from ray.rllib.agents.ppo import PPOTrainer
 from ray.rllib.env.policy_server_input import PolicyServerInput
 
@@ -11,8 +12,9 @@ import src.MyNewModels
 
 
 SERVER_PATH = Path(__file__).resolve().parent
-CONFIG_PATH = SERVER_PATH.joinpath("config/FollowerContinuousDyn/params.json").__str__()
-CHECKPOINT = SERVER_PATH.joinpath("checkpoints/feats_v14VPC/checkpoint_000300/checkpoint-300").__str__()
+
+CONFIG_PATH = SERVER_PATH.joinpath("config/3c1bc/params.json").__str__()
+CHECKPOINT = SERVER_PATH.joinpath("checkpoints/3c1bc/checkpoint_000040/checkpoint-40").__str__()
 
 SERVER_ADDRESS = 'localhost'
 SERVER_BASE_PORT = 9900
@@ -33,7 +35,7 @@ if __name__ == '__main__':
     ray.init()
 
     sensor_config = {
-        'lasers_sectors_numbers': 144
+        'lasers_sectors_numbers': 36
     }
 
     follower_config = {
@@ -48,11 +50,12 @@ if __name__ == '__main__':
     )
 
     observation_space = Box(
-        np.zeros((5, sensor_config['lasers_sectors_numbers']), dtype=np.float32),
-        np.ones((5, sensor_config['lasers_sectors_numbers']), dtype=np.float32)
+        np.zeros((10, sensor_config['lasers_sectors_numbers']), dtype=np.float32),
+        np.ones((10, sensor_config['lasers_sectors_numbers']), dtype=np.float32)
     )
 
-    config = ConfigFactory.parse_file(CONFIG_PATH).as_plain_ordered_dict()
+    with open(CONFIG_PATH, 'r') as config_file:
+        config = json.load(config_file)
 
     config.update(
         {
@@ -61,10 +64,11 @@ if __name__ == '__main__':
             "observation_space": observation_space,
             "action_space": action_space,
             "input": _input,
-            "input_evaluation": [],
-            "explore": False,
-            "num_gpus": 0,
             "num_workers": 1,
+            "input_evaluation": [],
+            "num_gpus": 1,
+            "log_level": 'DEBUG',
+            "explore": False,
         }
     )
 
