@@ -36,7 +36,7 @@ for e in experiment:
 
         collects.append(meta)
 
-        evaluation = pd.DataFrame(collects, columns=["meta", "point_a", "point_b", "target_path", "follower_path"])
+        evaluation = pd.DataFrame(collects, columns=["meta", "time", "point_a", "point_b", "target_path", "follower_path"])
         csv_path = project_path.joinpath("data/processed")
         csv_path.mkdir(parents=True, exist_ok=True)
 
