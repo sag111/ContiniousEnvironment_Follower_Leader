@@ -103,84 +103,83 @@ class Game(gym.Env):
                  leader_margin=1.5,
                  **kwargs
                  ):
-        """Класс, который создаёт непрерывную среду для решения задачи следования за лидером.
-        Входные параметры:
-        game_width (int): 
-            ширина игрового экрана (в пикселях);
-        game_height (int): 
-            высота игрового экрана (в пикселях);
-        framerate (int): ...;
-        caption (str): 
-            заголовок игрового окна;
-        trajectory (list of points or None): 
-            список точек, по которым едет Ведущий. Если None, список генерируется случайно;
-        leader_pos_epsilon (int): 
-            расстояние в пикселях от точки траектории, в пределах которого считается, что Ведущий прошёл через точку;
-        show_leader_path (bool): 
-            флаг отображения всего маршрута, по которому идёт ведущий;
-        show_leader_trajectory (bool): 
-            флаг отображения пройденного ведущим маршрута;
-        show_rectangles (bool): 
-            флаг отображения прямоугольников взаимодействия;
-        show_box (bool): 
-            флаг отображения границ, в которых нужно находиться Ведомому;
-        simulation_time_limit (int or None):
-            лимит по времени одной симуляции (в секундах, если None -- не ограничен)
-        reward_config (str, Path or None): 
-            путь до json-конфигурации награды, созданной с помощью класса reward_constructor. Если None, создаёт reward
-            по умолчанию (Ivan v.1)
-        pixels_to_meter (int): 
-            число пикселей, который в данной модели отражает один метр;
-        min_distance (int): 
-            минимальная дистанция (в метрах), которую должен соблюдать Ведомый от Ведущего;
-        max_distance (int): 
-            максимальная дистанция (в метрах), дальше которой Ведомый не должен отставать от Ведущего (по маршруту);
-        max_dev (int): 
-            максимальная дистанция (в метрах), в пределах которой Ведомый может отклониться от маршрута;
-        warm_start (int): 
-            число шагов, в пределах которого Ведомый не будет получать штраф (сейчас не реализовано полноценно);
-        manual_control (bool): 
-            использовать ручное управление Ведомым;
-        manual_control_input (str):
-            keyboard - управление стрелками на клавиатуре
-            gamepad - управление джойстиком на геймпаде
-        max_steps (int): 
-            максимальное число шагов для одной симуляции;
-        aggregate_reward (bool):
-            если True, step будет давать акумулированную награду;
-        obstacle_number (int):
-            число случайно генерируемых препятствий.
-        leader_speed_regime (dict):
-            словарь - ключ - число степов, значение - скорость лидера (доля от максимальной?);
-        leader_
-        constant_follower_speed (bool):
-            флаг - если True - корость ведомого всегда будет максимальной, и будет использован только один экшн - поворот
-        random_frames_per_step (tuple/list):
-            диапазон из которого будет сэмплироваться frames_per_step
-        number_of_target_points (int):
-            количество точек через которые будет строится маршрут. По умолчанию одна целевая.
-         follower_max_speed (float):
-            максимальная скорость ведомого робота в м/с
-         leader_max_speed (float):
-            максимальная скорость машины (ведущего) в м/с
-         bear_max_speed (float):
-            максимальная скорость динамического препятствия в м/с
-        path_finding_algorythm (str):
-            какой алгоритм поиска пути использовать для лидера. astar, dstar
-        multiple_end_points (bool):
-            если False - используется только одна конечная точка, если True - генерируется несколько точек и более сложный маршрут
-         follower_size (tuple of float):
-            Размеры ведомого робота (высота, ширина) в метрах
-         leader_size (tuple of float):
-            Размеры ведущего робота (высота, ширина) в метрах
-        return_render_matrix (bool):
-            должна ли функция рендера возвращать картинку матрицей. Для видео и симуляций надо, для реалтайма лучше выкличить, чтоб быстрее работало.
-        ignore_follower_collisions (bool):
-            игнорировать столкновения с ведомым (рекомендуется использовать во время подбора тестовых маршрутов)
-        path_finding_iterations (int):
-            если используется итеративный алгоритм поиска пути для лидера, сколько итераций максимально допустимо
-        leader_margin (float):
-            дополнительный отступ между лидером и препятствиями, который учитывается при расчёте маршрута
+        """
+        Creates a continuous environment for "following the leader" task.
+
+        :param game_width (int):
+            game screen width, pixels
+        :param game_height (int):
+            game screen height, pixels
+        :param framerate (int):
+            framerate for pygame simulation
+        :param caption (str):
+            game screen caption
+        :param trajectory (list or None):
+            the list of the leader's route. If None, the list is generated randomly
+        :param leader_pos_epsilon (int):
+            the distance in pixels from the trajectory point within which the leader passed through the point
+        :param show_leader_path (bool):
+            flag, displaying the entire the leader's route
+        :param show_leader_trajectory (bool):
+            flag, displaying the route taken by the leader
+        :param show_rectangles (bool):
+            flag, displaying interaction rectangles
+        :param show_box (bool):
+            flag, displaying the boundaries within which the agent needs to be
+        :param simulation_time_limit (int or None):
+            time limit for simulation, sec, if None - not limited
+        :param reward_config (str, Path or None):
+            path to the reward json created using the reward_constructor class. If None, creates by default (Ivan v.1)
+        :param pixels_to_meter (int):
+            number of pixels per 1 meter
+        :param min_distance (int):
+            the minimum distance, m, that the agent must maintain from the leader
+        :param max_distance (int):
+            the maximum distance, m, beyond which the agent must not lag behind the leader (along the route)
+        :param max_dev (int):
+            the maximum distance, m, within which the agent can deviate from the route
+        :param warm_start (int):
+            the number of steps within which the agent will not receive a penalty (currently not fully implemented)
+        :param manual_control (bool):
+            use manual control of the agent;
+        :param manual_control_input (str):
+            keyboard - control the arrows on the keyboard, gamepad - control the joystick on the gamepad
+        :param max_steps (int):
+            the maximum number of steps for one simulation
+        :param aggregate_reward (bool):
+            if True, step will give the aggregated reward
+        :param obstacle_number (int):
+            number of randomly generated static obstacles
+        :param leader_speed_regime (dict):
+            dictionary - key - number of steps, value - leader speed (fraction of maximum?)
+        :param constant_follower_speed (bool):
+            flag, the agent's speed will always be maximum, and only one action will be used - rotation
+        :param random_frames_per_step (tuple/list):
+            range from which frames_per_step will be sampled
+        :param number_of_target_points (int):
+            the number of points through which the route will be built, by default there is one target
+        :param follower_max_speed (float):
+            the maximum speed of the agent in m/s
+        :param leader_max_speed (float):
+            the maximum speed of the leader in m/s
+        :param bear_max_speed (float):
+            the maximum speed of a dynamic obstacle in m/s
+        :param path_finding_algorythm (str):
+            pathfinding algorithm to use for the leader, "astar" or "dstar"
+        :param multiple_end_points (bool):
+            False - only one endpoint is used, True - several points and a more complex route are generated
+        :param follower_size (tuple of float):
+            the agent dimensions (height, width) in meters
+        :param leader_size (tuple of float):
+            the leader dimensions (height, width) in meters
+        :param return_render_matrix (bool):
+            flag, the render function should return the image as a matrix. For videos and simulations it is necessary, for real time it is better to call it out so that it works faster.
+        :param ignore_follower_collisions (bool):
+            flag, ignore collisions with the agent (recommended for use when selecting test routes)
+        :param path_finding_iterations (int):
+            if an iterative pathfinding algorithm for the leader is used, how many iterations are the maximum allowed
+        :param leader_margin (float):
+            additional space between the leader and obstacles, which is taken into account when calculating the route
         """
 
         # нужно для сохранения видео
@@ -403,7 +402,7 @@ class Game(gym.Env):
 
     def check_parameters(self):
         """
-        Проверка параметров на допустимые значения.
+        Checking parameters for acceptable values.
         """
         if self.path_finding_algorythm not in ["astar", "dstar"]:
             raise ValueError(
@@ -417,7 +416,7 @@ class Game(gym.Env):
         return
 
     def reset(self):
-        """Стандартный для gym обработчик инициализации новой симуляции. Возвращает инициирующее наблюдение."""
+        """Standard gym handler for initializing a new simulation. Returns the initiating observation."""
 
 #         file = '/home/sheins/rl_robot/continuous-grid-arctic/steps_stat_7.csv'
 #         if (os.path.exists(file) and os.path.isfile(file)):
@@ -426,7 +425,7 @@ class Game(gym.Env):
 #         else:
 #             print("file not found")
 
-        print("===Запуск симуляции номер {}===".format(self.simulation_number))
+        print("===Run simulation number {}===".format(self.simulation_number))
         if DEBUG:
             self.debug_info = {}
         self.step_count = 0
@@ -930,7 +929,7 @@ class Game(gym.Env):
         return obs, reward, done, info
 
     def frame_step(self, action):
-        """Стандартный для gym обработчик одного шага среды (в данном случае один кадр)"""
+        """Standard gym handler for one step of the environment (in this case, one frame)"""
         self.is_in_box = False
         self.is_on_trace = False
         info = {
@@ -1126,7 +1125,7 @@ class Game(gym.Env):
         return obs, reward_to_return, self.done, info
 
     def _process_leader_speed_regime(self):
-        """Функция обрабатывает словарь скорости движения лидера."""
+        """The function processes the leader's movement speed dictionary."""
         min_step_distance = np.inf
 
         for cur_key in list(self.leader_speed_regime.keys()):
@@ -1142,7 +1141,7 @@ class Game(gym.Env):
         return self.leader.max_speed * self.cur_speed_multiplier
 
     def _process_leader_acceleration_regime(self):
-        """Функция обрабатывает словарь ускорения движения лидера."""
+        """The function processes the acceleration dictionary of the leader's movement."""
         min_step_distance = np.inf
 
         acceleration = 0
@@ -1159,7 +1158,7 @@ class Game(gym.Env):
         return self.cur_leader_cumulative_speed * self.leader.max_speed
 
     def _collision_check(self, target_object):
-        """Рассматривает, не участвует ли объект в коллизиях"""
+        """Considers whether the object is involved in collisions"""
         objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_object_list if cur_obj is not target_object]
         dyn_objects_to_collide = [cur_obj.rectangle for cur_obj in self.game_dynamic_list if cur_obj is not target_object]
         if target_object.name == 'leader':
@@ -1179,7 +1178,7 @@ class Game(gym.Env):
                 return False
 
     def render(self, custom_message=None, **kwargs):
-        """Стандартный для gym метод отображения окна и обработки событий в нём (например, нажатий клавиш)"""
+        """Standard for gym method of displaying a window and processing events in it (for example, keystrokes)"""
 
         self._show_tick()
         pygame.display.update()
@@ -1188,8 +1187,8 @@ class Game(gym.Env):
 
 
     def rotate_object(self, object_to_rotate):
-        """Поворачивает изображение объекта, при этом сохраняя его центр и прямоугольник для взаимодействия.
-        """
+        """Rotates the image of an object while maintaining its center and rectangle for interaction.
+                 """
         cur_rect = object_to_rotate.rectangle
         # Rotate the original image without modifying it.
         new_image = pygame.transform.rotate(object_to_rotate.image, -object_to_rotate.direction)
@@ -1200,7 +1199,7 @@ class Game(gym.Env):
         return new_image
 
     def show_object(self, object_to_show):
-        """Отображает объект с учётом его направления"""
+        """Displays an object taking into account its direction"""
         cur_image = object_to_show.image
         if hasattr(object_to_show, "direction"):
             cur_image = self.rotate_object(object_to_show)
@@ -1212,7 +1211,7 @@ class Game(gym.Env):
             pygame.draw.rect(self.gameDisplay, self.colours["red"], object_to_show.rectangle, width=1)
 
     def _show_tick(self):
-        """Отображает всё, что положено отображать на каждом шаге"""
+        """Displays everything that is supposed to be displayed at each step"""
         self.gameDisplay.fill(self.colours["white"])  # фон
         # отображение полного маршрута Ведущего
         if self.show_leader_path_flag:
@@ -1287,7 +1286,7 @@ class Game(gym.Env):
         self.gameDisplay.blit(reward_text, (0, 100))
 
     def generate_trajectory(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
+        """Randomly generates points on the map that the leader must go through"""
         # TODO: добавить проверку, при которойо точки не на одной прямой
         # TODO: добавить отдельную функцию, которая использует эту:
         # на вход принимает шаблон -- список из r и c, где
@@ -1616,7 +1615,7 @@ class Game(gym.Env):
 
     def generate_trajectory_astar(self,
                                   max_iter=None):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий, строит маршрут методом A-star"""
+        """Randomly generates points on the map that the leader must go through, builds a route using the A-star method"""
 
         # шаг сетки для вычислений. Если менять коэф, то надо изменить и в atar file в def return_path
         step_grid = 20
@@ -1696,7 +1695,7 @@ class Game(gym.Env):
             return path
 
     def generate_trajectory_old(self, n=8, min_distance=30, border=20, parent=None, position=None, iter_limit=10000):
-        """Случайно генерирует точки на карте, по которым должен пройти ведущий"""
+        """Randomly generates points on the map that the leader must go through"""
         trajectory = list()
 
         i = 0  # пока отслеживаем зацикливание по числу итераций на генерацию каждой точки. Примитивно, но лучше, чем никак
@@ -1724,7 +1723,7 @@ class Game(gym.Env):
         return trajectory
 
     def manual_game_contol(self, event, follower):
-        """обработчик нажатий клавиш при ручном контроле."""
+        """keypress handler for manual control."""
         # В теории, можно на основе этого класса сделать управляемого руками Ведущего. Но надо модифицировать.
 
         if event.type == pygame.QUIT:
@@ -1772,7 +1771,7 @@ class Game(gym.Env):
                         follower.command_forward(follower.speed - self.PIXELS_TO_METER)
 
     def _get_obs(self):
-        """Возвращает наблюдения (observations) среды каждый шаг (step)"""
+        """Returns observations of the environment each step"""
         obs_dict = dict()
 
         obs_dict["numerical_features"] = np.array([self.leader.position[0],
@@ -1811,7 +1810,7 @@ class Game(gym.Env):
     # TODO: Вроде можно оптимизировать. Не каждый раз всю траекторию смотреть, а только добавлять новые и
     #  удалять вышедшие за пределы
     def _trajectory_in_box(self):
-        """Строит массив точек маршрута Ведущего, которые входят в коробку, в которой должен находиться Ведомый."""
+        """Constructs an array of Master waypoints that are included in the box in which the Follower should be located."""
 
         self.green_zone_trajectory_points = list()
 
@@ -1852,7 +1851,7 @@ class Game(gym.Env):
             self.left_border_points_list.append(res_point + left_border_vec)
 
     def _reward_computation(self):
-        """функция для расчёта награды на основе конфигурации награды"""
+        """function for calculating rewards based on reward configuration"""
         # Скорее всего, это можно сделать красивее
         res_reward = 0
 
@@ -1935,7 +1934,7 @@ class Game(gym.Env):
 
     @staticmethod
     def closest_point(point, points, return_id=True):
-        """Метод определяет ближайшую к точке точку из массива точек"""
+        """The method determines the point closest to the point from an array of points"""
         points = np.asarray(points)
         dist_2 = np.sum((points - point) ** 2, axis=1)
 
@@ -2061,32 +2060,32 @@ class TestGameManual_gazebo(Game):
                                 "corridor_length": 250,
                                 "corridor_width": 30
                             },
-                         #    "LeaderCorridor_lasers_all":
-                         #    {
-                         #        "sensor_name": "LeaderCorridor_lasers_all",
-                         #        "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                         #        "react_to_green_zone": True,
-                         #        "react_to_obstacles": True,
-                         #        "react_to_safe_corridor": True,
-                         #        "lasers_count": 12,
-                         #        "laser_length": 100,
-                         #        "max_prev_obs": 5,
-                         #        "use_prev_obs": True,
-                         #        "pad_sectors": False
-                         #    },
-                         #    "LeaderCorridor_lasers_obstacles":
-                         #    {
-                         #        "sensor_name": "LeaderCorridor_lasers_obstacles",
-                         #        "sensor_class": "LeaderCorridor_Prev_lasers_v2",
-                         #        "react_to_green_zone": False,
-                         #        "react_to_obstacles": True,
-                         #        "react_to_safe_corridor": False,
-                         #        "lasers_count": 24,
-                         #        "laser_length": 150,
-                         #        "max_prev_obs": 5,
-                         #        "use_prev_obs": True,
-                         #        "pad_sectors": False
-                         #    },
+                            "LeaderCorridor_lasers_all":
+                            {
+                                "sensor_name": "LeaderCorridor_lasers_all",
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                                "react_to_green_zone": True,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": True,
+                                "lasers_count": 12,
+                                "laser_length": 100,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": False
+                            },
+                            "LeaderCorridor_lasers_obstacles":
+                            {
+                                "sensor_name": "LeaderCorridor_lasers_obstacles",
+                                "sensor_class": "LeaderCorridor_Prev_lasers_v2",
+                                "react_to_green_zone": False,
+                                "react_to_obstacles": True,
+                                "react_to_safe_corridor": False,
+                                "lasers_count": 24,
+                                "laser_length": 150,
+                                "max_prev_obs": 5,
+                                "use_prev_obs": True,
+                                "pad_sectors": False
+                            },
                          },
                         **kwargs
                     )

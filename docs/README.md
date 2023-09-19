@@ -1,5 +1,6 @@
-## Основные модули
-- [follow_the_leader_continuous_env](../src/continuous_grid_arctic/follow_the_leader_continuous_env.py) - содержит класс среды, и процедуры регистрации среды. При импорте этого модуля происходит регистрация сред;
+## Main modules
+- [follow_the_leader_continuous_env](../src/continuous_grid_arctic/follow_the_leader_continuous_env.py) environment 
+class, when importing this module, environments are registered
 - [utils/classes](../src/continuous_grid_arctic/utils/classes.py) - классы роботов ведущего и ведомого.
 - [utils/sensors](../src/continuous_grid_arctic/utils/sensors.py) - классы сенсоров, реализующие процедуры рассчёта наблюдаемых показателей.
 - [utils/wrappers](../src/continuous_grid_arctic/utils/wrappers.py) - классы обёртки, для пред/постобработки наблюдений и действий для взаимодействия среды и алгоритма управления

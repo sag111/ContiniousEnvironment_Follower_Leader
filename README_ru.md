@@ -1,65 +1,77 @@
 # continuous-grid-arctic
 
-## 2D environment
-[src/continuous_grid_arctic](src/continuous_grid_arctic) contains gym environment for "following the leader" task. 
+## 2D среда continuous-grid-arctic для обучения 
+В репозитории в [папке src/continuous_grid_arctic](src/continuous_grid_arctic) представлена реализация gym-среды решения задачи следования за лидером. В среде реализованы два агента: ведущий и ведомый, реализованы статические и динамические препятствия. 
 
-- [Environment classes description](docs/README.md)
-- [Sensors description](docs/Sensors.md)
-- [Wrappers description](docs/Wrappers.md)
+- [Описание основных классов среды](docs/README.md)
+- [Описание сенсоров](docs/Sensors.md)
+- [Описание врапперов](docs/Wrappers.md)
 
-## 3D environment
-[src/arctic_gym](src/arctic_gym) contains gym-gazebo environment "following the leader" task.
+## 3D среда arctic_gym для апробации
+В репозитории в [папке src/arctic_gym](src/arctic_gym) представлена реализация решения задачи следования за лидером 
+в 3D среде Gazebo. В папке представлен код, который можно подключить к собственной среде, реализованной в ROS Gazebo.
 
-- [Gym-gazebo description](docs/Arctic.md)
+- [Описание использования системы управления роботом](docs/Arctic.md)
 
-## Setup
+## Установка
 ```
 git clone https://github.com/sag111/continuous-grid-arctic
+cd continuous-grid-arctic
 ```
-Use as package
+Если нет необходимости менять код среды, можно установить через файл setup.py.
 ```
 pip install git+https://github.com/sag111/continuous-grid-arctic.git
 ```
 
-### Anaconda env install
-1. Installation using conda.yml 
+### Установка окружения
+1. Установка с помощью файла conda.yml 
 ``` 
 conda env create -f conda.yml 
 ```
 
-2. If errors occurred:
+2. Установка в случае возникновения ошибок:
 ``` 
-conda create -n rl -c conda-forge python-pdal=3.1.2 python=3.7; 
-conda activate rl;
+conda create -n rl -c conda-forge python-pdal=3.1.2 python=3.7 
+
 pip install requirements.txt
 ```
 
-3. For 2D environment 
-```
-pip install pygame~=2.1.2 pandas numpy
-``` 
+3. Для 2д среды достаточно установить pygame~=2.1.2, pandas и numpy 
 
-### Requirements:
-- Python 3.7.12
-- setuptools==66.0.0
-- wheel==0.38.4
-- opencv-python==4.5.4.60
-- ray\[rllib\]==1.9.5
-- pygame==2.1.2
-- pyhocon==0.3.60
-- rospkg==1.4.0
-- importlib-metadata==4.13.0
-- open3d==0.17.0
-- torch==1.13.1
-- protobuf==3.20
 
-## 2D environment usage:
-To demonstrate how the environment works in manual mode run the file main.py:
+### Требования:
+- Python 3.6+
+- gym~=0.21.0
+- numpy~=1.19.5
+- scipy~=1.7.3
+- setuptools~=58.0.4
+- matplotlib~=3.5.1
+- pygame~=2.1.2
+- pandas~=1.3.5
+
+
+Пожалуйста, используйте этот bibtex, если вы хотите цитировать этот репозиторий в своих публикациях:
 ```
+@article{selivanov2022environment,
+  title={An environment emulator for training a neural network model to solve the “Following the leader” task},
+  author={Selivanov, Anton and Rybka, Roman and Gryaznov, Artem and Shein, Vyacheslav and Sboev, Alexander},
+  journal={Procedia Computer Science},
+  volume={213},
+  pages={209--216},
+  year={2022},
+  publisher={Elsevier}
+}
+```
+
+
+## Примеры использования [2D среды](src/continuous_grid_arctic):
+Для демонстрации работы среды в ручном режиме работы необходимо запускать файл main.py:
+```
+python run_2d.py --mode manual
+или
 python run_2d.py --mode manual --seed 0 --hardcore --manual_input gamepad --log_results
 ```
-Possible command line arguments are described in the script [run_2d.py](src/run_2d.py). Кроме этого настроить среду 
-можно в скрипте 
+Возможные аргументы командной строки описаны в самом скрипте run_2d.py. Кроме этого настроить среду можно в скрипте 
 follow_the_leader_continus_env.py. Для этого надо посмотреть в run_2d.py, какая именно среда запускается и в
 follower_the_leader_continuous_env изменить параметры. Например можно ускорить симуляцию увеличив framerate или 
 frames_per_step. 
@@ -101,17 +113,4 @@ frames_per_step.
     3.3. reward_threshold по своему желанию.
 
 
-## Citation
 
-Please use this bibtex if you want to cite this repository in your publications:
-```
-@article{selivanov2022environment,
-  title={An environment emulator for training a neural network model to solve the “Following the leader” task},
-  author={Selivanov, Anton and Rybka, Roman and Gryaznov, Artem and Shein, Vyacheslav and Sboev, Alexander},
-  journal={Procedia Computer Science},
-  volume={213},
-  pages={209--216},
-  year={2022},
-  publisher={Elsevier}
-}
-```
