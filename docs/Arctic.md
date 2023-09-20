@@ -9,6 +9,22 @@ A description of the 3D environment configuration is presented in the file [conf
 
 For register new environment in Gym library edit [\_\_init\_\_.py](../src/arctic_gym/__init__.py) file
 
+## Launch
+World based on ROS and Gazebo simulator required
+
+Anaconda environment "rl" required
+
+1. RL model service
+```
+./src/arctic_gym/server.sh
+```
+
+2. Rl model client with 3D environment support
+```
+export PYTHONPATH=$PYTHONPATH:$HOME/continuous-grid-arctic/;
+python src/arctic_env/eval/n_routes.py
+```
+
 ## Main modules
 - [arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) integration of a gym-like environment for interaction
 with ROS. File containing all the scripts for solving the following problem: obtaining lidar and camera data, r
@@ -137,7 +153,7 @@ Example parameters for Ray Sensor 1 (GazeboCorridor_Prev_lasers_v2)
 - lasers_count=12,
 - laser_length=10,
 - max_prev_obs=10,
-- pad_sectors=False)
+- pad_sectors=False
 
 Example parameters for Ray Sensor 2 (GazeboCorridor_Prev_lasers_v2)
 - react_to_green_zone=False,
@@ -146,7 +162,7 @@ Example parameters for Ray Sensor 2 (GazeboCorridor_Prev_lasers_v2)
 - lasers_count=24,
 - laser_length=15,
 - max_prev_obs=10,
-- pad_sectors=False)
+- pad_sectors=False
 
 The user can create their own sensors and input features for the model, in which case they must be implemented in 
 [gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) as a new class.
