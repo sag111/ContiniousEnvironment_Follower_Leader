@@ -58,48 +58,47 @@ To demonstrate how the environment works in manual mode run the file main.py:
 ```
 python run_2d.py --mode manual --seed 0 --hardcore --manual_input gamepad --log_results
 ```
-Possible command line arguments are described in the script [run_2d.py](src/run_2d.py). Кроме этого настроить среду 
-можно в скрипте 
-follow_the_leader_continus_env.py. Для этого надо посмотреть в run_2d.py, какая именно среда запускается и в
-follower_the_leader_continuous_env изменить параметры. Например можно ускорить симуляцию увеличив framerate или 
-frames_per_step. 
+Possible command line arguments are described in the script [run_2d.py](src/run_2d.py). In addition, you can configure 
+the environment in the script follow_the_leader_continus_env.py. To do this, you need to look in run_2d.py to see which 
+environment is being launched and change the parameters in follower_the_leader_continuous_env. For example, you can 
+speed up the simulation by increasing the framerate or frames_per_step.
 
-По умолчанию одна симуляция длится не более 5000 шагов (задаётся при создании конкретной среды параметром max_steps) 
-или до тех пор, пока агент не попадёт в аварию.
+By default, one simulation lasts no more than 5000 steps (set when creating a specific environment with the max_steps 
+parameter) or until the agent gets into an accident.
 
-В папке notebooks располагается два демонстрационных Jupyter блокнота. 
-1. [Env_demo](src/continuous_grid_arctic/notebooks/Env_demo.ipynb) содержит демонстрационную программу для взаимодействия со средой
-2. [Ray_train_demo](src/continuous_grid_arctic/notebooks/Ray_train_demo.ipynb) содержит демонстрационную программу для обучения агента и тестирования полученной модели 
-с использованием библиотеки ray[rllib]
+The notebooks folder contains two demo Jupyter notebooks.
+1. [Env_demo](src/continuous_grid_arctic/notebooks/Env_demo.ipynb) contains a demo program for interacting with 
+the environment
+2. [Ray_train_demo](src/continuous_grid_arctic/notebooks/Ray_train_demo.ipynb) contains a demo program for training the 
+agent and testing the resulting model using the ray[rllib] library
 
-Ниже представлено тестовое прохождение одного маршрута с использованием **LeaderPositionsTracker_v2**, 
-**LeaderCorridor_Prev_lasers_v2**, **LaserPrevSensor**. Модель обучена в конфигурации среды с 35 статическими 
-препятствиями и 1 динамическим. 
+Below is a test run of one route using **LeaderPositionsTracker_v2**, **LeaderCorridor_Prev_lasers_v2**, 
+**LaserPrevSensor**. The model was trained in an environment configuration with 35 static obstacles and 1 dynamic one.
 
 <p align="center">
 <img src="src/continuous_grid_arctic/figures/demo_video.gif" width="500">
 </p>
 
-## Примеры использования [3D среды](src/arctic_gym):
-Для демонстрации работы модели в 3D-среде необходимо ознакомиться с инструкцией [Arctic.md](docs%2FArctic.md)
+## 3D environment usage:
 
+To demonstrate the operation of the model in a 3D environment, you must read the instructions 
+[Arctic.md](docs%2FArctic.md)
 <p align="center">
 <img src="src/arctic_gym/figures/demo_gazebo.gif" width="500">
 </p>
 
-## Конфигурация собственной среды
-Чтобы создать собственную конфигурацию среды, необходимо выполнить следующие шаги: 
-1. В файле follow_the_leader_continuous_env.py создать наследующий основную среду класс (как, например, Test-Cont-Env-Auto-v0);
-2. В методе init созданного класса задать нужные параметры при инициализации родительского класса 
-(полный список параметров смотреть в методе init класса Game);
-3. Далее, "зарегистрировать" среду как среду gym с помощью gym_register, по следующему шаблону:
-
-    3.1. id=Test-Cont-Env-<собственное_название>-v0;
-    
-    3.2. follow_the_leader_continuous_env:<название класса среды, который создан в п.1>;
-    
-    3.3. reward_threshold по своему желанию.
-
+## Configuring your own environment
+To create your own environment configuration, you must complete the following steps:
+1. In the follow_the_leader_continuous_env.py file, create a class that inherits the main environment 
+(such as Test-Cont-Env-Auto-v0);
+2. In the init method of the created class, set the necessary parameters when initializing the parent class (for a 
+complete list of parameters, see the init method of the Game class);
+3. Next, “register” the environment as a gym environment using gym_register, using the following template:
+   ```
+   id=Test-Cont-Env-<your_env_name>-v0;
+   follow_the_leader_continuous_env:<name of the environment class that was created in step 1>;
+   reward_threshold at will.
+   ```
 
 ## Citation
 

@@ -23,36 +23,36 @@ if __name__ == "__main__":
                         type=str,
                         default="manual",
                         choices=["manual", "rl", "base"],
-                        help="режим работы эксперимента. manual - ручной, rl - обучение алгоритма, base - использование базового алгоритма")
+                        help="experimental operating mode. manual, rl - learning the algorithm, base - using the base algorithm")
     
     parser.add_argument('--n_steps',
                         type=int,
                         default=20000,
-                        help="Число шагов, в течение которых работает проверочная симуляция")
+                        help="Number of steps during which the verification simulation runs")
     parser.add_argument('--seed',
                         type=int,
                         default=None,
-                        help="Рандом сид для инициализации среды (от него зависит расположение случайно генерируемых препятствий)")
+                        help="Random seed for initializing the environment (the location of randomly generated obstacles depends on it)")
     parser.add_argument('--log_results',
                         action="store_true",
-                        help="Надо ли сохранять результаты эпизодов в файл")
+                        help="need to save episode results to a file")
     parser.add_argument('--hardcore',
                         action="store_true",
-                        help="Если выбран ручной режим и включен режим hardcore, то будут отображаться только показатели сенсоров")
+                        help="If manual mode is selected and hardcore mode is enabled, only sensor indicators will be displayed")
     parser.add_argument('--manual_input',
                         default="keyboard",
                         choices=["keyboard", "gamepad"],
-                        help="Чем осуществляется ручное управление keyboard или gamepad")
+                        help="manual control performed using a keyboard or gamepad")
     
     parser.add_argument('--training_steps',
                     type=int,
                     default=50000,
-                    help="Число шагов, в течение которых происходит обучение модели (только для режима управления автоматом)")
+                    help="Number of steps during which the model is trained (only for automatic control mode)")
     
     parser.add_argument('--video_name',
                     type=str,
                     default="prediction.mp4",
-                    help="название видео с результирующей симуляцией (только для режима управления автоматом)")
+                    help="title of the video with the resulting simulation (only for automatic control mode))")
     
 #     parser.add_argument('--n_sim',
 #                         type=int,
@@ -89,8 +89,8 @@ if __name__ == "__main__":
             obs, rewards, dones, info = env.step((0,0)) 
             if dones:
                 print(
-                    "Эпизод закончен: итоговая награда {}, пройдено кадров {} статус миссии {}, статус ведущего {}, "
-                    "статус ведомого {}".format(env.overall_reward, env.step_count, info["mission_status"],
+                    "Episode completed: final reward {}, frames completed {} mission status {}, leader status {}, "
+                    "agent status {}".format(env.overall_reward, env.step_count, info["mission_status"],
                                                 info["leader_status"], info["agent_status"]))
                 if args.log_results:
                     if not os.path.exists("runs_results.csv"):
