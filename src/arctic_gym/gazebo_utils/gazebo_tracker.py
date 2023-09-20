@@ -17,12 +17,15 @@ class GazeboLeaderPositionsTracker_v2(LeaderPositionsTracker_v2):
 
     def scan(self, leader_position, follower_orientation, delta, follower_position=[0, 0]):
         """
-        Версия сохранения координат для Gazebo, без построения корридора
-        Args:
-            leader_position: позиция ведущего робота [x, y]
-            follower_position: позиция ведомого робота [x, y]
-        Returns:
-            История позиций ведущего робота
+        Version of saving coordinates for Gazebo, without creating a safe zone
+
+        :param leader_position: the leader position in the form [x, y]
+        :param follower_orientation: agent's angle
+        :param delta: agent's delta position between two points
+        :param follower_position: the agent position in the form [x, y]
+
+        :return:
+            History of the leader positions
         """
 
         follower_orientation = np.degrees(follower_orientation)[2]

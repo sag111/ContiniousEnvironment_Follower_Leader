@@ -13,7 +13,7 @@ project_path = Path(__file__).resolve().parents[3]
 config_path = project_path.joinpath('config/config.conf')
 config = ConfigFactory.parse_file(config_path)
 
-# маршруты
+# routes
 experiment_path = project_path.joinpath('config/experiment.conf')
 experiment = ConfigFactory.parse_file(experiment_path)
 

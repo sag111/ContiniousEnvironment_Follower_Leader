@@ -5,7 +5,6 @@ from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import PointCloud2
 from control_msgs.msg import JointControllerState
 from actionlib_msgs.msg import GoalStatusArray
-from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Path
 
 from pyhocon import ConfigTree
@@ -14,31 +13,31 @@ from pyhocon import ConfigTree
 class Subscribers:
 
     def __init__(self, config: ConfigTree):
-        # Координаты робота
+        # the agent coordinates
         self.robot_odom_topic = config["topic.robot_odom"]
         rospy.Subscriber(self.robot_odom_topic, Odometry, self._odom_callback)
-        # Координаты цели
+        # the leader coordinates
         self.target_odom_topic = config["topic.target_odom"]
         rospy.Subscriber(self.target_odom_topic, Odometry, self._odom_target_callback)
-        # Изображение с камеры робота
+        # the agent camera image
         self.robot_rotating_camera_topic = config["topic.robot_rotating_camera"]
         rospy.Subscriber(self.robot_rotating_camera_topic, CompressedImage, self._follower_image_callback)
-        # Облако точек лидара робота
+        # the agent point cloud from lidar
         self.robot_lidar_topic = config["topic.robot_lidar"]
         rospy.Subscriber(self.robot_lidar_topic, PointCloud2, self._lidar_callback)
-        # Состояние угла рыскания камеры робота
+        # the agent camera yaw angle status
         self.robot_camera_yaw_state_topic = config["topic.robot_camera_yaw_state"]
         rospy.Subscriber(self.robot_camera_yaw_state_topic, JointControllerState, self._follower_camera_yaw_callback)
-        # Статус цели
+        # the leader status
         self.target_status_topic = config["topic.target_status"]
         rospy.Subscriber(self.target_status_topic, GoalStatusArray, self._target_status_callback)
-        # Статус робота
+        # the agent status
         self.robot_status_move_to_topic = config["topic.robot_status_move_to"]
         rospy.Subscriber(self.robot_status_move_to_topic, GoalStatusArray, self._move_to_status_callback)
-        # Путь ведущего
+        # the leader path
         self.target_path_topic = config["topic.target_path"]
         rospy.Subscriber(self.target_path_topic, Path, self._target_path_callback)
-        # Путь ведомого
+        # the agent path
         self.robot_path_topic = config["topic.robot_path"]
         rospy.Subscriber(self.robot_path_topic, Path, self._robot_path_callback)
 
@@ -49,7 +48,7 @@ class Subscribers:
 
     def get_odom(self):
         """
-        Получение координат робота
+        gets the agent odometry
         """
         return self.odom
 
@@ -58,7 +57,7 @@ class Subscribers:
 
     def get_odom_target(self):
         """
-        Получение координат цели
+        gets the leader odometry
         """
         return self.odom_target
 
@@ -67,7 +66,7 @@ class Subscribers:
 
     def get_from_follower_image(self):
         """
-        Получение изображения с камеры робота
+        gets image from agent's camera
         """
         return self.follower_image
 
@@ -76,7 +75,7 @@ class Subscribers:
 
     def get_lidar(self):
         """
-        Получение облака точек лидара робота
+        gets point cloud from agent's lidar
         """
         return self.lidar
 
@@ -85,7 +84,7 @@ class Subscribers:
 
     def get_camera_yaw_state(self):
         """
-        Получение состояния угла рыскания камеры робота
+        gets the yaw angle state of the agent's camera
         """
         return self.camera_yaw_state
 
@@ -94,7 +93,7 @@ class Subscribers:
 
     def get_target_status(self):
         """
-        Получение статуса цели
+        gets the leader status
         """
         return self.target_status
 
@@ -103,7 +102,7 @@ class Subscribers:
 
     def get_move_to_status(self):
         """
-        Получение статуса робота
+        gets the agent status
         """
         return self.move_to_status
 
@@ -112,22 +111,22 @@ class Subscribers:
 
     def get_target_path(self):
         """
-        Получение пути ведущего
+        gets the leader path
         """
         return self.target_path
 
     def _robot_path_callback(self, data):
-        """
-        Получение пути ведомого
-        """
         self.robot_path = data
 
     def get_robot_path(self):
+        """
+        gets the agent path
+        """
         return self.robot_path
 
     def check_all_subscribers_ready(self):
         """
-        Проверка подписок
+        checks subscribers
         """
         self._check_odom_ready()
         self._check_odom_target_ready()
@@ -135,14 +134,10 @@ class Subscribers:
         self._check_lidar_ready()
         self._check_follower_camera_yaw_ready()
         self._check_target_status_ready()
-        # print(1)
-        # self._check_target_path_ready()
-        # self._check_robot_path_ready()
-        # print(2)
 
     def _check_odom_ready(self):
         """
-        Проверка получения координат робота
+        Checking receipt of agent odometry
         """
         self.odom = None
         while self.odom is None and not rospy.is_shutdown():
@@ -153,7 +148,7 @@ class Subscribers:
 
     def _check_odom_target_ready(self):
         """
-        Проверка получения координат цели
+        Checking receipt of leader odometry
         """
         self.odom_target = None
         while self.odom_target is None and not rospy.is_shutdown():
@@ -164,7 +159,7 @@ class Subscribers:
 
     def _check_follower_image_ready(self):
         """
-        Проверка получения изображения с камеры робота
+        Checking the image received from the agent's camera
         """
         self.follower_image = None
         while self.follower_image is None and not rospy.is_shutdown():
@@ -175,7 +170,7 @@ class Subscribers:
 
     def _check_lidar_ready(self):
         """
-        Проверка получения облака точек лидара робота
+        Checking the receipt of the agent's lidar point cloud
         """
         self.lidar = None
         while self.lidar is None and not rospy.is_shutdown():
@@ -186,7 +181,7 @@ class Subscribers:
 
     def _check_follower_camera_yaw_ready(self):
         """
-        Проверка получения состояния угла рыскания камеры робота
+        Checking the receipt of the yaw angle state of the agent camera
         """
         self.camera_yaw_state = None
         while self.camera_yaw_state is None and not rospy.is_shutdown():
@@ -197,7 +192,7 @@ class Subscribers:
 
     def _check_target_status_ready(self):
         """
-        Проверка получения статуса цели
+        Checking the leader status receipt
         """
         self.target_status = None
         while self.target_status is None and not rospy.is_shutdown():
@@ -208,7 +203,7 @@ class Subscribers:
 
     def _check_get_move_to_status_ready(self):
         """
-        Проверка получения статуса робота
+        Checking the agent status receipt
         """
         self.move_to_status = None
         while self.move_to_status is None and not rospy.is_shutdown():
@@ -216,28 +211,6 @@ class Subscribers:
                 self.move_to_status = rospy.wait_for_message(self.robot_status_move_to_topic, GoalStatusArray)
             except:
                 rospy.logerr(f"Current {self.robot_status_move_to_topic} no ready yet, retrying for getting status")
-
-    # def _check_target_path_ready(self):
-    #     """
-    #     Проверка получения пути ведущего
-    #     """
-    #     self.target_path = None
-    #     while self.target_path is None and not rospy.is_shutdown():
-    #         try:
-    #             self.target_path = rospy.wait_for_message(self.target_path_topic, Path)
-    #         except:
-    #             rospy.logerr(f"Current {self.target_path_topic} no ready yet, retrying for getting status")
-    #
-    # def _check_robot_path_ready(self):
-    #     """
-    #     Проверка получения пути ведомого
-    #     """
-    #     self.robot_path = None
-    #     while self.robot_path is None and not rospy.is_shutdown():
-    #         try:
-    #             self.robot_path = rospy.wait_for_message(self.robot_path_topic, Path)
-    #         except:
-    #             rospy.logerr(f"Current {self.robot_path_topic} no ready yet, retrying for getting status")
 
 
 if __name__ == '__main__':

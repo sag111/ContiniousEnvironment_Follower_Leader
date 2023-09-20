@@ -20,36 +20,36 @@ class Publishers:
 
     def __init__(self, config: ConfigTree, rate: int = 10):
         self.rate = rospy.Rate(rate)
-        # Управление углом наклона камеры
+        # Camera pitch angle control
         self.camera_pitch_pub = rospy.Publisher(config["topic.robot_camera_pitch"], Float64, queue_size=1)
-        # Управление углом рыскания камеры
+        # Camera yaw angle control
         self.camera_yaw_pub = rospy.Publisher(config["topic.robot_camera_yaw"], Float64, queue_size=1)
-        # Перемещение модели
+        # Teleport the model
         self.teleport_pub = rospy.Publisher(config["topic.teleport"], ModelState, queue_size=1)
-        # Управление целью по координатам
+        # The leader control by coordinates based on path planning
         self.target_goal_pub = rospy.Publisher(config["topic.target_goal"], PoseStamped, queue_size=1)
-        # Управление скоростью робота
+        # The agent velocity control
         self.cmd_vel_pub = rospy.Publisher(config["topic.robot_cmd_vel"], Twist, queue_size=1)
-        # Отмена движения цели
+        # Cancel the leader movement
         self.target_cancel_action_pub = rospy.Publisher(config["topic.target_cancel"], GoalID, queue_size=1)
-        # Управление роботом по координатам
+        # The agent control by coordinates based on path planning
         self.default_goal_pub = rospy.Publisher(config["topic.robot_goal"], PoseStamped, queue_size=1)
 
-        # Внешний топик, публикует путь робота
+        # External topic, publishes the agent path
         self.follower_path_pub = rospy.Publisher(config["topic.robot_path"], Path, queue_size=1)
         self.follower_path = Path()
-        # Внешний топик, публикует путь цели
+        # External topic, publishes the leader path
         self.target_path_pub = rospy.Publisher(config["topic.target_path"], Path, queue_size=1)
         self.target_path = Path()
 
-        # Внешний топик для границ коридора
+        # External topic for safe zone boundaries
         self.corridor_marker_pub = rospy.Publisher("/external/corridor", MarkerArray, queue_size=1)
 
     def set_camera_pitch(self, radian: float):
         """
-        Управление углом наклона камеры
+        Camera pitch angle control
 
-        :param radian: угол в радианах
+        :param radian: angle in radians
         """
         pitch_value = Float64()
         pitch_value.data = radian
@@ -59,7 +59,7 @@ class Publishers:
 
     def _check_camera_pitch_pub_ready(self):
         """
-        Проверка соединения с топиком угла наклона камеры
+        Checking the connection to the camera pitch angle topic
         """
 
         while self.camera_pitch_pub.get_num_connections() == 0 and not rospy.is_shutdown():
@@ -70,9 +70,9 @@ class Publishers:
 
     def set_camera_yaw(self, radian: float):
         """
-        Управление углом рыскания камеры
+        Camera yaw angle control
 
-        :param radian: угол в радианах
+        :param radian: angle in radians
         """
         yaw_value = Float64()
         yaw_value.data = radian
@@ -82,7 +82,7 @@ class Publishers:
 
     def _check_camera_yaw_pub_ready(self):
         """
-        Проверка соединения с топиком угла рыскания камеры
+        Checking the connection to the camera yaw angle topic
         """
         while self.camera_yaw_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -92,11 +92,11 @@ class Publishers:
 
     def teleport(self, model: str, point: Any, quaternion: Any):
         """
-        Перемещение модели
+        Teleport the model
 
-        :param model: название модели
-        :param point: координаты для перемещения
-        :param quaternion: угол поворота
+        :param model: model name
+        :param point: coordinates to move
+        :param quaternion: angle of rotation
         """
         try:
             point_msg = Point(*point)
@@ -120,7 +120,7 @@ class Publishers:
 
     def _check_teleport_pub_ready(self):
         """
-        Проверка соединения с топиком состояния модели
+        Checking the connection to the model state topic
         """
         while self.teleport_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -130,11 +130,11 @@ class Publishers:
 
     def move_target(self, x_position: float, y_position: float, phi: int = 0):
         """
-        Управление целью
+        The leader control by coordinates based on path planning
 
-        :param x_position: абсолютная координата X
-        :param y_position: абсолютная координата Y
-        :param phi: угол поворота в градусах
+        :param x_position: absolute X coordinate
+        :param y_position: absolute Y coordinate
+        :param phi: rotation angle in degrees
         """
         target_goal_value = PoseStamped()
         target_goal_value.header.frame_id = 'map'
@@ -150,7 +150,7 @@ class Publishers:
 
     def _check_target_goal_pub_ready(self):
         """
-        Проверка соединения с топиком конечных координат цели
+        Checking the connection to the topic of the final coordinates of the leader
         """
         while self.target_goal_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -160,10 +160,10 @@ class Publishers:
 
     def move_base(self, linear_speed: float, angular_speed: float):
         """
-        Управление скоростью робота
+        the agent speed control
 
-        :param linear_speed: линейная скорость
-        :param angular_speed: угловая скорость
+        :param linear_speed: linear velocity
+        :param angular_speed: angular velocity
         """
         cmd_vel_value = Twist()
         cmd_vel_value.linear.x = linear_speed
@@ -174,7 +174,7 @@ class Publishers:
 
     def _check_cmd_vel_pub_ready(self):
         """
-        Проверка соединения с топиком скорости робота
+        Checking the connection to the agent velocity topic
         """
         while self.cmd_vel_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -184,7 +184,7 @@ class Publishers:
 
     def target_cancel_action(self):
         """
-        Отмена движения цели
+        Cancel the leader movement
         """
         target_cancel_action_value = GoalID()
 
@@ -193,7 +193,7 @@ class Publishers:
 
     def _check_target_cancel_action_pub_ready(self):
         """
-        Проверка соединения с топиком отмены движения цели
+        Checking the connection with the leader movement cancellation topic
         """
         while self.target_cancel_action_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -203,11 +203,11 @@ class Publishers:
 
     def move_default(self, x_position: float, y_position: float, phi: int = 0):
         """
-        Управление роботом по координатам
+        The agent control by coordinates based on path planning
 
-        :param x_position: абсолютная координата X
-        :param y_position: абсолютная координата Y
-        :param phi: угол поворота в градусах
+        :param x_position: absolute X coordinate
+        :param y_position: absolute Y coordinate
+        :param phi: rotation angle in degrees
         """
         default_goal_value = PoseStamped()
         default_goal_value.header.frame_id = 'map'
@@ -223,7 +223,7 @@ class Publishers:
 
     def _check_default_goal_pub_ready(self):
         """
-        Проверка соединения с топиком для движения робота по координатам
+       Checking the connection to the topic of the final coordinates of the agent
         """
         while self.default_goal_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -233,10 +233,10 @@ class Publishers:
 
     def update_follower_path(self, x: Optional[float] = None, y: Optional[float] = None):
         """
-        Обновление пути робота
+        the agent path update
 
-        :param x: абсолютная координата X пути
-        :param y: абсолютная координата Y пути
+        :param x: absolute X coordinate of the path
+        :param y: absolute Y coordinate of the path
         """
         self.follower_path.header.frame_id = "map"
 
@@ -257,7 +257,7 @@ class Publishers:
 
     def _check_follower_path_pub_ready(self):
         """
-        Проверка соединения с топиком для публикации пути робота
+        Checking the connection to the topic for publishing the agent path
         """
         while self.follower_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -267,10 +267,10 @@ class Publishers:
 
     def update_target_path(self, x: Optional[float] = None, y: Optional[float] = None):
         """
-        Обновление пути цели
+        the target path update
 
-        :param x: абсолютная координата X пути
-        :param y: абсолютная координата Y пути
+        :param x: absolute X coordinate of the path
+        :param y: absolute Y coordinate of the path
         """
         self.target_path.header.frame_id = "map"
 
@@ -290,7 +290,7 @@ class Publishers:
 
     def _check_target_path_pub_ready(self):
         """
-        Проверка соединения с топиком для публикации пути цели
+        Checking the connection to the topic for publishing the leader path
         """
         while self.target_path_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:
@@ -298,8 +298,12 @@ class Publishers:
             except rospy.ROSInterruptException:
                 pass
 
-    def update_corridor(self, corridor):
+    def update_corridor(self, corridor: list):
+        """
+        safe zone points update
 
+        :param corridor: list of safe zone points sequences
+        """
         markers = []
         idx = 0
         for pair in corridor:
@@ -334,7 +338,7 @@ class Publishers:
 
     def _check_corridor_marker_pub_ready(self):
         """
-        Проверка соединения с топиком для коридора
+        Checking the connection to the safe zone topic
         """
         while self.corridor_marker_pub.get_num_connections() == 0 and not rospy.is_shutdown():
             try:

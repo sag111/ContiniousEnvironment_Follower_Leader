@@ -12,16 +12,6 @@ def arctic_env_maker(config):
 
 
 register(
-    id='ArcticRobotDebug-v1',
-    entry_point='src.arctic_gym.arctic_env.env_debugger:DebugEnv'
-)
-
-register_env(
-    'ArcticRobotDebug-v1',
-    arctic_env_maker
-)
-
-register(
     id='ArcticRobot-v1',
     entry_point='src.arctic_gym.arctic_env.arctic_env:ArcticEnv'
 )

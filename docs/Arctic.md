@@ -1,193 +1,194 @@
-## Краткое описание возможностей интеграции нейросетевой модели для задачи следования
-Здесь представлено описание интеграции системы управления движением робота для задачи следования в 3D среду. 
-Программная интеграция находится в [папке](../src/arctic_gym)
-В ней представлен основной функционал по интеграции данной модели в среду Gazebo с мобильным роботом, который 
-вы можете использовать в собственном проекте.
+## Description
+A description of the integration of a robot motion control system for the "following the leader" task in a 3D 
+environment is presented here. 
+Software integration is in [folder](../src/arctic_gym).
+It presents the main functionality for integrating this model into the Gazebo environment with a mobile robot, which 
+you can use in your own project.
 
-## Основные модули
-- [src/arctic_gym/run.py](../src/arctic_gym/run.py) - основной файл при запуске решения задачи следования. 
-Запуская данный файл происходит запуск модели и получение основной информации из среды. Также, присутствует вспомогательный 
-функционал в виде системы безопасности робота.
-- [src/arctic_gym/arctic_env/arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) - файл содержащий все скрипты для 
-осуществления рещения задачи следования. Получение данных лидара, камеры, распознавание объектов на изображении и т.д.
-- [src/arctic_gym/gazebo_utils/gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) - файл содержащий классы,
-реализующие сенсоры, адаптированные под 3D среду.
-- [src/arctic_gym/server/arctic_server.py](../src/arctic_gym/server/arctic_server.py) - файл для запуска Flask сервера с моделью. 
-В данную [папку](../src/arctic_gym/server) помещаются checkpoints полученных моделей из 2D среды.
+A description of the 3D environment configuration is presented in the file [config.conf](../config/config.conf).
 
+For register new environment in Gym library edit [\_\_init\_\_.py](../src/arctic_gym/__init__.py) file
 
+## Main modules
+- [arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) integration of a gym-like environment for interaction
+with ROS. File containing all the scripts for solving the following problem: obtaining lidar and camera data, r
+ecognizing objects in an image, etc
 
-## Особенности использования
+- [robot_gazebo_env.py](../src/arctic_gym/base_arctic_env/robot_gazebo_env.py) default class of gym environment
 
-Для использования данного блока управления робот пользователю необходимо осуществить первоначальную настройку. 
-Программный модуль, использующий RL-модель следования, настроен с учетом использования симуляционного 
-мира ROS Gazebo, в котором реализован определенный робот с лидаром и вращающейся камерой.
-Для запуска демонстрации пользователю необходимо создать собственный симуляционный мир с мобильным колесным роботом,
-у которого на своем борту будут присутствовать камера и лидар. Предварительно пользователь должен иметь:
-- Мир ROS Gazebo (как пример)
-- Робот с камерой и лидаром
-- Object detection (например YOLO)
+- [n_routes.py](../src/arctic_gym/eval/n_routes.py) evaluate current RL model on specified routes described in 
+[experiment.conf](../config/experiment.conf)
 
-В описании к соответствующим модулям представлено описание функций, которые необходимо настроить для 
-взаимодействия с собственной средой пользователя.  
+- [executor.py](../src/arctic_gym/gazebo_utils/executor.py) contains class for execute "following the leader" task and 
+launches the control system and solves the problem of following in the simulation world. By running this file, the model
+is launched and basic information is obtained from the environment. There is also auxiliary functionality in the form 
+of a robot security system.
 
-## Основной файл запуска системы управления с помощью Rl-модели
+- [gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) contains classes that implement sensors adapted 
+for a 3D environment.
 
-[Скрипт run.py](../src/arctic_gym/run.py) осуществляет запуск системы управления и решение задачи следования в симуляционном мире.
-Функция main запускает задачу следования и выполняет обмен наблюдений, награды и действий. Также, здесь реализована простейшая 
-система безопасности и информирования в случае нештатных ситуаций. 
+- [arctic_server.py](../src/arctic_gym/server/arctic_server.py) service for launching an RL model using the ray\[rllib\]
+library. In the [config](../src/arctic_gym/server/config) folder there are RL model configuration files, in the 
+[checkpoints](../src/arctic_gym/server/checkpoints) folder there are saved training checkpoints in a 2D environment.
 
-### Структура системы безопасности:
-- Остановка ведущего в случае его нахождения слишком далеко при следовании; 
-- Экстренная остановка ведомого, в случае близкого нахождения к ведущему;
-- Запуск режима поиска ведущего в случае его длительной потери из поля зрения:
-  - В случае длительной потери ведущего, ведомый начинает осуществлять поиск посредством запуска вращения камеры. 
-  Функция для вращения камерой _rotate_the_camera. Прекращает в случае нахождения ведущего.  
-  - При наличии точек истории маршрута ведущего, ведомый после потери его из поля зрения, будет продолжать движение по 
-  маршруту, а затем произведет остановку. Робот будет осуществлять вращение камерой и стоять на месте до тех пор, пока 
-  не найдет ведущего. 
-  - В случае ожидания больше 30 секунд, задача завершится автоматически. 
+- [publishers.py](../src/arctic_gym/topic/publishers.py) and [subscribers.py](../src/arctic_gym/topic/subscribers.py) 
+contain classes for interacting with ROS Topic Subscriber/Publisher methods
 
 
-## Класс среды, адаптированной к 3D среде
+## Features
 
-В файле [arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) содержатся основная структура в соответствии с 
-[follow_the_leader_continuous_env](../src/continuous_grid_arctic/follow_the_leader_continuous_env.py), адаптированная к 
-3D среде. В данном классе реализованы различные функции для взаимодействия с роботом, камерой, лидаром, вычисление маршрута
-и другое. 
+To use this robot control unit, the user must complete the initial setup. The software module using the RL following 
+model is configured to use the ROS Gazebo simulation world, which implements a specific robot with lidar and a 
+rotating camera.
+To start the demonstration, the user needs to create his own simulation world with a mobile wheeled robot, which will 
+have a camera and lidar on board. The user must first have:
+- World of ROS Gazebo (as an example)
+- Robot with camera (if global coordinates are not used) and lidar
+- Object detection (if global coordinates are not used)
 
-Основные функции класса: 
-- reset - функция сброса к начальным условиям параметров класса
-- step - функция обработки одного шага симуляции, обработка информации и вычисление необходимых значений.
-- _get_xy_lead_from_length_phi - функция вычисления координат ведущего на основе информации о расстоянии и угле отклонения
-- _calculate_points_angles_objects - функция вычисления углов по значениям bounding box. 
-- _get_ssd_lead_information - Функция отправляющая изображение с камеры на Flask сервер с object detection и получающая результаты
-        детектирования объектов. 
-        self.sub.get_from_follower_image() - обращается к топику ROS за изображением с камеры.
-        Пользователю необходимо передавать в данную функцию собственное изображение, которое отправляется
-        в собственную модель детектирования объектов посредством post запроса.
-        Метод используется в reset и step, в тех местах пользователю необходимо изменить подачу изображения или прописать 
-        собственный топик ROS. 
-        Пример, где пользователь должен заменить модель:
-        ```
-        results = requests.post('http://localhost:3333/detection', data=data, timeout=15.0)
-        ```
+The descriptions for the corresponding modules provide a description of the functions that need to be configured to 
+interact with the user's own environment.  
 
-- _get_lidar_points - функция получения облака точек с лидара. Пользователю необходимо исправить ее для 
-      использования собственного лидара. Необходимо прописать топик для подключения к лидару ROS Gazebo.
-- _get_obs_points - Функция обрабатывающая облако точек лидара для веделения препятствий. Первоначально функция фильтрует точки
-        поверхности методом CSF (Cloth Simulation Filter), оставляя только точки препятствий. Далее, нормализует их 
-        относительно локального положения ведомого. После, полученный список проэцируется на 2D плоскость, уменьшается
-        дискретность и округляются значения координат оставшихся точек. Список добавляется вторым соседними мнимыми точками
-        в непосредственной близости для формирования отрезков, которые в дальнейшем проверяются лидарными признаками 
-        нейросетевой моделью.
-- _calculate_length_to_leader - Функция определения расстояния до ведущего на основе обработки результата детектирования объектов на изображении
-        и облака точек лидара. На основе полученных bounding box происходит сопоставление их с точками лидара, используя
-        результат функции calculate_points_angles_objects. В результате, из всего облака точек лидара происходит выделение 
-        только точек лидара, использую BB и углы из calculate_points_angles_objects. 
-        Далее, на основе полученной информации берется ближайшая точка, и на основе нее вычисляется расстояние до ведущего. 
-        Также, из всего облака точек, удаляются точки ведущего и в дальнейшем не учитвваются в обработке препятствий.
-- _get_camera_lead_info - Функция определения угла отклонения ведущего относительно ведомого на основе информации с камеры и расстоянии до 
-        ведущего. Возвращает результат о расстояние и угле отклонения ведущего в локальных координатах
-- _get_delta_position - Функция определения перемещения за одну итерацию. Определяется перемещение ведомого по координатам
-      x и y за один step.
-- _is_done - Функция проверки статусов выполнения задачи и нештатных ситуаций.
-- _compute_reward - расчет награды 
 
-## Классы сенсоров для 3D мира
+### Safety system features
+- Stopping the leader if it is too far when following;
+- Emergency stop of the agent, in case of being close to the leader;
+- Starting the leader search mode in case of long-term loss of sight:
+  - In the event of a long-term loss of the leader, the agent begins to search by starting the rotation of the camera. 
+  Function for rotating the camera _rotate_the_camera. Stops if a leader is found.
+  - If there are points in the history of the leader's route, the agent, after losing it from sight, will continue to 
+  move along the route and then stop. The agent will rotate the camera and stand still until it finds the leader.
+  - If no actions more than 30 seconds, the task will complete automatically. 
 
-В [файле gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) реализованы сенсоры из 2D среды, 
-адаптированный к 3D среде. В файле на данный момент находятся 4 сенсора:
-- GazeboLeaderPositionsTracker
+
+## ArcticEnv
+
+В файле [arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) contains the basic structure in accordance with
+[follow_the_leader_continuous_env](../src/continuous_grid_arctic/follow_the_leader_continuous_env.py), adapted to 3D 
+environment. This class implements various functions for interacting with a robot, camera, lidar, route calculation, 
+and more.
+
+Main functions of the ArcticEnv
+- **reset** - function of initial environment conditions
+
+- **step** - function of processing one simulation step, processing information and calculating the required values
+
+- **calculate_points_angles_objects** - function for calculating angles using bounding box values.
+
+- **_get_ssd_lead_information** - function sends an image from a camera to a Flask server with object detection and 
+receives object detection results. self.sub.get_from_follower_image refers to the ROS topic for an image from the 
+camera. The user needs to pass his own image to this function, which is sent to his own object detection model via a 
+post request. The method is used in reset and step, in those places the user needs to change the image feed or register
+his own ROS topic in [config.conf](../config/config.conf) file.
+
+- **get_lidar_points** - function of obtaining a point cloud from a lidar. The user needs to correct it to use their own 
+lidar. It is necessary to register a topic to connect to the ROS Gazebo lidar in [config.conf](../config/config.conf) 
+file.
+ 
+- **_get_obs_points** - function processes the lidar point cloud for obstacle detection. Initially, the function filters 
+surface points using the CSF (Cloth Simulation Filter) method, leaving only obstacle points. Next, it normalizes them 
+relative to the local position of the agent. Afterwards, the resulting list is projected onto a 2D plane, the 
+discreteness is reduced and the coordinate values of the remaining points are rounded. The list is added with second 
+neighboring imaginary points in the immediate vicinity to form segments, which are further verified by the lidar 
+features of the neural network model.
+
+- **calculate_length_to_leader** - function determines the distance to the leader based on processing the result of 
+detecting objects in the image and the lidar point cloud. Based on the received bounding boxes, they are compared with 
+lidar points using the result of the calculate_points_angles_objects function. As a result, only lidar points are 
+selected from the entire lidar point cloud using BB and angles from calculate_points_angles_objects. Next, based on the 
+information received, the nearest point is taken, and based on it, the distance to the leader is calculated.
+
+- **_get_camera_lead_info** - function determines the angle of deviation of the leader relative to the agent based on 
+information from the camera and the distance to the leader
+
+- **_get_delta_position** - function for determining movement in one iteration. The movement of the slave along the x 
+and y coordinates in one step is determined.
+
+- **_is_done** - function for checking task completion statuses and emergency situations.
+
+
+## Sensors for 3D environment
+
+[gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) implemented sensors from a 2D environment, 
+adapted to a 3D environment. There are currently 2 sensors in the file:
 - GazeboLeaderPositionsTracker_v2
-- GazeboLeaderPositionsTrackerRadar
-- GazeboLeaderPositionsCorridorLasers
+- GazeboCorridor_Prev_lasers_v2
 
-### Сенсоры для отслеживания положения ведущего на основе признаков радара
-Для признаков рада было реализовано два сенсора: GazeboLeaderPositionsTracker и GazeboLeaderPositionsTrackerRadar.
+**GazeboLeaderPositionsTracker_v2** implements tracking of the leader and the formation of its route history, using 
+information about the position of the leader, the agent (working in local coordinates always x, y = [0, 0]), and 
+movement values (delta_x and delta_y). As a result of the sensor’s operation, the history of the leader’s route is 
+formed, as well as a safe zone, which builds the left and right walls. Features of the "ray sensor" are based on 
+information about the distance to a given safe zone.
 
- Класс **GazeboLeaderPositionsTracker** реализует отслеживание ведущего и формирование его истории маршрута, 
-используя информацию о положении ведущего, ведомого (работая в локальных координатах всегда [0, 0]), и значения 
-перемещения (delta_x и delta_y).
+**GazeboLeaderPositionsCorridorLasers** implements radar features adapted to the 3D environment. As input, the class 
+receives information about the position of the leader, the agent (working in local coordinates always x, y = [0, 0]), 
+the history values of the leader’s route, the safe zone, and a list of obstacle points projected onto a 2D plane. 
+The output generates normalized input features for the RL model.
 
-Класс **GazeboLeaderPositionsTrackerRadar** реализует признаки радара, адаптированные к 3D среде. На вход класс получает
-информацию о положении ведущего, ведомого (работая в локальных координатах всегда [0, 0]), и значения 
-истории маршрута ведущего, а на выходе формирует нормированные входные признаки для нейросетевой модели. 
+Example parameters for GazeboLeaderPositionsTracker_v2:
+- saving_period=5
+- corridor_width=2
+- corridor_length=25
 
+Example parameters for Ray Sensor 1 (GazeboCorridor_Prev_lasers_v2)
+- react_to_green_zone=True,
+- react_to_safe_corridor=True,
+- react_to_obstacles=True,
+- lasers_count=12,
+- laser_length=10,
+- max_prev_obs=10,
+- pad_sectors=False)
 
-### Сенсоры для отслеживания положения ведущего на основе признаков "лучевого сенсора"
-Для признаков "лучевого сенсора" было реализовано два сенсора: GazeboLeaderPositionsTracker_v2 и GazeboLeaderPositionsCorridorLasers.
+Example parameters for Ray Sensor 2 (GazeboCorridor_Prev_lasers_v2)
+- react_to_green_zone=False,
+- react_to_safe_corridor=False,
+- react_to_obstacles=True,
+- lasers_count=24,
+- laser_length=15,
+- max_prev_obs=10,
+- pad_sectors=False)
 
-Класс **GazeboLeaderPositionsTracker_v2** реализует отслеживание ведущего и формирование его истории маршрута, 
-используя информацию о положении ведущего, ведомого (работая в локальных координатах всегда [0, 0]), и значения 
-перемещения (delta_x и delta_y). В результате работы сенсора формируется история маршрута ведущего, аналогично 
-GazeboLeaderPositionsTracker, а также, коридор следования, который строит левую и правую стенку вокруг безопасной зоны 
-следования. Признаки "лучевого сенсора" опираются на информацию о расстоянии до данного коридора.
+The user can create their own sensors and input features for the model, in which case they must be implemented in 
+[gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) as a new class.
 
+## Rl model service
 
-Класс **GazeboLeaderPositionsCorridorLasers** реализует признаки радара, адаптированные к 3D среде. На вход класс получает
-информацию о положении ведущего, ведомого (работая в локальных координатах всегда [0, 0]), значения 
-истории маршрута ведущего, коридор следования и список спроецированных на 2D плоскость точек препятствий. 
-На выходе формирует нормированные входные признаки для нейросетевой модели. 
+[arctic_server.py](../src/arctic_gym/server/arctic_server.py) contains parameters for using the neural network tracking 
+model. The user needs to configure all these parameters to suit his own sensors:
 
-**ВАЖНО**
-GazeboLeaderPositionsTracker_v2 и GazeboLeaderPositionsCorridorLasers обладают различными параметрами, например: 
-период сохранения точек истории маршрута ведущего, длина и ширина коридора, период удаления истории точек для коридора 
-следования и другие. Данные параметры были настроены для определенного робота с учетом особенностей симуляции и т.д.
-
-Пример параметров GazeboLeaderPositionsTracker_v2:
-- max_dev = 2 - ширина коридора
-- max_distance = 24 - максимальное удаление ведомого от ведущего
-- saving_period = 3 - период сохранения точек маршрута ведущего
-
-Пример параметров GazeboLeaderPositionsCorridorLasers:
-- laser_length = 4 - длинна лучей сенсора
-
-Параметры [arctic_env.py](../src/arctic_gym/arctic_env/arctic_env.py) при настройке следования:
-- time_for_action = 0.3 - параметр времени выполнения действия
-
-Параметры мира:
-- ведущий размерами длинной 2 метра, шириной 1 метр
-- ведомый размерами длинной 1 метра, шириной 1 метр
-- ведомый обладает вращающейся камерой на 360 градусов
-- ведомый обладает лидаром
-
-
-Пользователь может создавать собственные сенсоры и входные признаки для модели, в таком случае их необходимо реализовывать 
-в [файле gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py) как новый класс. 
-
-
-## Сервер RL-модели
-
-В [файле arctic_server.py](../src/arctic_gym/server/arctic_server.py) находится параметры использования нейросетевой 
-модели следования. Пользователю необходимо настраивать все данные параметры под собственный сенсоры, 
-в случае написания собственных в [файле gazebo_tracker.py](../src/arctic_gym/gazebo_utils/gazebo_tracker.py), 
-либо использовать значения по умолчанию. В данной среде представлена конфигурация для "лучевого сенсора" с 7 лучами. 
-
-В частности, конфигурации для исправления пользователям:
-- Путь до файла с конфигурациями модели
+- Path to the file with model configurations
 ```
-PATH = os.path.join(os.path.dirname(__file__), "config", "FollowerContinuous", "PPO_dyn_obst.conf")
+CONFIG_PATH = SERVER_PATH.joinpath("config/3c1bc/params.json").__str__()
+CHECKPOINT = SERVER_PATH.joinpath("checkpoints/3c1bc/checkpoint_000040/checkpoint-40").__str__()
 ```
 
-- Путь для необходимых чекпоинтов
+- Number of input features
 ```
-CHECKPOINT = os.path.join(os.path.dirname(__file__), "checkpoints", "ppo_featsv2", "checkpoint_000340", "checkpoint-340")
+sensor_config = {
+    'lasers_sectors_numbers': 36
+}
 ```
-- Конфиг количество входных признаков (7 лучей)
+- Observation space
 ```
-    sensor_config = {
-        'lasers_sectors_numbers': 7
+observation_space = Box(
+    np.zeros((10, sensor_config['lasers_sectors_numbers']), dtype=np.float32),
+    np.ones((10, sensor_config['lasers_sectors_numbers']), dtype=np.float32)
+)
+```
+- Config modification
+```
+config.update(
+    {
+        "env": None,
+        "env_config": None,
+        "observation_space": observation_space,
+        "action_space": action_space,
+        "input": _input,
+        "num_workers": 1,
+        "input_evaluation": [],
+        "num_gpus": 1,
+        "log_level": 'DEBUG',
+        "explore": False,
     }
-```
-- Пространство наблюдений
-```
-    observation_space = Box(
-        np.zeros(sensor_config['lasers_sectors_numbers'], dtype=np.float32),
-        np.ones(sensor_config['lasers_sectors_numbers'], dtype=np.float32)
-    )
-```
-- Конфиг модели, который использовался при обучении модели
-```
-    CONFIG = configs["ppo_env4feats12_train5v6"].as_plain_ordered_dict()
+)
 ```

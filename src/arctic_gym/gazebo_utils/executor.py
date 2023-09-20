@@ -20,13 +20,12 @@ class Executor:
 
     def setup_position(self, point_a: list, point_b: list, target_distance: float = 12):
         """
-        Перемещение ведущего и ведомого в позицию point_a
-        Вычисление угла поворота в точку point_b
+        Moves the leader and the agent to position point_a
+        Calculates of the angle of rotation to point point_b
 
-        :param point_a: стартовая точка маршрута в виде [x, y, z]
-        :param point_b: конечная точка маршрута в виде [x, y, z]
-        :param target_distance: расстояние между ведомым и ведущим в стартовой точке
-
+        :param point_a: starting point of the route in the form [x, y, z]
+        :param point_b: route end point in the form [x, y, z]
+        :param target_distance: distance between the agent and the leader at the starting point
         """
         self.env.pub.target_cancel_action()
         self.env.pub.set_camera_yaw(0)
@@ -44,16 +43,17 @@ class Executor:
 
     def follow(self, point_b: list) -> list:
         """
-        Следование за лидером в точку point_b
+        Following the leader to point_b
 
-        :param point_b: конечная точка маршрута в виде [x, y, z]
+        :param point_b: route end point in the form [x, y, z]
         :return:
-            Список [
-                статус ведущего и ведомого, прогресс выполнения следования
-                начальная точка маршрута
-                конечная точка маршрута
-                путь движения ведущего
-                путь движения ведомого
+            List [
+                the leader and the agent status, follow progress
+                spent time
+                route start point
+                route end point
+                leader's path
+                agent's path
             ]
         """
 
@@ -62,10 +62,7 @@ class Executor:
         start = self.env.sub.get_odom().pose
         point_a = [start.pose.position.x, start.pose.position.y, start.pose.position.z]
 
-        # try:
         self.env.pub.move_target(*point_b[:2], self.phi)
-        # except AttributeError:
-        #     self.env.pub.move_target(*point_b[:2], 0)
 
         self.env.set_goal(point_b[:2])
 
@@ -89,10 +86,7 @@ class Executor:
 
             if info['leader_status'] == "moving" and count_lost >= 1:
                 count_lost = 0
-                # try:
                 self.env.pub.move_target(*point_b[:2], self.phi)
-                # except AttributeError:
-                #     self.env.pub.move_target(*point_b[:2], 0)
 
             if info['agent_status'] == 'too_far_from_leader_info':
                 count_lost += 1
@@ -109,9 +103,6 @@ class Executor:
                 count_lost += 1
                 if count_lost >= 2:
                     self.env.pub.target_cancel_action()
-
-            # else:
-            #     action *= 2
 
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
