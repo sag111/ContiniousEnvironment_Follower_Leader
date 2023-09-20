@@ -168,7 +168,8 @@ class ContinuousObserveModifier_v0(ObservationWrapper):
 
 class ContinuousObserveModifier_sensorPrev(ObservationWrapper):
     """
-    Враппер для сенсоров, которые возвращают историю значений. То есть от них ожидаются признаки формы (шаги, размерность)
+    A wrapper for sensors that return a history of values. That is, they are expected to show signs of
+    form (steps, dimensions)
     """
     def __init__(self, env, action_values_range=None, lz4_compress=False, max_prev_obs=0):
         super().__init__(env)
@@ -220,12 +221,9 @@ class ContinuousObserveModifier_sensorPrev(ObservationWrapper):
         return self.observations_list
 
 class ContinuousObserveModifierPrev(ObservationWrapper):
-
     """
-
-    Враппер для накопления предыдущих значений двух модернизированных сенсоров (1) Лучевой сенсор с 12 лучами на коридор
-    и препятствия; 2) Лучевой сенсор на препятствия с 30 (вариативно) лучами
-
+    Wrapper for accumulating previous values of two upgraded sensors (1) Beam sensor with 12 beams for the corridor
+    and obstacles; 2) Beam sensor for obstacles with 30 (variably) beams
     """
 
     def __init__(self, env, action_values_range=None, lz4_compress=False):
@@ -298,7 +296,7 @@ class ContinuousObserveModifierPrev(ObservationWrapper):
 
 def areDotsOnLeft(line, dots):
     """
-    Определяем, лежат ли точки dots слева от прямой line
+    Determine whether the dots lie to the left of the straight line
     line: ndarray [[x1, y1], [x2,y2]]
     dots: ndarray (points, coordinates)
     """
@@ -347,8 +345,8 @@ class ContinuousObserveModifier_lidarMap2d(ContinuousObserveModifier_v0):
                      leader_directions,
                      follower_direction):
         """
-        leader_position - координаты лидера
-        follower_position - координаты фолловера
+        leader_position
+        follower_position
         """
 
         # рисуем карту из нулей
@@ -503,8 +501,8 @@ class ContinuousObserveModifier_lidarMap2d_v2(ContinuousObserveModifier_lidarMap
                      leader_directions,
                      follower_direction):
         """
-        leader_position - координаты лидера
-        follower_position - координаты фолловера
+        leader_position
+        follower_position
         """
 
         # рисуем карту из нулей
@@ -721,7 +719,8 @@ class ContinuousObserveModifier_lidarMap2d_v2(ContinuousObserveModifier_lidarMap
 
 class LeaderTrajectory_v0(ObservationWrapper):
     """
-    Устаревший класс, нужен только для проверки обратной совместимости с экспериемнтами, запущенными на коммите 86211bf4a3b0406e23bc561c00e1ea975c20f90b
+    Deprecated class, needed only to check backward compatibility with experiments launched on
+    commit 86211bf4a3b0406e23bc561c00e1ea975c20f90b
     """
 
     def __init__(self, env, framestack, radar_sectors_number, lz4_compress=False):
@@ -736,24 +735,26 @@ class LeaderTrajectory_v0(ObservationWrapper):
 
     def observation(self, obs):
         """
-        На вход ожидается вектор с 13 компонентами:
-        - позиция х лидера
-        - позиция y лидера
-        - скорость лидера
-        - направление лидера
-        - скорость поворота лидера
-        - позиция х фолловера
-        - позиция y фолловера
-        - скорость фолловера
-        - направление фолловера
-        - скорость поворота фолловера
-        - минимальная дистанция
-        - максимальная дистанция
-        - максимальное отклонение от маршрута
+        A vector with 13 components is expected as input:
+        - position x of the leader
+        - position y of the leader
+        - leader speed
+        - direction of the leader
+        - leader turning speed
+        - position x of the agent
+        - position y of the agent
+        - agent speed
+        - agent direction
+        - agent rotation speed
+        - minimum distance
+        - maximum distance
+        - maximum deviation from the route
 
-        На выходе вектор из 2 конкатеринованных вектора:
-        - вектор из пар координат векторов разностей между текущей позицией ведомого и последними N позициями ведущего по которым он прошёл
-        - вектор радара, имеет количество компонент равное аргументу из конфига radar_sectors_number, каждая компонента дистанция до ближайшей точки в соответствующем секторе полугруга перед собой.
+        The output is a vector of 2 concatenated vectors:
+        - vector of pairs of coordinates of vectors of differences between the current position of the slave and the
+          last N positions of the master through which he passed
+        - radar vector, has a number of components equal to the argument from the radar_sectors_number config, each
+          component is the distance to the nearest point in the corresponding sector of the semicircle in front of it
         """
         # change leader absolute pos, speed, direction to relative
         # self.leader_positions_hist.append(obs[:2])
@@ -812,7 +813,7 @@ class LeaderTrajectory_v0(ObservationWrapper):
 
 class SkipBadSeeds(Wrapper):
     """
-    Враппер для пропуска
+    Pass wrapper
     """
     def __init__(self, env):
         super().__init__(env)

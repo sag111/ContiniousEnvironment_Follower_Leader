@@ -4,15 +4,15 @@ from dataclasses import dataclass
 @dataclass
 class Reward:
     name: str = "base_reward"
-    reward_in_box: float = 1. # награда за то, что агент на маршруте и на нужной дистанции
-    reward_on_track: float = 0.1  # награда за то, что агент на маршруте (но не в коробке)
-    reward_in_dev: float = 0.5 # награда за то, что агент в пределах погрешности от маршрута
-    leader_movement_reward: float = 1. # награда за то, что лидер движется
+    reward_in_box: float = 1. # reward for the fact that the agent is on the route and at the required distance
+    reward_on_track: float = 0.1  # reward for having the agent on the route (but not in the box)
+    reward_in_dev: float = 0.5 # reward for the fact that the agent is within error of the route
+    leader_movement_reward: float = 1. # reward for the leader moving
     
-    crash_penalty: float = -10. # штраф за то, что агент врезался в стену/лидера
-    not_on_track_penalty: float = -1. # штраф за нахождение вне "коробки" и не на маршруте
-    too_close_penalty: float = -5. # штраф за то, что агент слишком близок к лидеру
-    leader_stop_penalty: float = -1. # штраф за простой лидера в результате команды агента "остановись"
+    crash_penalty: float = -10. # penalty for hitting the agent into a wall/leader
+    not_on_track_penalty: float = -1. # penalty for being outside the “box” and not on the route
+    too_close_penalty: float = -5. # penalty for being too close to the leader
+    leader_stop_penalty: float = -1. # penalty for leader downtime as a result of the agent's "stop" command
         
     def to_json(self, filepath):
         with open(filepath, "w") as json_out_file:

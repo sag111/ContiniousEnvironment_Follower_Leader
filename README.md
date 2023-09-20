@@ -31,12 +31,12 @@ conda env create -f conda.yml
 ``` 
 conda create -n rl -c conda-forge python-pdal=3.1.2 python=3.7; 
 conda activate rl;
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 3. For 2D environment 
 ```
-pip install pygame~=2.1.2 pandas numpy
+pip install pygame==2.1.2 pandas numpy
 ``` 
 
 ### Requirements:

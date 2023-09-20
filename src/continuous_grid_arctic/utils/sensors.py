@@ -17,9 +17,9 @@ import pandas as pd
 
 class LaserSensor():
     """
-    Реализует лазерный лидар
-    Задается количество лучей, угол между ними, покрываемый сектор, частота "точек".
-    scan() возвращает точки, которые не закрыты препятствиями, реагирует на все с хитбоксами (лидер, камни, медведи, река)
+    Implements laser lidar
+    The number of rays, the angle between them, the covered sector, and the frequency of “points” are set.
+    scan() returns points that are not covered by obstacles, reacts to everything with hitboxes (leader, rocks, bears, river)
     """
 
     def __init__(self,
@@ -60,14 +60,15 @@ class LaserSensor():
         return self.data_shape
 
     def scan(self, env):
-        """строит поля точек лидара.
-           Входные параметры:
-           env (Game environment):
-               среда, в которой осуществляется сканирование;
-            Возвращает:
-            sensed_points (list):
-                список точек, которые отследил лидар.
-            """
+        """
+        builds fields of lidar points.
+
+        :param env (Game environment):
+           "following the leader" environment
+
+        :return:
+            a list of points that the lidar has tracked
+        """
 
         # Если на нужной дистанции нет ни одного объекта - просто рисуем крайние точки, иначе нужно будет идти сложным путём
         objects_in_range = list()
@@ -146,10 +147,10 @@ class LaserSensor():
 
 class LeaderPositionsTracker:
     """
-        Устаревший класс, рекомендуется использовать LeaderPositionsTracker_v2
-        Класс, отслеживающий наблюдаемые позиции лидера.
-        не генерирует наблюдения, но хранит историю позиций лидера для других сенсоров.
-        TODO: Может имеет смысл переделать на относительные координаты, это же ведомый отслеживает относительно себя, но тогда другие сенсоры тоже надо фиксить.
+    Deprecated class, it is recommended to use LeaderPositionsTracker_v2
+    Class that tracks observed leader positions.
+    does not generate observations, but stores a history of leader positions for other sensors.
+    TODO: Может имеет смысл переделать на относительные координаты, это же ведомый отслеживает относительно себя, но тогда другие сенсоры тоже надо фиксить.
     """
 
     def __init__(self,
@@ -230,8 +231,9 @@ class LeaderPositionsTracker:
 
 class LeaderPositionsTracker_v2(LeaderPositionsTracker):
     """
-    Вроде отличается от первой версии тем, что в начале симуляции корридор строится не по 2ум точкам (лидер, ведомый),  а
-    создаётся последовательность точек между ними. + может начинать этот корридор за спиной у ведомого.
+    It differs from the first version in that at the beginning of the simulation the corridor is not built along
+    2 points (leader, follower), and a sequence of points between them is created. + can start this corridor behind
+    the follower’s back
     """
     def __init__(self, *args, corridor_width, corridor_length, **kwargs):
         self.corridor_width = corridor_width
@@ -341,8 +343,8 @@ class LeaderPositionsTracker_v2(LeaderPositionsTracker):
 
 class LeaderTrackDetector_vector:
     """
-    Класс, реагирующий на старые позиции лидера и генерирующий вектора до определённых позиций.
-    отслеживать можно самые новые позиции лидера или самые старые
+    Class that reacts to old leader positions and generates vectors to certain positions.
+    can track the newest leader positions or the oldest
     TODO: Добавить вариант отслеживания позиций или радара до ближайших точек до преследователя
     """
 
@@ -352,8 +354,10 @@ class LeaderTrackDetector_vector:
                  position_sequence_length=100,
                  detectable_positions="new"):
         """
-        :param host_object: робот пресследователь, на котором работает этот сенсор
-        :param position_sequence_length: длина последовательности, которая будет использоваться радаром
+        :param host_object:
+            the agent
+        :param position_sequence_length:
+            length of the sequence to be used by the radar
         """
         self.host_object = host_object
         self.position_sequence_length = position_sequence_length
@@ -391,9 +395,9 @@ class LeaderTrackDetector_vector:
 
 class LeaderTrackDetector_radar:
     """
-    Радар, реагирующий на старые позиции лидера, и указывающий, есть ли позиции лидера в
-    определённых секторах полукруга перед преследователем
-    отслеживать можно самые новые позиции лидера или самые старые
+    Radar that reacts to old leader positions and indicates if there are leader positions in
+    certain sectors of the semicircle in front of the pursuer
+    can track the newest leader positions or the oldest
     TODO: Добавить вариант отслеживания позиций или радара до ближайших точек до преследователя
     """
 
@@ -404,9 +408,12 @@ class LeaderTrackDetector_radar:
                  detectable_positions="old",
                  radar_sectors_number=180):
         """
-        :param host_object: робот пресследователь, на котором работает этот сенсор
-        :param position_sequence_length: длина последовательности, которая будет использоваться радаром
-        :param radar_sectors_number: количество секторов в радаре
+        :param host_object:
+            the agent
+        :param position_sequence_length:
+            length of the sequence to be used by the radar
+        :param radar_sectors_number:
+            number of sectors in the radar
         """
         self.host_object = host_object
         self.detectable_positions = detectable_positions
@@ -483,23 +490,24 @@ class LeaderTrackDetector_radar:
 
 
 class GreenBoxBorderSensor(LaserSensor):
-    """Лидар для отслеживания границ зелёной зоны, в которой должен быть ведущий."""
+    """Lidar for tracking the boundaries of the green zone in which the leader should be."""
 
     def __init__(self, host_object, **kwargs):
-        raise ValueError("Для использования нужно раскомментировать в среде вызов self._get_green_zone_border_points("
-                         "). Закомментировал, потому что замедляет симмуляцию")
+        raise ValueError("To use it, you need to uncomment the call self._get_green_zone_border_points("
+                         "). Commented out because it slows down the simulation")
 
         super().__init__(host_object, **kwargs)
 
     def scan(self, env):
-        """строит поля точек лидара.
-           Входные параметры:
-           env (Game environment):
-               среда, в которой осуществляется сканирование;
-            Возвращает:
-            sensed_points (list):
-                список точек, которые отследил лидар.
-            """
+        """
+        builds fields of lidar points
+
+        :param env (Game environment):
+            the environment in which scanning is carried out
+
+        :return:
+            a list of points that the lidar has tracked
+        """
 
         # Далее определить, в какой стороне находится объект из списка, и если он входит в область лидара, ставить точку как надо
         # иначе -- просто ставим точку на максимуме
@@ -564,9 +572,9 @@ class GreenBoxBorderSensor(LaserSensor):
 
 class LeaderCorridor_lasers:
     """
-    Признак "таракан" - несколько лазеров в разные стороны, которые проверяются на пересечение границ
-    сейф коридора маршрута, сейф зоны и препятствий. В этой версии фиксированное количество лазеров: 3 спереди,
-    опционально 2 побокам и 2 сзади
+    Sign "cockroach" - several lasers in different directions, which are checked for crossing borders
+    route corridor safe, zone and obstacle safe. This version has a fixed number of lasers: 3 in front,
+    optional 2 sides and 2 rear
     """
     def __init__(self,
                  host_object,
@@ -579,9 +587,12 @@ class LeaderCorridor_lasers:
                  laser_length=100):
         """
 
-        :param host_object: робот, на котором висит сенсор
-        :param react_to_obstacles: должны ли лазеры реагировать на препятствия. может иметь значения True,False,"dynamic","static"
-        :param react_to_green_zone: должны ли лазеры реагировать на переднюю из заднюю границы зеленой зоны
+        :param host_object:
+            robot with sensor hanging on it
+        :param react_to_obstacles:
+            whether lasers should react to obstacles. can have the values True,False,"dynamic","static"
+        :param react_to_green_zone:
+            should lasers respond to the front of the back of the green zone
         """
         self.host_object = host_object
         # TODO: сделать гибкую настройку лазеров
@@ -650,8 +661,8 @@ class LeaderCorridor_lasers:
             elif type(self.react_to_obstacles) == bool and self.react_to_obstacles:
                 obstacles_list = env.game_object_list + env.game_dynamic_list
             else:
-                ValueError("Надо указать, на какие именно препятствия должен реагировать сенсор. Задать "
-                           "react_to_obstacles равным одному из значений: True, 'all', 'dynamic', 'static'")
+                ValueError("You need to specify which obstacles the sensor should respond to. Set "
+                           "react_to_obstacles equal to one of the values: True, 'all', 'dynamic', 'static'")
             for cur_object in (obstacles_list):
                 if cur_object is env.follower:
                     continue
@@ -726,9 +737,9 @@ class LeaderCorridor_lasers:
 
 class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
     """
-    Отличается от LeaderCorridor_lasers тем, что здесь гибко задается количество лазеров. Они просто начиная от
-     нулевого угла (вероятно первый луч идёт прямо перед ведомым) создаются по кругу, заполняя 360 градусов.
-     В остальном всё тоже самое
+    It differs from LeaderCorridor_lasers in that the number of lasers is flexibly set here.
+    They simply starting from the zero angle (probably the first ray goes directly in front of the agent) are
+    created in a circle, filling 360 degrees.
     """
     def __init__(self,
                  host_object,
@@ -740,14 +751,17 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
                  laser_length=100):
         """
 
-        :param host_object: робот, на котором висит сенсор
-        :param react_to_obstacles: должны ли лазеры реагировать на препятствия. может иметь значения True,False,"dynamic","static"
-        :param react_to_green_zone: должны ли лазеры реагировать на переднюю из заднюю границы зеленой зоны
+        :param host_object:
+            robot with sensor hanging on it
+        :param react_to_obstacles:
+            whether lasers should react to obstacles. can have the values True,False,"dynamic","static"
+        :param react_to_green_zone:
+            should lasers respond to the front of the back of the green zone
         """
         self.host_object = host_object
         self.lasers_count = lasers_count
         if self.lasers_count not in [12, 24, 20, 36]:
-            raise ValueError("Недопустимое количество лучей лазеров, должно быть 12,24,20 или 36")
+            raise ValueError("Invalid number of laser beams, should be 12,24,20 or 36")
         self.laser_period = 360 / lasers_count
         self.laser_length = laser_length
         self.lasers_end_points = []
@@ -797,14 +811,14 @@ class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
 
 class LeaderObstacles_lasers(LeaderCorridor_lasers_v2):
     def __init__(self):
-        raise ValueError("Устаревший класс, используйте вместо этого LeaderCorridor_lasers_v2 с флагами "
-                         "react_to_safe_corridor=False и react_to_green_zone=False")
+        raise ValueError("Deprecated class, use LeaderCorridor_lasers_v2 with flags instead"
+                         "react_to_safe_corridor=False and react_to_green_zone=False")
 
 
 class Leader_Dyn_Obstacles_lasers(LeaderCorridor_lasers_v2):
     def __init__(self):
-        raise ValueError("Устаревший класс, используйте вместо этого LeaderCorridor_lasers_v2 с флагами "
-                         "react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles='dynamic'")
+        raise ValueError("Deprecated class, use LeaderCorridor_lasers_v2 with flags instead"
+                         "react_to_safe_corridor=False and react_to_green_zone=False, react_to_obstacles='dynamic'")
 
 
 class FollowerInfo:
@@ -813,7 +827,8 @@ class FollowerInfo:
                  sensor_name="FollowerInfo",
                  speed_direction_param=2):
         """
-        :param host_object: робот, на котором висит сенсор
+        :param host_object:
+            robot with sensor hanging on it
         """
         self.host_object = host_object
         self.speed_direction_param = speed_direction_param
@@ -833,17 +848,19 @@ class FollowerInfo:
 
 class LaserPrevSensor(LeaderCorridor_lasers_v2):
     def __init__(self):
-        raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами "
-                        "react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles=True и "
+        raise TypeError("This is an obsolete class, you should use LeaderCorridor_Prev_lasers_v2 with flags instead"
+                        "react_to_safe_corridor=False and react_to_green_zone=False, react_to_obstacles=True and "
                         "first_laser_angle_offset=0")
 
 class LeaderCorridor_Prev_lasers_v2_compas(LeaderCorridor_lasers_v2):
     def __init__(self):
-        raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами react_to_safe_corridor=True и react_to_green_zone=True, react_to_obstacles=True")
+        raise TypeError("This is an obsolete class, you should use it instead LeaderCorridor_Prev_lasers_v2 "
+                        "with flags react_to_safe_corridor=True and react_to_green_zone=True, react_to_obstacles=True")
 
 class LaserPrevSensor_compas(LeaderCorridor_lasers_v2):
     def __init__(self):
-        raise TypeError("Это устаревший класс, вместо него надо использовать LeaderCorridor_Prev_lasers_v2 с флагами react_to_safe_corridor=False и react_to_green_zone=False, react_to_obstacles=True")
+        raise TypeError("This is an obsolete class, you should use it instead LeaderCorridor_Prev_lasers_v2 "
+                        "with flags react_to_safe_corridor=False and react_to_green_zone=False, react_to_obstacles=True")
 
 #######################################
 #### add compas in this sensors
@@ -851,8 +868,8 @@ class LaserPrevSensor_compas(LeaderCorridor_lasers_v2):
 
 class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
     """
-    Отличается от LeaderCorridor_lasers_v2 тем, что хранит историю положений препятствий и
-    лазеры реагируют не только на текущее положение границ препятствий, но и на старые.
+    It differs from LeaderCorridor_lasers_v2 in that it stores the history of obstacle positions and the lasers
+    react not only to the current position of obstacle boundaries, but also to old ones.
     """
 
     def __init__(self, *args, use_prev_obs=False, max_prev_obs=0, pad_sectors=True, first_laser_angle_offset=-45, **kwargs):
@@ -971,11 +988,11 @@ class LeaderCorridor_Prev_lasers_v2(LeaderCorridor_lasers_v2):
 # TODO: Исправить, сенсор игнорирует все точки внутри корридора, препятствия тоже
 class LeaderCorridor_Prev_lasers_v3(LeaderCorridor_Prev_lasers_v2):
     """
-    Отличается от LeaderCorridor_Prev_lasers_v2 тем, что осуществляется проверка - не находятся ли точки переесечения с
-    лазером внутри коридора
+    It differs from LeaderCorridor_Prev_lasers_v2 in that it checks whether the points of intersection with the laser
+    are located inside the corridor
     """
     def scan(self, env, corridor):
-        raise ValueError("Сенсор игнорирует все точки внутри корридора, в том числе и препятствия, это ошибка")
+        raise ValueError("The sensor ignores all points inside the corridor, including obstacles, this is an error")
         self.lasers_collides = []
         self.lasers_end_points = []
         self.lasers_collides_item_history = []
@@ -1122,9 +1139,8 @@ class LeaderCorridor_Prev_lasers_v3(LeaderCorridor_Prev_lasers_v2):
 # без наследования
 class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
     """
-    Тот же сенсор с лучами, но имеет дополнительный выход, указывающий,
-     какие из лазеров упираются у переднюю/заднюю/левую/правую стенки коридора.
-     Реагирует только на коридор
+    The same sensor with beams, but has an additional output indicating which of the lasers rest on the front/back/left/right walls of the corridor.
+    Reacts only to the corridor
     """
     def __init__(self, *args, **kwargs):
         super(LeaderCorridor_lasers_compas, self).__init__(*args, **kwargs)
@@ -1132,8 +1148,8 @@ class LeaderCorridor_lasers_compas(LeaderCorridor_Prev_lasers_v2):
         self.lasers_collides_corridor_orientation_history = []
         self.lasers_collides_corridor_orientation = []
         if not self.react_to_safe_corridor or not self.react_to_green_zone or self.react_to_obstacles:
-            raise ValueError("Неподдерживаемый набор флагов для класса LeaderCorridor_lasers_compas, сейчас реализован "
-                             "только вариант для флагов: "
+            raise ValueError("Unsupported set of flags for LeaderCorridor_lasers_compas class, now implemented"
+                             "only option for flags: "
                              "react_to_safe_corridor=True, react_to_green_zone=True, react_to_obstacles=False")
 
     def collect_obstacle_edges(self, env, corridor):

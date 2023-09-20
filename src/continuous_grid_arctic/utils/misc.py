@@ -46,7 +46,7 @@ def distance_to_rect(cur_point, object2):
 
 def rotateVector(vec, angle):
     """
-    Поворачиваем вектора на угол (в градусах)
+    Rotate the vector by an angle (in degrees)
     """
     theta = np.radians(angle)
     rot = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
@@ -55,7 +55,7 @@ def rotateVector(vec, angle):
 
 def calculateAngle(v, w):
     """
-    углы между массивом точек v и точкой w
+    angles between point array v and point w
     :param v:
     :param w:
     :return:
@@ -65,7 +65,7 @@ def calculateAngle(v, w):
 def move_to_the_point(direction, 
                       position, 
                       next_point):
-    """Функция автоматического управления движением к точке"""
+    """Automatic control function for moving to a point"""
     desirable_angle = int(angle_to_point(position, next_point))
 
     cur_direction = int(direction)
@@ -95,12 +95,12 @@ def move_to_the_point(direction,
     return np.array((v,w/10))
 
 def areDotsOnLeft(line, dots):
-        """
-        Определяем, лежат ли точки dots слева от прямой line
-        line: ndarray [[x1, y1], [x2,y2]]
-        dots: ndarray (points, coordinates)
-        """
-        # D = (x2 - x1) * (yp - y1) - (xp - x1) * (y2 - y1)
-        d = (line[1, 0] - line[0, 0]) * (dots[:, 1] - line[0, 1]) - (dots[:, 0] - line[0, 0]) * (
-                    line[1, 1] - line[0, 1])
-        return d > 0.01
+    """
+    Determine whether the dots lie to the left of the straight line
+    line: ndarray [[x1, y1], [x2,y2]]
+    dots: ndarray (points, coordinates)
+    """
+    # D = (x2 - x1) * (yp - y1) - (xp - x1) * (y2 - y1)
+    d = (line[1, 0] - line[0, 0]) * (dots[:, 1] - line[0, 1]) - (dots[:, 0] - line[0, 0]) * (
+                line[1, 1] - line[0, 1])
+    return d > 0.01

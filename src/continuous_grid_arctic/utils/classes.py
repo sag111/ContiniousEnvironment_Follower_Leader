@@ -21,16 +21,17 @@ class GameObject():
                  height=None,
                  width=None,
                  blocks_vision=True):
-        """Класс, который отражает любой игровой объект и должен наследоваться конкретизирующими классами.
-        Входные параметры:
-        image (pygame.image):
-            изображение объекта;
-        start_position (tuple(int,int)):
-            стартовые координаты объекта;
-        height, width (int):
-            размеры объекта в пикселях;
-        blocks_vision (bool):
-            блокирует ли объект линию видимости (для лидаров и ухода за поворот, пока не используется)
+        """
+        A class that reflects any game object and must be inherited by instantiating classes
+
+        :param image (pygame.image):
+            object image
+        :param start_position (tuple(int,int)):
+            starting coordinates of the object
+        :param height, width (int):
+            object dimensions in pixels
+        :param blocks_vision (bool):
+            whether the object blocks the line of sight (for lidars and turn avoidance, not yet used)
         """
         self.name = name
         self.image = image
@@ -72,7 +73,7 @@ class AbstractRobot(GameObject):
                  blocks_vision=True,
                  **kwargs
                  ):
-        """Класс, который реализует робота."""
+        """The class that implements the robot."""
 
         super(AbstractRobot, self).__init__(name,
                                             image=image,
@@ -106,17 +107,17 @@ class AbstractRobot(GameObject):
     #         self.sensor = sensor
 
     def command_turn(self, desirable_rotation_speed, rotation_direction):
-        """Обработка команд, влияющих на скорость угловую w"""
+        """Processing commands affecting angular velocity w"""
         # Не превышаем максимальной скорости
 
         self.desirable_rotation_speed = min(desirable_rotation_speed, self.max_rotation_speed)
         self.desirable_rotation_direction = rotation_direction
 
         if (rotation_direction == 0) and (desirable_rotation_speed != 0):
-            raise ValueError("Указана скорость поворота, но направление = 0!")
+            raise ValueError("Turn speed specified, but direction = 0!")
 
     def command_forward(self, desirable_speed):
-        """Обработка команд, влияющих на скорость v"""
+        """Processing commands that affect the speed v"""
         if desirable_speed > self.max_speed:
             desirable_speed = self.max_speed
 
@@ -126,12 +127,12 @@ class AbstractRobot(GameObject):
         self.desirable_speed = desirable_speed
 
     def _controller_call(self):
-        """Изменение скорости в зависимости от установленных желаемых скоростей на основе управления"""
+        """Change speed depending on set desired speeds based on control"""
         self._turn_processing()
         self._speed_processing()
 
     def _turn_processing(self):
-        """Обработка изменения скорости поворота в такт для контроллера"""
+        """Handling rotation speed changes to the beat for the controller"""
         if self.rotation_direction == 0:
             self.rotation_direction = self.desirable_rotation_direction
 
@@ -152,7 +153,7 @@ class AbstractRobot(GameObject):
         self.rotation_speed = abs(new_rotation_speed)
 
     def _speed_processing(self):
-        """Обработка изменения скорости в такт для контроллера"""
+        """Handling speed changes per clock for the controller"""
         needed_change = abs(self.speed - self.desirable_speed)
         speed_change = min(self.max_speed_change, needed_change)
 
@@ -162,7 +163,7 @@ class AbstractRobot(GameObject):
         self.speed = self.speed + speed_change
 
     def move(self):
-        """Функция, которая перемещает робота с учётом установленных желаемых скоростей."""
+        """A function that moves the robot taking into account the set desired speeds."""
         # скорректировали скорости
         self._controller_call()
         if self.rotation_speed != 0:
@@ -181,7 +182,7 @@ class AbstractRobot(GameObject):
             self.rectangle.move_ip(position_diff)
 
     def move_to_the_point(self, next_point, speed=None):
-        """Функция автоматического управления движением к точке"""
+        """Automatic control function for moving to a point"""
 
         if speed is not None:
             new_speed = speed

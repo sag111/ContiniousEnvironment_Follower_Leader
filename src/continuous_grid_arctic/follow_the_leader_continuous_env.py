@@ -126,6 +126,8 @@ class Game(gym.Env):
             flag, displaying interaction rectangles
         :param show_box (bool):
             flag, displaying the boundaries within which the agent needs to be
+        :param show_sensors_flag (bool):
+            flag, drawing sensors
         :param simulation_time_limit (int or None):
             time limit for simulation, sec, if None - not limited
         :param reward_config (str, Path or None):
@@ -141,7 +143,7 @@ class Game(gym.Env):
         :param warm_start (int):
             the number of steps within which the agent will not receive a penalty (currently not fully implemented)
         :param manual_control (bool):
-            use manual control of the agent;
+            use manual control of the agent
         :param manual_control_input (str):
             keyboard - control the arrows on the keyboard, gamepad - control the joystick on the gamepad
         :param max_steps (int):
@@ -154,6 +156,8 @@ class Game(gym.Env):
             dictionary - key - number of steps, value - leader speed (fraction of maximum?)
         :param constant_follower_speed (bool):
             flag, the agent's speed will always be maximum, and only one action will be used - rotation
+        :param frames_per_step (int):
+            number of frames per 1 step
         :param random_frames_per_step (tuple/list):
             range from which frames_per_step will be sampled
         :param number_of_target_points (int):
@@ -180,6 +184,18 @@ class Game(gym.Env):
             if an iterative pathfinding algorithm for the leader is used, how many iterations are the maximum allowed
         :param leader_margin (float):
             additional space between the leader and obstacles, which is taken into account when calculating the route
+        :param add_obstacles (bool):
+            flag, adding static obstacles
+        :param add_bear (bool):
+            flag, adding dynamic obstacles
+        :param bear_number (int):
+            number of dynamic obstacles
+        :param move_bear_v4 (bool):
+            flag, behavior of dynamic object
+        :param step_grid (int):
+            step grid for planning trajectory
+        :param follower_sensors (dict):
+            dictionary of the agent sensors configuration
         """
 
         # нужно для сохранения видео
