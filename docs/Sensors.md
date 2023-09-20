@@ -1,72 +1,64 @@
 
-### Описание сенсоров
-В среде реализовано некоторое количество сенсоров для взаимодействия робота с миром. 
-Сенсоры реализованы в файле
-```
-~/utils/sensors.py
-```
+### Sensors description
+The environment contains a number of sensors for the robot to interact with the world.
+Sensors are implemented in the file [sensors.py](../src/continuous_grid_arctic/utils/sensors.py)
 
-#### Основные:
-   - **LeaderPositionsTracker_v2** - (основной) сенсор позволяющий считывать положения ведущего и на основе этой информации хранит
-историю точек маршрута ведущего определенный длинны и настраиваемый коридор следования
-   - LeaderCorridor_lasers - "лучевой сенсор" с 7 лучами (baseline), входные признаки для нейросетевой модели на основе измерения информации о
-расстояние до препятствий и коридора
-   - LeaderCorridor_lasers_v2 - "лучевой сенсор" с настраиваемым количеством лучей (12 в базовой конфигурации) реагирующий
-на коридор и препятствия
-   - LeaderObstacles_lasers - "лучевой сенсор" с настраиваемым количеством лучей, реагирующий только на препятствия 
-(двух типов: статических и динамических)
-   - **LeaderCorridor_Prev_lasers_v2** - (основной) "лучевой сенсор" с возможностью сохранять информацию о препятствиях на предыдущих 
-шагах. Данная информация позволяет хранить информацию о значениях лучей на предыдущих шагах с учетом пересчета этих значений 
-относительно текущего положения робота на каждом новом шаге. Имеет настраиваемые значения лучей и длинны истории. Определяет
-ближайшее расстояние до препятствия или коридора следования. 
-   - **LaserPrevSensor** - (основной) "лучевой сенсор", аналогичен LeaderCorridor_Prev_lasers_v2. Однако, определяет ближайшее расстояние 
-только до препятствий.
+#### Main
+- **LeaderPositionsTracker_v2** - (main) sensor that allows you to read the position of the leader and, based on this 
+information, stores the history of the leader’s route points of a certain length and customizable travel corridor
+- LeaderCorridor_lasers - "ray sensor" with 7 rays (baseline), input features for a neural network model based on 
+measuring information about the distance to obstacles and the corridor
+- LeaderCorridor_lasers_v2 - "ray sensor" with an adjustable number of rays (12 in the basic configuration) reacting 
+to the corridor and obstacles
+- LeaderObstacles_lasers - "ray sensor" with an adjustable number of rays, reacting only to obstacles (two types: 
+static and dynamic)
+- **LeaderCorridor_Prev_lasers_v2** - (main) "ray sensor" with the ability to store information about obstacles in 
+previous steps. This information allows you to store information about the values of the rays at previous steps, taking 
+into account the recalculation of these values relative to the current position of the robot at each new step. Has 
+customizable ray values and history lengths. Determines the closest distance to an obstacle or travel corridor.
+- **LaserPrevSensor** - (main) "ray sensor", similar to LeaderCorridor_Prev_lasers_v2. However, it only determines the 
+closest distance to obstacles.
 
-   - **LeaderCorridor_Prev_lasers_v2_compas** - новый "лучевой сенсор", аналогичен LeaderCorridor_Prev_lasers_v2, но с 
-возможность определять направления в формируемых признаках, исходный вектор, увеличивается длинной в 4 раза, и разбивается нулями
-в незадействованных сторонах. Пример OBSERVATION состоят из конкатенированных векторов признаков, которые формируется 
-следующим образом front = [1, 1, 0, 0, 0, 0, 0, 0], right = [0, 0, 1, 1, 0, 0, 0, 0], back = [0, 0, 0, 0, 1, 1, 0, 0], 
+- **LeaderCorridor_Prev_lasers_v2_compas** - a new “ray sensor”, similar to LeaderCorridor_Prev_lasers_v2, but with the 
+ability to determine directions in the generated features, the original vector increases in length by 4 times, and is 
+broken by zeros in unused sides. The OBSERVATION example consists of concatenated feature vectors, which are formed as 
+follows front = [1, 1, 0, 0, 0, 0, 0, 0], right = [0, 0, 1, 1, 0, 0, 0, 0 ], back = [0, 0, 0, 0, 1, 1, 0, 0], 
 left = [0, 0, 0, 0, 1, 1]. RES_OBS = np.concatenate((front, right, behind, left), axis=None)
-   - **LaserPrevSensor_compas** - новый "лучевой сенсор", по принципу работы аналогичен LaserPrevSensor, с указанием 
-направлением, как LeaderCorridor_Prev_lasers_v2_compas.
+- **LaserPrevSensor_compas** - a new “ray sensor”, similar in principle to LaserPrevSensor, with direction indication 
+as LeaderCorridor_Prev_lasers_v2_compas.
 
-**ВАЖНО:**
-На сенсоры LeaderCorridor_Prev_lasers_v2_compas и LaserPrevSensor_compas распрастраняются аналогичные правила, как и на 
-LeaderCorridor_Prev_lasers_v2 и LaserPrevSensor
+**IMPORTANT:**
+The LeaderCorridor_Prev_lasers_v2_compas and LaserPrevSensor_compas sensors are subject to similar rules as the 
+LeaderCorridor_Prev_lasers_v2 and LaserPrevSensor
 
-#### Устаревшие:
-   - LaserSensor - "признаки лидара"
-   - LeaderPositionsTracker - сенсор для формирования истории точек маршрута лидера (устаревший вариант)
-   - LeaderTrackDetector_vector - сенсор для определения истории точек маршрута лидера (не используется)
-   - LeaderTrackDetector_radar - сенсор для определения сектора, в котором находится история маршрута ведущего (первый 
-baseline)
-   - GreenBoxBorderSensor - сенсор определения зоны безопасности на основе лидара. Очень медленная, не оптимизированная реализация.
-   - Leader_Dyn_Obstacles_lasers - "лучевой сенсор" по определению расстояния только до динамических препятствий
-   - FollowerInfo - сенсор для формирования входных признаков с информаций о линейной и угловой скорости робота
+#### Deprecated:
+- LaserSensor - "the leader features"
+- LeaderPositionsTracker - sensor for generating a history of leader route points
+- LeaderTrackDetector_vector - sensor for determining the history of the leader's waypoints
+- LeaderTrackDetector_radar - sensor to determine the sector in which the leader’s route history is located
+- GreenBoxBorderSensor - safety zone detection sensor based on lidar. Very slow, unoptimized implementation
+- Leader_Dyn_Obstacles_lasers - "ray sensor" to determine the distance only to dynamic obstacles
+- FollowerInfo - sensor for generating input features from information about the linear and angular speed of the robot
 
-#### Использование сенсоров LeaderCorridor_Prev_lasers_v2 и LaserPrevSensor:
-Данные сенсоры осуществляют накопление истории координат препятствий и их нормирование 
-относительно текущего положения ведомого. При использовании данных сенсоров необходимо задать 
-в конфигурации два флага:
-- флаг use_prev_obs - принимает значения True или False. При использовании сенсоров необходимо задать True.
-- флаг max_prev_obs - принимает значения количества накапливаемых шагов в историю. По умолчанию установлено 5 
-(что означает хранение информации об объектах за последние 5 step).
+#### Using LeaderCorridor_Prev_lasers_v2 and LaserPrevSensor:
+These sensors accumulate the history of obstacle coordinates and normalize them relative to the current position of 
+the agent. When using these sensors, you must set two parameters in the configuration:
+- parameter use_prev_obs is bool.
+- parameter max_prev_obs takes values of the number of accumulated steps in history. Default is 5
 
-#### Добавление и использование сенсора
-Для добавления собственного сенсора необходимо написать класс в файле sensors.py и добавить в конце файла
-в переменную SENSOR_NAME_TO_CLASS название данного сенсора. 
-Также, необходимо зарегистрировать новый сенсор в файле 
+#### Add custom sensor
+To add your own sensor, you need to write a class in the [sensors.py](../src/continuous_grid_arctic/utils/sensors.py)
+and add the name of this sensor to the SENSOR_NAME_TO_CLASS variable at the end of the file. Also, you need to register 
+the new sensor in the file [wrappers.py](../src/continuous_grid_arctic/utils/wrappers.py)
 
-```
-~/utils/wrappers.py
-```
-Существует два варианта:
-1. Добавить по аналогии полученный сенсор в класс ContinuousObserveModifier_v0.
-2. Написать собственный класс по аналогии с ContinuousObserveModifier_v0.
+There are two options:
+1. By analogy, add the resulting sensor to the ContinuousObserveModifier_v0 class.
+2. Write your own class similar to ContinuousObserveModifier_v0.
 
-Чтобы использовать сенсор, необходимо в конфигурации в переменной follower_sensors прописать название и параметры сенсора.
+To use a sensor, you need to specify the name and parameters of the sensor in the follower_sensors variable in the 
+configuration.
 
-Ниже представлен пример использования сенсора:
+Example of using the sensor:
 
 ```
  follower_sensors={
@@ -88,42 +80,45 @@ baseline)
  }
 ```
 
-Также, при необходимости, можно прописать дополнительную логику использования сенсора в [классе ведомого](https://github.com/sag111/continuous-grid-arctic/blob/slava_3/continuous_grid_arctic/utils/classes.py#L245). Например сенсоры LeaderPositionsTracker или LeaderPositionsTracker_v2 должны отрабатывать до сенсоров, использующих их показания. А некоторые сенсоры, могут требовать на вход функции scan() помимо ссылки на среду ещё и показания предыдущих сенсоров.
+Also, if necessary, you can write additional logic for using the sensor in 
+[the agent class](../src/continuous_grid_arctic/utils/classes.py). For example, the LeaderPositionsTracker or 
+LeaderPositionsTracker_v2 sensors must work before the sensors that use their readings. And some sensors may require 
+input from the scan() function, in addition to a link to the environment, and also the readings of previous sensors.
 
 
-### Примеры добавления основных сенсоров:
+### Examples of adding main sensors
 #### LeaderTrackDetector_vector
-Пример использования признаков радара:
+Example of using radar features:
 <p align="center">
 <img src="../src/continuous_grid_arctic/figures/LeaderTrackDetector_vector_2.jpg" width="500">
 </p>
 
 #### LaserSensor
-Пример использования признаков лидара:
+Example of using lidar features:
 <p align="center">
 <img src="../src/continuous_grid_arctic/figures/LaserSensor.jpg" width="500">
 </p>
 
 #### LeaderCorridor_lasers
-Пример использования признаков "лучевого сенсора" в базовой конфигурации с 7 лучами. Реагирует 
-на коридор и препятствия:
+Example of using the features of a "ray sensor" in a main configuration with 7 rays. 
+Reacts to the corridor and obstacles:
 <p align="center">
 <img src="../src/continuous_grid_arctic/figures/LeaderCorridor_lasers.jpg" width="500">
 </p>
 
 #### LeaderCorridor_lasers_v2
-Пример использования признаков "лучевого сенсора" с настраиваемым количеством лучей (по умолчанию 12) с реагированием 
-на коридор и препятствия:
+Example of using “ray sensor” features with a customizable number of rays (default 12) with response to the corridor 
+and obstacles:
 <p align="center">
 <img src="../src/continuous_grid_arctic/figures/LeaderCorridor_lasers_v2.jpg" width="500">
 </p>
 
 #### LeaderObstacles_lasers
-Пример использования признаков "лучевого сенсора", который реагирует только на препятствия (по умолчанию 30 лучей):
+Example of using the attributes of a “ray sensor” that reacts only to obstacles (30 rays by default):
 <p align="center">
 <img src="../src/continuous_grid_arctic/figures/LeaderObstacles_lasers.jpg" width="500">
 </p>
 
-Сенсоры **LeaderCorridor_Prev_lasers_v2** и **LaserPrevSensor** аналогичны **LeaderCorridor_lasers_v2** 
-и **LeaderObstacles_lasers** соответсвенно. Их отличия состоят в том, что они сохраняют историю точек препятствий и
-нормируют значения на каждом шаге относительно текущей позиции агента.
+The **LeaderCorridor_Prev_lasers_v2** and **LaserPrevSensor** sensors are similar to **LeaderCorridor_lasers_v2** and 
+**LeaderObstacles_lasers** respectively. Their differences are that they save the history of obstacle points and 
+normalize the values at each step relative to the current position of the agent.
