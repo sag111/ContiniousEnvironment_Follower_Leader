@@ -1281,20 +1281,20 @@ class Game(gym.Env):
         #             pygame.draw.circle(self.gameDisplay, self.colours["black"], self.second_bridge_point, 10, width=3
         #
         current_fps = np.round(1000 / self.ms_since_last_tick)
-        reward_text = self.font.render("FPS: {}, Step: {}, Суммарная награда:{}".format(current_fps, self.step_count,
+        reward_text = self.font.render("FPS: {}, Step: {}, Cumulative reward:{}".format(current_fps, self.step_count,
                                                                                self.overall_reward),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 0))
         speed_mps = AVG_FRAMES_PER_SECOND * self.follower.speed / self.PIXELS_TO_METER
-        reward_text = self.font.render("Фолловер. скорость:{} p/f {} m/s, скорость поворота:{} град/сек".format(
+        reward_text = self.font.render("The agent velocity:{} p/f {} m/s, angular velocity:{} deg/s".format(
                                        np.round(self.follower.speed, 3), np.round(speed_mps, 3),
                                        np.round(AVG_FRAMES_PER_SECOND* self.follower.rotation_speed)),
                                        False,
                                        (0, 0, 0))
         self.gameDisplay.blit(reward_text, (0, 50))
         speed_mps = AVG_FRAMES_PER_SECOND * self.leader.speed / self.PIXELS_TO_METER
-        reward_text = self.font.render("Лидер. скорость:{} p/f {} m/s, скорость поворота:{} град/сек".format(
+        reward_text = self.font.render("The leader velocity:{} p/f {} m/s, angular velocity:{} deg/s".format(
                                        np.round(self.leader.speed, 2), np.round(speed_mps, 2),
                                        np.round(AVG_FRAMES_PER_SECOND * self.leader.rotation_speed)),
                                        False,
