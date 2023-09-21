@@ -72,7 +72,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                    react_to_safe_corridor=True,
                                                    react_to_obstacles=True,
                                                    lasers_count=12,
-                                                   laser_length=4,
+                                                   laser_length=10,
                                                    max_prev_obs=10,
                                                    pad_sectors=False)
         # Init ray sensor 2
@@ -82,7 +82,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                        react_to_safe_corridor=False,
                                                        react_to_obstacles=True,
                                                        lasers_count=24,
-                                                       laser_length=8,
+                                                       laser_length=15,
                                                        max_prev_obs=10,
                                                        pad_sectors=False)
 
