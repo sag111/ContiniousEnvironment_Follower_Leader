@@ -13,8 +13,11 @@ import src.MyNewModels
 
 SERVER_PATH = Path(__file__).resolve().parent
 
-CONFIG_PATH = SERVER_PATH.joinpath("config/3c1bc/params.json").__str__()
-CHECKPOINT = SERVER_PATH.joinpath("checkpoints/3c1bc/checkpoint_000040/checkpoint-40").__str__()
+# CONFIG_PATH = SERVER_PATH.joinpath("config/3c1bc/params.json").__str__()
+# CHECKPOINT = SERVER_PATH.joinpath("checkpoints/3c1bc/checkpoint_000040/checkpoint-40").__str__()
+
+CONFIG_PATH = SERVER_PATH.joinpath("config/transformer/params.json").__str__()
+CHECKPOINT = SERVER_PATH.joinpath("checkpoints/transformer/checkpoint_000050/checkpoint-50").__str__()
 
 SERVER_ADDRESS = 'localhost'
 SERVER_BASE_PORT = 9900
@@ -35,7 +38,7 @@ if __name__ == '__main__':
     ray.init()
 
     sensor_config = {
-        'lasers_sectors_numbers': 36
+        'lasers_sectors_numbers': 48
     }
 
     follower_config = {
@@ -66,7 +69,7 @@ if __name__ == '__main__':
             "input": _input,
             "num_workers": 1,
             "input_evaluation": [],
-            "num_gpus": 1,
+            "num_gpus": 0,
             "log_level": 'DEBUG',
             "explore": False,
         }
