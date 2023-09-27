@@ -81,7 +81,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                        react_to_green_zone=False,
                                                        react_to_safe_corridor=False,
                                                        react_to_obstacles=True,
-                                                       lasers_count=24,
+                                                       lasers_count=36,
                                                        laser_length=15,
                                                        max_prev_obs=10,
                                                        pad_sectors=False)
