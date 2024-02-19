@@ -1,3 +1,4 @@
+import json
 import time
 
 import numpy as np
@@ -81,6 +82,7 @@ class Executor:
 
         eid = self.client.start_episode(training_enabled=True)
 
+        dynamic_states = []
         while not done:
             action = self.client.get_action(eid, obs)
 
@@ -104,14 +106,26 @@ class Executor:
                 if count_lost >= 2:
                     self.env.pub.target_cancel_action()
 
+            # action[0] = 2.00 * action[0]
+            # action[1] = 1.50 * action[1]
+
             new_obs, reward, done, new_info = self.env.step(action)
             obs = new_obs
             info = new_info
             self.client.log_returns(eid, reward, info=info)
             rewards += reward
 
+            # подсчет количества попаданий динамических объектов в область потенциального столкновения
+            # в зависимости от длины луча сенсора 2
+            sensor_2_length = 15
+            dynamic_xys, robot_xy = self.env.get_actor_states()
+            states = np.linalg.norm(dynamic_xys - robot_xy, axis=1) <= sensor_2_length
+            dynamic_states.append(states.tolist())
+
             if done:
                 self.client.end_episode(eid, obs)
+
+        dynamic_states = json.dumps(dynamic_states)
 
         self.env.pub.set_camera_yaw(0)
 
@@ -125,6 +139,7 @@ class Executor:
             finish_time,
             point_a,
             point_b,
+            dynamic_states,
             target_path,
             follower_path
         ]
