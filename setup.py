@@ -8,14 +8,4 @@ setup(
     description='Environment for "follow the leader" task agent training',
     package_dir={"": "src"},
     include_package_data=True,
-    install_requires=[
-        'ray[rllib]==1.9.5',
-        'pygame==2.1.2',
-        'pyhocon==0.3.60',
-        'opencv-python==4.5.4.60',
-        'rospkg==1.4.0',
-        'importlib-metadata==4.13.0',
-        'open3d==0.17.0',
-        'torch==1.13.1',
-    ]
 )
