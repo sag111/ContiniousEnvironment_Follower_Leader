@@ -6,6 +6,7 @@ from sensor_msgs.msg import PointCloud2
 from control_msgs.msg import JointControllerState
 from actionlib_msgs.msg import GoalStatusArray
 from nav_msgs.msg import Path
+from gazebo_msgs.msg import ModelStates
 
 from pyhocon import ConfigTree
 
@@ -40,6 +41,9 @@ class Subscribers:
         # the agent path
         self.robot_path_topic = config["topic.robot_path"]
         rospy.Subscriber(self.robot_path_topic, Path, self._robot_path_callback)
+        # gazebo model states
+        self.gazebo_states_topic = config["topic.model_states"]
+        rospy.Subscriber(self.gazebo_states_topic, ModelStates, self._gazebo_states_callback)
 
         self.check_all_subscribers_ready()
 
@@ -124,6 +128,15 @@ class Subscribers:
         """
         return self.robot_path
 
+    def _gazebo_states_callback(self, data):
+        self.model_states = data
+
+    def get_model_states(self):
+        """
+        gets gazebo model states
+        """
+        return self.model_states
+
     def check_all_subscribers_ready(self):
         """
         checks subscribers
@@ -134,6 +147,7 @@ class Subscribers:
         self._check_lidar_ready()
         self._check_follower_camera_yaw_ready()
         self._check_target_status_ready()
+        self._check_gazebo_states_ready()
 
     def _check_odom_ready(self):
         """
@@ -211,6 +225,17 @@ class Subscribers:
                 self.move_to_status = rospy.wait_for_message(self.robot_status_move_to_topic, GoalStatusArray)
             except:
                 rospy.logerr(f"Current {self.robot_status_move_to_topic} no ready yet, retrying for getting status")
+
+    def _check_gazebo_states_ready(self):
+        """
+        Checking the gazebo model states receipt
+        """
+        self.model_states = None
+        while self.model_states is None and not rospy.is_shutdown():
+            try:
+                self.model_states = rospy.wait_for_message(self.gazebo_states_topic, ModelStates)
+            except:
+                rospy.logerr(f"Current {self.gazebo_states_topic} no ready yet, retrying for getting status")
 
 
 if __name__ == '__main__':
