@@ -33,11 +33,11 @@ class ArcticEnv(RobotGazeboEnv):
                  time_for_action=0.2,
                  trajectory_saving_period=5,
                  leader_max_speed=1.0,
-                 min_distance=6.0,
+                 min_distance=8.0,
                  max_distance=25.0,
                  leader_pos_epsilon=1.25,
                  max_dev=1.5,
-                 max_steps=1000,
+                 max_steps=500,
                  low_reward=-100,
                  close_coeff=0.6,
                  use_object_detection=True
@@ -72,6 +72,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                    react_to_safe_corridor=True,
                                                    react_to_obstacles=True,
                                                    lasers_count=12,
+                                                   # laser_length=10,
                                                    laser_length=10,
                                                    max_prev_obs=10,
                                                    pad_sectors=False)
@@ -82,6 +83,7 @@ class ArcticEnv(RobotGazeboEnv):
                                                        react_to_safe_corridor=False,
                                                        react_to_obstacles=True,
                                                        lasers_count=36,
+                                                       # laser_length=15,
                                                        laser_length=15,
                                                        max_prev_obs=10,
                                                        pad_sectors=False)
@@ -675,6 +677,13 @@ class ArcticEnv(RobotGazeboEnv):
         if self.code == 3:
             self.info["leader_status"] = "finished"
 
+        if self._check_collisions():
+            self.info["mission_status"] = "fail"
+            self.info["agent_status"] = "collision_with_dynamic_object"
+            self.done = True
+            print(self.info)
+            return 0
+
         if self.step_count > self.warm_start:
             # Safety system
             # if self.camera_leader_information == None:
@@ -746,7 +755,7 @@ class ArcticEnv(RobotGazeboEnv):
                 return 0
 
             if self.code == 3 and np.linalg.norm(self.goal - leader_position) < 2 \
-                    and np.linalg.norm(follower_position - leader_position) < 8.5:
+                    and np.linalg.norm(follower_position - leader_position) < 10:
                 self.info["mission_status"] = "success"
                 self.info["leader_status"] = "finished"
                 self.info["agent_status"] = "finished"
@@ -789,6 +798,33 @@ class ArcticEnv(RobotGazeboEnv):
             self.end_stop_count = 0
             print(self.info)
             return 0
+
+    def get_actor_states(self):
+        states = self.sub.get_model_states()
+
+        actor_mask = np.array(list(map(lambda x: "actor" in x, states.name)))
+        actor_poses = np.array(states.pose)[actor_mask]
+        actor_xys = np.array(list(map(lambda k: [k.position.x, k.position.y], actor_poses)))
+
+        arctic_mask = np.array(list(map(lambda x: "arctic_model" in x, states.name)))
+        arctic_pose = np.array(states.pose)[arctic_mask]
+        arctic_xy = np.array(list(map(lambda k: [k.position.x, k.position.y], arctic_pose)))
+
+        return actor_xys, arctic_xy
+
+    def _check_collisions(self):
+
+        thres = 0.75
+
+        actor_xys, arctic_xy = self.get_actor_states()
+
+        for dynamic in actor_xys:
+            diff = abs(arctic_xy[0] - dynamic)
+
+            if diff[0] < thres and diff[1] < thres:
+                return True
+
+        return False
 
     def _compute_reward(self):
         reward = 0
