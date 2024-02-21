@@ -1,5 +1,6 @@
 import pdal
 import time
+import faker
 import pandas as pd
 
 from datetime import datetime
@@ -18,12 +19,17 @@ config = ConfigFactory.parse_file(config_path)
 experiment_path = project_path.joinpath('config/experiment2.conf')
 experiment = ConfigFactory.parse_file(experiment_path)
 
-now = datetime.now()
-
 exc = Executor(config)
 
-tries = 5
+fake_dir = faker.Faker()
+name = fake_dir.user_name()
+now = datetime.now()
+log_dir = now.strftime('%Y-%m-%d-') + name
+
+tries = 10
 for _ in range(tries):
+    now = datetime.now()
+
     for e in experiment:
         collects = []
         for pts in experiment[e]:
@@ -43,7 +49,7 @@ for _ in range(tries):
                 columns=["meta", "time", "point_a", "point_b", "dynamic_states", "target_path", "follower_path"]
             )
 
-            csv_path = project_path.joinpath("data/processed")
+            csv_path = project_path.joinpath("data/processed") / log_dir
             csv_path.mkdir(parents=True, exist_ok=True)
 
             evaluation.to_csv(csv_path.joinpath(f"{now.strftime('%Y-%m-%d|%H:%M')}_eval_{e}.csv"), sep=';', index=False)
